@@ -23,7 +23,7 @@ const BASE_URL = (
 const PUBLIC_DIR = path.join(__dirname, "public");
 
 /* =========================================================
-   DERIV CONFIGURATION
+   DERIV CONFIG
 ========================================================= */
 
 const DERIV_CLIENT_ID =
@@ -52,11 +52,8 @@ const SESSION_SECRET =
   crypto.randomBytes(32).toString("hex");
 
 /* =========================================================
-   TEMPORARY IN-MEMORY ANALYTICS
-
-   IMPORTANT:
-   Nothing is written to /var/task/data.
-   Vercel serverless storage is not persistent.
+   IN-MEMORY ANALYTICS
+   DO NOT WRITE TO /var/task
 ========================================================= */
 
 const analytics = {
@@ -66,7 +63,7 @@ const analytics = {
 };
 
 /* =========================================================
-   CRYPTO / SESSION HELPERS
+   CRYPTO HELPERS
 ========================================================= */
 
 function base64url(buffer) {
@@ -84,7 +81,7 @@ function encryptionKey() {
     .digest();
 }
 
-function seal(object) {
+function seal(data) {
   const iv = crypto.randomBytes(12);
 
   const cipher = crypto.createCipheriv(
@@ -94,15 +91,15 @@ function seal(object) {
   );
 
   const encrypted = Buffer.concat([
-    cipher.update(JSON.stringify(object), "utf8"),
+    cipher.update(JSON.stringify(data), "utf8"),
     cipher.final()
   ]);
 
-  const authTag = cipher.getAuthTag();
+  const tag = cipher.getAuthTag();
 
   return [
     base64url(iv),
-    base64url(authTag),
+    base64url(tag),
     base64url(encrypted)
   ].join(".");
 }
@@ -114,22 +111,23 @@ function unseal(value) {
     throw new Error("Invalid session");
   }
 
-  const [iv, tag, encrypted] = parts;
+  const iv = Buffer.from(parts[0], "base64url");
+  const tag = Buffer.from(parts[1], "base64url");
+  const encrypted = Buffer.from(
+    parts[2],
+    "base64url"
+  );
 
   const decipher = crypto.createDecipheriv(
     "aes-256-gcm",
     encryptionKey(),
-    Buffer.from(iv, "base64url")
+    iv
   );
 
-  decipher.setAuthTag(
-    Buffer.from(tag, "base64url")
-  );
+  decipher.setAuthTag(tag);
 
   const decrypted = Buffer.concat([
-    decipher.update(
-      Buffer.from(encrypted, "base64url")
-    ),
+    decipher.update(encrypted),
     decipher.final()
   ]);
 
@@ -184,12 +182,13 @@ function getSession(req) {
    MIDDLEWARE
 ========================================================= */
 
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean)
-  : [BASE_URL];
+const allowedOrigins =
+  process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean)
+    : [BASE_URL];
 
 app.use(
   cors({
@@ -226,10 +225,6 @@ app.use(
 
         frameAncestors: ["'none'"]
       }
-    },
-
-    referrerPolicy: {
-      policy: "strict-origin-when-cross-origin"
     }
   })
 );
@@ -262,78 +257,98 @@ app.use(
 );
 
 /* =========================================================
-   BASIC CONFIG
+   CONFIG
 ========================================================= */
 
-app.get("/api/config", (req, res) => {
-  res.json({
-    configured: Boolean(
-      DERIV_CLIENT_ID &&
-      DERIV_AFFILIATE_TOKEN
-    ),
+app.get(
+  "/api/config",
+  (req, res) => {
+    res.json({
+      configured: Boolean(
+        DERIV_CLIENT_ID
+      ),
 
-    publicAppId: DERIV_PUBLIC_APP_ID,
+      publicAppId:
+        DERIV_PUBLIC_APP_ID,
 
-    partnerParam: DERIV_AFFILIATE_PARAM,
+      partnerParam:
+        DERIV_AFFILIATE_PARAM,
 
-    campaign: DERIV_CAMPAIGN
-  });
-});
+      campaign:
+        DERIV_CAMPAIGN
+    });
+  }
+);
 
 /* =========================================================
    ANALYTICS
 ========================================================= */
 
-app.post("/api/track", (req, res) => {
-  const type = String(
-    req.body?.type || "page_view"
-  ).slice(0, 40);
+app.post(
+  "/api/track",
+  (req, res) => {
+    const type = String(
+      req.body?.type ||
+        "page_view"
+    ).slice(0, 40);
 
-  if (type === "page_view") {
-    analytics.visitors += 1;
+    if (type === "page_view") {
+      analytics.visitors++;
+    }
+
+    analytics.events.push({
+      type,
+      at:
+        new Date().toISOString(),
+
+      path: String(
+        req.body?.path || "/"
+      ).slice(0, 200)
+    });
+
+    if (
+      analytics.events.length >
+      5000
+    ) {
+      analytics.events =
+        analytics.events.slice(-5000);
+    }
+
+    res.status(204).end();
   }
+);
 
-  analytics.events.push({
-    type,
-    at: new Date().toISOString(),
-    path: String(
-      req.body?.path || "/"
-    ).slice(0, 200)
-  });
+app.get(
+  "/api/analytics",
+  (req, res) => {
+    const oauthSuccesses =
+      analytics.events.filter(
+        (event) =>
+          event.type ===
+            "oauth_login_success" ||
+          event.type ===
+            "oauth_signup_success"
+      ).length;
 
-  if (analytics.events.length > 5000) {
-    analytics.events =
-      analytics.events.slice(-5000);
+    res.json({
+      visitors:
+        analytics.visitors,
+
+      registrations:
+        analytics.registrations,
+
+      oauthSuccesses,
+
+      fundedAccounts: null,
+
+      note:
+        "Funded-account status must be confirmed in Deriv Partner Hub."
+    });
   }
-
-  res.status(204).end();
-});
-
-app.get("/api/analytics", (req, res) => {
-  const oauthSuccesses =
-    analytics.events.filter(
-      (event) =>
-        event.type === "oauth_login_success" ||
-        event.type === "oauth_signup_success"
-    ).length;
-
-  res.json({
-    visitors: analytics.visitors,
-
-    registrations:
-      analytics.registrations,
-
-    oauthSuccesses,
-
-    fundedAccounts: null,
-
-    note:
-      "Funded-account status must be confirmed in Deriv Partner Hub. It is not fabricated here."
-  });
-});
+);
 
 /* =========================================================
-   DERIV OAUTH
+   OAUTH
 ========================================================= */
 
 function buildOAuthUrl(mode) {
@@ -343,34 +358,44 @@ function buildOAuthUrl(mode) {
     );
   }
 
-  const verifier = createVerifier();
+  const verifier =
+    createVerifier();
 
   const state = seal({
     verifier,
+
     mode,
-    nonce: base64url(
-      crypto.randomBytes(16)
-    ),
-    issuedAt: Date.now()
+
+    nonce:
+      base64url(
+        crypto.randomBytes(16)
+      ),
+
+    issuedAt:
+      Date.now()
   });
 
-  const params = new URLSearchParams({
-    response_type: "code",
+  const params =
+    new URLSearchParams({
+      response_type: "code",
 
-    client_id: DERIV_CLIENT_ID,
+      client_id:
+        DERIV_CLIENT_ID,
 
-    redirect_uri:
-      `${BASE_URL}/oauth/callback`,
+      redirect_uri:
+        `${BASE_URL}/oauth/callback`,
 
-    scope: DERIV_SCOPE,
+      scope:
+        DERIV_SCOPE,
 
-    state,
+      state,
 
-    code_challenge:
-      createChallenge(verifier),
+      code_challenge:
+        createChallenge(verifier),
 
-    code_challenge_method: "S256"
-  });
+      code_challenge_method:
+        "S256"
+    });
 
   if (mode === "signup") {
     if (!DERIV_AFFILIATE_TOKEN) {
@@ -413,39 +438,47 @@ function buildOAuthUrl(mode) {
   );
 }
 
-app.get("/api/deriv/login", (req, res) => {
-  try {
-    res.redirect(
-      buildOAuthUrl("login")
-    );
-  } catch (error) {
-    console.error(
-      "LOGIN OAUTH ERROR:",
-      error.message
-    );
+app.get(
+  "/api/deriv/login",
+  (req, res) => {
+    try {
+      res.redirect(
+        buildOAuthUrl("login")
+      );
+    } catch (error) {
+      console.error(
+        "LOGIN OAUTH ERROR:",
+        error.message
+      );
 
-    res.status(503).json({
-      error: error.message
-    });
+      res.status(503).json({
+        error:
+          error.message
+      });
+    }
   }
-});
+);
 
-app.get("/api/deriv/signup", (req, res) => {
-  try {
-    res.redirect(
-      buildOAuthUrl("signup")
-    );
-  } catch (error) {
-    console.error(
-      "SIGNUP OAUTH ERROR:",
-      error.message
-    );
+app.get(
+  "/api/deriv/signup",
+  (req, res) => {
+    try {
+      res.redirect(
+        buildOAuthUrl("signup")
+      );
+    } catch (error) {
+      console.error(
+        "SIGNUP OAUTH ERROR:",
+        error.message
+      );
 
-    res.status(503).json({
-      error: error.message
-    });
+      res.status(503).json({
+        error:
+          error.message
+      });
+    }
   }
-});
+);
 
 /* =========================================================
    OAUTH CALLBACK
@@ -469,12 +502,14 @@ app.get(
         );
       }
 
-      const state = unseal(
-        req.query.state
-      );
+      const state =
+        unseal(
+          req.query.state
+        );
 
       if (
-        !state?.verifier ||
+        !state ||
+        !state.verifier ||
         !["login", "signup"].includes(
           state.mode
         )
@@ -486,7 +521,8 @@ app.get(
 
       if (
         !state.issuedAt ||
-        Date.now() - state.issuedAt >
+        Date.now() -
+          state.issuedAt >
           10 * 60 * 1000
       ) {
         throw new Error(
@@ -521,19 +557,20 @@ app.get(
             `${BASE_URL}/oauth/callback`
         });
 
-      const response = await fetch(
-        "https://auth.deriv.com/oauth2/token",
-        {
-          method: "POST",
+      const response =
+        await fetch(
+          "https://auth.deriv.com/oauth2/token",
+          {
+            method: "POST",
 
-          headers: {
-            "content-type":
-              "application/x-www-form-urlencoded"
-          },
+            headers: {
+              "content-type":
+                "application/x-www-form-urlencoded"
+            },
 
-          body
-        }
-      );
+            body
+          }
+        );
 
       if (!response.ok) {
         const text =
@@ -561,20 +598,23 @@ app.get(
 
       const expiresIn =
         Number(
-          token.expires_in || 3600
+          token.expires_in ||
+            3600
         );
 
-      const sessionCookie = seal({
-        accessToken:
-          token.access_token,
+      const sessionCookie =
+        seal({
+          accessToken:
+            token.access_token,
 
-        refreshToken:
-          token.refresh_token || null,
+          refreshToken:
+            token.refresh_token ||
+            null,
 
-        expiresAt:
-          Date.now() +
-          expiresIn * 1000
-      });
+          expiresAt:
+            Date.now() +
+            expiresIn * 1000
+        });
 
       res.cookie(
         "protraders_session",
@@ -603,11 +643,15 @@ app.get(
 
       analytics.events.push({
         type: eventType,
-        at: new Date().toISOString()
+
+        at:
+          new Date().toISOString()
       });
 
-      if (state.mode === "signup") {
-        analytics.registrations += 1;
+      if (
+        state.mode === "signup"
+      ) {
+        analytics.registrations++;
       }
 
       return res.redirect(
@@ -639,14 +683,18 @@ app.get(
     if (!session) {
       return res.json({
         authenticated: false,
+
         accountId: null,
+
         balance: null,
+
         currency: null
       });
     }
 
     return res.json({
       authenticated: true,
+
       expiresAt:
         session.expiresAt
     });
@@ -677,7 +725,7 @@ app.post(
 );
 
 /* =========================================================
-   DERIV WEBSOCKET REQUEST
+   DERIV API
 ========================================================= */
 
 function derivRequest(
@@ -687,7 +735,8 @@ function derivRequest(
   return new Promise(
     (resolve, reject) => {
       const appId =
-        DERIV_PUBLIC_APP_ID || "1089";
+        DERIV_PUBLIC_APP_ID ||
+        "1089";
 
       const ws =
         new WebSocket(
@@ -698,99 +747,109 @@ function derivRequest(
 
       let finished = false;
 
-      const timer = setTimeout(() => {
-        if (finished) return;
-
-        finished = true;
-
-        try {
-          ws.close();
-        } catch {}
-
-        reject(
-          new Error(
-            "Deriv request timeout"
-          )
-        );
-      }, 12000);
-
-      ws.on("open", () => {
-        ws.send(
-          JSON.stringify({
-            authorize: accessToken
-          })
-        );
-      });
-
-      ws.on("message", (raw) => {
-        let data;
-
-        try {
-          data = JSON.parse(
-            raw.toString()
-          );
-        } catch {
-          return;
-        }
-
-        if (data.error) {
+      const timer =
+        setTimeout(() => {
           if (finished) return;
 
           finished = true;
-
-          clearTimeout(timer);
 
           try {
             ws.close();
           } catch {}
 
-          return reject(
+          reject(
             new Error(
-              data.error.message ||
-                "Deriv API error"
+              "Deriv request timeout"
             )
           );
-        }
+        }, 12000);
 
-        if (
-          data.msg_type ===
-          "authorize"
-        ) {
+      ws.on(
+        "open",
+        () => {
           ws.send(
-            JSON.stringify(payload)
+            JSON.stringify({
+              authorize:
+                accessToken
+            })
           );
-
-          return;
         }
+      );
 
-        if (data.msg_type) {
+      ws.on(
+        "message",
+        (raw) => {
+          let data;
+
+          try {
+            data =
+              JSON.parse(
+                raw.toString()
+              );
+          } catch {
+            return;
+          }
+
+          if (data.error) {
+            if (finished) return;
+
+            finished = true;
+
+            clearTimeout(timer);
+
+            try {
+              ws.close();
+            } catch {}
+
+            return reject(
+              new Error(
+                data.error.message ||
+                  "Deriv API error"
+              )
+            );
+          }
+
+          if (
+            data.msg_type ===
+            "authorize"
+          ) {
+            ws.send(
+              JSON.stringify(
+                payload
+              )
+            );
+
+            return;
+          }
+
+          if (data.msg_type) {
+            if (finished) return;
+
+            finished = true;
+
+            clearTimeout(timer);
+
+            try {
+              ws.close();
+            } catch {}
+
+            resolve(data);
+          }
+        }
+      );
+
+      ws.on(
+        "error",
+        (error) => {
           if (finished) return;
 
           finished = true;
 
           clearTimeout(timer);
 
-          try {
-            ws.close();
-          } catch {}
-
-          resolve(data);
+          reject(error);
         }
-      });
-
-      ws.on("error", (error) => {
-        if (finished) return;
-
-        finished = true;
-
-        clearTimeout(timer);
-
-        reject(error);
-      });
-
-      ws.on("close", () => {
-        clearTimeout(timer);
-      });
+      );
     }
   );
 }
@@ -827,13 +886,16 @@ app.get(
         authenticated: true,
 
         balance:
-          balance.balance ?? null,
+          balance.balance ??
+          null,
 
         currency:
-          balance.currency ?? null,
+          balance.currency ??
+          null,
 
         loginid:
-          balance.loginid ?? null,
+          balance.loginid ??
+          null,
 
         openPnl: 0
       });
@@ -855,7 +917,7 @@ app.get(
 );
 
 /* =========================================================
-   TRADING
+   TRADES
 ========================================================= */
 
 app.post(
@@ -884,10 +946,14 @@ app.post(
         : null;
 
     const stake =
-      Number(req.body?.stake);
+      Number(
+        req.body?.stake
+      );
 
     const duration =
-      Number(req.body?.duration);
+      Number(
+        req.body?.duration
+      );
 
     if (
       !contractType ||
@@ -1023,7 +1089,7 @@ app.post(
 
       message:
         action === "start"
-          ? "Free bot interface started in controlled mode. Live bot execution remains disabled until the bot adapter is separately tested."
+          ? "Free bot interface started in controlled mode."
           : "Free bot stopped.",
 
       execution:
@@ -1064,16 +1130,6 @@ app.get(
       sessionSecretConfigured:
         Boolean(
           process.env.SESSION_SECRET
-        ),
-
-      readyForControlledLiveTest:
-        Boolean(
-          BASE_URL.startsWith(
-            "https://"
-          ) &&
-          DERIV_CLIENT_ID &&
-          DERIV_AFFILIATE_TOKEN &&
-          process.env.SESSION_SECRET
         )
     });
   }
@@ -1099,14 +1155,16 @@ app.get(
 );
 
 /* =========================================================
-   PUBLIC APP CONFIG
+   APP CONFIG
 ========================================================= */
 
 app.get(
   "/app-config.js",
   (req, res) => {
     res
-      .type("application/javascript")
+      .type(
+        "application/javascript"
+      )
       .send(
         `window.PROTRADERS_PUBLIC_APP_ID=${JSON.stringify(
           DERIV_PUBLIC_APP_ID
@@ -1116,7 +1174,7 @@ app.get(
 );
 
 /* =========================================================
-   PAGE ROUTES
+   WORKSPACE
 ========================================================= */
 
 app.get(
@@ -1142,29 +1200,6 @@ app.get(
     );
   }
 );
-
-for (
-  const page of [
-    "marketplace",
-    "course",
-    "signals",
-    "manual",
-    "builder"
-  ]
-) {
-  app.get(
-    `/${page}`,
-    (req, res) => {
-      res.sendFile(
-        path.join(
-          PUBLIC_DIR,
-          "pages",
-          `${page}.html`
-        )
-      );
-    }
-  );
-}
 
 /* =========================================================
    STATIC FRONTEND
@@ -1210,7 +1245,7 @@ app.use(
       return next(error);
     }
 
-    return res.status(500).json({
+    res.status(500).json({
       error:
         "Internal server error"
     });
@@ -1218,15 +1253,8 @@ app.use(
 );
 
 /* =========================================================
-   VERCEL EXPORT
+   VERCEL / LOCAL
 ========================================================= */
-
-module.exports = app;
-
-/*
-   Local development only.
-   Vercel uses module.exports above.
-*/
 
 if (require.main === module) {
   app.listen(
@@ -1238,4 +1266,6 @@ if (require.main === module) {
     }
   );
 }
+
+module.exports = app;
 ```
