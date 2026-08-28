@@ -1,1 +1,39 @@
-{"version":2,"builds":[{"src":"server.js","use":"@vercel/node"}],"routes":[{"src":"/(.*)","dest":"/server.js"}]}
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "server.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/server.js"
+    },
+    {
+      "src": "/oauth/(.*)",
+      "dest": "/server.js"
+    },
+    {
+      "src": "/health",
+      "dest": "/server.js"
+    },
+    {
+      "src": "/app-config.js",
+      "dest": "/server.js"
+    },
+    {
+      "src": "/workspace",
+      "dest": "/server.js"
+    },
+    {
+      "src": "/workspace.html",
+      "dest": "/server.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/server.js"
+    }
+  ]
+}
