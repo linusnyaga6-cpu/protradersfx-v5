@@ -15,11 +15,15 @@ const app = express();
 
 const PORT = Number(process.env.PORT || 3000);
 
-const BASE_URL = (
+const BASE_URL = String(
 process.env.BASE_URL || "https://protradersfx.com"
 ).replace(//$/, "");
 
 const PUBLIC_DIR = path.join(__dirname, "public");
+
+/* =========================================================
+DERIV CONFIG
+========================================================= */
 
 const DERIV_CLIENT_ID =
 process.env.DERIV_CLIENT_ID || "";
@@ -46,11 +50,20 @@ const SESSION_SECRET =
 process.env.SESSION_SECRET ||
 crypto.randomBytes(32).toString("hex");
 
+/* =========================================================
+ANALYTICS
+NO FILESYSTEM WRITES
+========================================================= */
+
 const analytics = {
 visitors: 0,
 registrations: 0,
 events: []
 };
+
+/* =========================================================
+HELPERS
+========================================================= */
 
 function base64url(buffer) {
 return Buffer.from(buffer)
@@ -160,11 +173,16 @@ return null;
 }
 }
 
-const allowedOrigins =
-process.env.ALLOWED_ORIGINS
+/* =========================================================
+MIDDLEWARE
+========================================================= */
+
+const allowedOrigins = process.env.ALLOWED_ORIGINS
 ? process.env.ALLOWED_ORIGINS
 .split(",")
-.map((x) => x.trim())
+.map(function (x) {
+return x.trim();
+})
 .filter(Boolean)
 : [BASE_URL];
 
@@ -229,20 +247,32 @@ legacyHeaders: false
 })
 );
 
-app.get("/health", (req, res) => {
-res.status(200).json({
+/* =========================================================
+HEALTH
+========================================================= */
+
+app.get("/health", function (req, res) {
+return res.status(200).json({
 ok: true,
 service: "protraders-fx",
 time: new Date().toISOString()
 });
 });
 
-app.get("/favicon.ico", (req, res) => {
-res.status(204).end();
+/* =========================================================
+FAVICON
+========================================================= */
+
+app.get("/favicon.ico", function (req, res) {
+return res.status(204).end();
 });
 
-app.get("/api/config", (req, res) => {
-res.json({
+/* =========================================================
+CONFIG
+========================================================= */
+
+app.get("/api/config", function (req, res) {
+return res.json({
 configured: Boolean(DERIV_CLIENT_ID),
 publicAppId: DERIV_PUBLIC_APP_ID,
 partnerParam: DERIV_AFFILIATE_PARAM,
@@ -250,9 +280,15 @@ campaign: DERIV_CAMPAIGN
 });
 });
 
-app.post("/api/track", (req, res) => {
+/* =========================================================
+ANALYTICS
+========================================================= */
+
+app.post("/api/track", function (req, res) {
 const type = String(
-req.body?.type || "page_view"
+req.body && req.body.type
+? req.body.type
+: "page_view"
 ).slice(0, 40);
 
 if (type === "page_view") {
@@ -260,10 +296,12 @@ analytics.visitors++;
 }
 
 analytics.events.push({
-type,
+type: type,
 at: new Date().toISOString(),
 path: String(
-req.body?.path || "/"
+req.body && req.body.path
+? req.body.path
+: "/"
 ).slice(0, 200)
 });
 
@@ -272,26 +310,31 @@ analytics.events =
 analytics.events.slice(-5000);
 }
 
-res.status(204).end();
+return res.status(204).end();
 });
 
-app.get("/api/analytics", (req, res) => {
+app.get("/api/analytics", function (req, res) {
 const oauthSuccesses =
-analytics.events.filter(
-(event) =>
+analytics.events.filter(function (event) {
+return (
 event.type === "oauth_login_success" ||
 event.type === "oauth_signup_success"
-).length;
+);
+}).length;
 
-res.json({
+return res.json({
 visitors: analytics.visitors,
 registrations: analytics.registrations,
-oauthSuccesses,
+oauthSuccesses: oauthSuccesses,
 fundedAccounts: null,
 note:
 "Funded-account status must be confirmed in Deriv Partner Hub."
 });
 });
+
+/* =========================================================
+OAUTH URL
+========================================================= */
 
 function buildOAuthUrl(mode) {
 if (!DERIV_CLIENT_ID) {
@@ -303,25 +346,32 @@ throw new Error(
 const verifier = createVerifier();
 
 const state = seal({
-verifier,
-mode,
+verifier: verifier,
+mode: mode,
 nonce: base64url(
 crypto.randomBytes(16)
 ),
 issuedAt: Date.now()
 });
 
-const params = new URLSearchParams({
-response_type: "code",
-client_id: DERIV_CLIENT_ID,
-redirect_uri:
-`${BASE_URL}/oauth/callback`,
-scope: DERIV_SCOPE,
-state,
-code_challenge:
-createChallenge(verifier),
-code_challenge_method: "S256"
-});
+const redirectUri =
+BASE_URL + "/oauth/callback";
+
+const params = new URLSearchParams();
+
+params.set("response_type", "code");
+params.set("client_id", DERIV_CLIENT_ID);
+params.set("redirect_uri", redirectUri);
+params.set("scope", DERIV_SCOPE);
+params.set("state", state);
+params.set(
+"code_challenge",
+createChallenge(verifier)
+);
+params.set(
+"code_challenge_method",
+"S256"
+);
 
 if (mode === "signup") {
 if (!DERIV_AFFILIATE_TOKEN) {
@@ -331,7 +381,10 @@ throw new Error(
 }
 
 ```
-params.set("prompt", "registration");
+params.set(
+  "prompt",
+  "registration"
+);
 
 params.set(
   DERIV_AFFILIATE_PARAM,
@@ -364,9 +417,13 @@ params.toString()
 );
 }
 
-app.get("/api/deriv/login", (req, res) => {
+/* =========================================================
+LOGIN
+========================================================= */
+
+app.get("/api/deriv/login", function (req, res) {
 try {
-res.redirect(
+return res.redirect(
 buildOAuthUrl("login")
 );
 } catch (error) {
@@ -376,7 +433,7 @@ error.message
 );
 
 ```
-res.status(503).json({
+return res.status(503).json({
   error: error.message
 });
 ```
@@ -384,9 +441,13 @@ res.status(503).json({
 }
 });
 
-app.get("/api/deriv/signup", (req, res) => {
+/* =========================================================
+SIGNUP
+========================================================= */
+
+app.get("/api/deriv/signup", function (req, res) {
 try {
-res.redirect(
+return res.redirect(
 buildOAuthUrl("signup")
 );
 } catch (error) {
@@ -396,7 +457,7 @@ error.message
 );
 
 ```
-res.status(503).json({
+return res.status(503).json({
   error: error.message
 });
 ```
@@ -404,13 +465,18 @@ res.status(503).json({
 }
 });
 
-app.get("/oauth/callback", async (req, res) => {
+/* =========================================================
+OAUTH CALLBACK
+========================================================= */
+
+app.get("/oauth/callback", async function (req, res) {
 try {
 if (req.query.error) {
 return res.redirect(
-`/?oauth_error=${encodeURIComponent(
-          String(req.query.error)
-        )}`
+"/?oauth_error=" +
+encodeURIComponent(
+String(req.query.error)
+)
 );
 }
 
@@ -422,7 +488,7 @@ if (!req.query.state) {
 }
 
 const state = unseal(
-  req.query.state
+  String(req.query.state)
 );
 
 if (
@@ -457,17 +523,35 @@ if (!code) {
   );
 }
 
-const body = new URLSearchParams({
-  grant_type:
-    "authorization_code",
-  client_id:
-    DERIV_CLIENT_ID,
-  code,
-  code_verifier:
-    state.verifier,
-  redirect_uri:
-    `${BASE_URL}/oauth/callback`
-});
+const redirectUri =
+  BASE_URL + "/oauth/callback";
+
+const body = new URLSearchParams();
+
+body.set(
+  "grant_type",
+  "authorization_code"
+);
+
+body.set(
+  "client_id",
+  DERIV_CLIENT_ID
+);
+
+body.set(
+  "code",
+  code
+);
+
+body.set(
+  "code_verifier",
+  state.verifier
+);
+
+body.set(
+  "redirect_uri",
+  redirectUri
+);
 
 const response = await fetch(
   "https://auth.deriv.com/oauth2/token",
@@ -477,7 +561,7 @@ const response = await fetch(
       "content-type":
         "application/x-www-form-urlencoded"
     },
-    body
+    body: body
   }
 );
 
@@ -492,7 +576,9 @@ if (!response.ok) {
   );
 
   throw new Error(
-    `Token exchange failed (${response.status})`
+    "Token exchange failed (" +
+    response.status +
+    ")"
   );
 }
 
@@ -566,7 +652,11 @@ return res.redirect(
 }
 });
 
-app.get("/api/session", (req, res) => {
+/* =========================================================
+SESSION
+========================================================= */
+
+app.get("/api/session", function (req, res) {
 const session = getSession(req);
 
 if (!session) {
@@ -584,7 +674,7 @@ expiresAt: session.expiresAt
 });
 });
 
-app.post("/api/logout", (req, res) => {
+app.post("/api/logout", function (req, res) {
 res.clearCookie(
 "protraders_session",
 {
@@ -595,31 +685,33 @@ path: "/"
 }
 );
 
-res.status(204).end();
+return res.status(204).end();
 });
+
+/* =========================================================
+DERIV REQUEST
+========================================================= */
 
 function derivRequest(
 accessToken,
 payload
 ) {
 return new Promise(
-(resolve, reject) => {
+function (resolve, reject) {
 const appId =
-DERIV_PUBLIC_APP_ID ||
-"1089";
+DERIV_PUBLIC_APP_ID || "1089";
 
 ```
   const ws =
     new WebSocket(
-      `wss://ws.derivws.com/websockets/v3?app_id=${encodeURIComponent(
-        appId
-      )}`
+      "wss://ws.derivws.com/websockets/v3?app_id=" +
+      encodeURIComponent(appId)
     );
 
   let finished = false;
 
-  const timer =
-    setTimeout(() => {
+  const timer = setTimeout(
+    function () {
       if (finished) return;
 
       finished = true;
@@ -633,9 +725,11 @@ DERIV_PUBLIC_APP_ID ||
           "Deriv request timeout"
         )
       );
-    }, 12000);
+    },
+    12000
+  );
 
-  ws.on("open", () => {
+  ws.on("open", function () {
     ws.send(
       JSON.stringify({
         authorize: accessToken
@@ -643,63 +737,66 @@ DERIV_PUBLIC_APP_ID ||
     );
   });
 
-  ws.on("message", (raw) => {
-    let data;
-
-    try {
-      data = JSON.parse(
-        raw.toString()
-      );
-    } catch {
-      return;
-    }
-
-    if (data.error) {
-      if (finished) return;
-
-      finished = true;
-
-      clearTimeout(timer);
+  ws.on(
+    "message",
+    function (raw) {
+      let data;
 
       try {
-        ws.close();
-      } catch {}
+        data = JSON.parse(
+          raw.toString()
+        );
+      } catch {
+        return;
+      }
 
-      return reject(
-        new Error(
-          data.error.message ||
+      if (data.error) {
+        if (finished) return;
+
+        finished = true;
+
+        clearTimeout(timer);
+
+        try {
+          ws.close();
+        } catch {}
+
+        return reject(
+          new Error(
+            data.error.message ||
             "Deriv API error"
-        )
-      );
+          )
+        );
+      }
+
+      if (
+        data.msg_type ===
+        "authorize"
+      ) {
+        ws.send(
+          JSON.stringify(payload)
+        );
+
+        return;
+      }
+
+      if (data.msg_type) {
+        if (finished) return;
+
+        finished = true;
+
+        clearTimeout(timer);
+
+        try {
+          ws.close();
+        } catch {}
+
+        return resolve(data);
+      }
     }
+  );
 
-    if (
-      data.msg_type ===
-      "authorize"
-    ) {
-      ws.send(
-        JSON.stringify(payload)
-      );
-
-      return;
-    }
-
-    if (data.msg_type) {
-      if (finished) return;
-
-      finished = true;
-
-      clearTimeout(timer);
-
-      try {
-        ws.close();
-      } catch {}
-
-      resolve(data);
-    }
-  });
-
-  ws.on("error", (error) => {
+  ws.on("error", function (error) {
     if (finished) return;
 
     finished = true;
@@ -714,7 +811,11 @@ DERIV_PUBLIC_APP_ID ||
 );
 }
 
-app.get("/api/account", async (req, res) => {
+/* =========================================================
+ACCOUNT
+========================================================= */
+
+app.get("/api/account", async function (req, res) {
 const session = getSession(req);
 
 if (!session) {
@@ -766,7 +867,11 @@ return res.status(502).json({
 }
 });
 
-app.post("/api/trades", async (req, res) => {
+/* =========================================================
+TRADES
+========================================================= */
+
+app.post("/api/trades", async function (req, res) {
 const session = getSession(req);
 
 if (!session) {
@@ -832,10 +937,10 @@ const proposal =
       basis: "stake",
       contract_type:
         contractType,
-      currency,
-      duration,
+      currency: currency,
+      duration: duration,
       duration_unit: "t",
-      symbol
+      symbol: symbol
     }
   );
 
@@ -868,7 +973,9 @@ if (buy.error) {
 return res.json({
   ok: true,
   message:
-    `Trade opened on ${symbol}.`,
+    "Trade opened on " +
+    symbol +
+    ".",
   contractId:
     buy.buy?.contract_id ||
     null
@@ -893,7 +1000,11 @@ return res.status(502).json({
 }
 });
 
-app.post("/api/bot", async (req, res) => {
+/* =========================================================
+BOT
+========================================================= */
+
+app.post("/api/bot", async function (req, res) {
 const session = getSession(req);
 
 if (!session) {
@@ -919,41 +1030,61 @@ execution:
 });
 });
 
-app.get("/api/preflight", (req, res) => {
-res.json({
+/* =========================================================
+PREFLIGHT
+========================================================= */
+
+app.get("/api/preflight", function (req, res) {
+return res.json({
 productionBaseUrl:
 BASE_URL,
+
+```
 redirectUri:
-`${BASE_URL}/oauth/callback`,
+  BASE_URL + "/oauth/callback",
+
 https:
-BASE_URL.startsWith(
-"https://"
-),
+  BASE_URL.startsWith("https://"),
+
 oauthClientConfigured:
-Boolean(DERIV_CLIENT_ID),
+  Boolean(DERIV_CLIENT_ID),
+
 partnerTrackingConfigured:
-Boolean(
-DERIV_AFFILIATE_TOKEN
-),
+  Boolean(
+    DERIV_AFFILIATE_TOKEN
+  ),
+
 sessionSecretConfigured:
-Boolean(
-process.env.SESSION_SECRET
-)
+  Boolean(
+    process.env.SESSION_SECRET
+  )
+```
+
 });
 });
 
-app.get("/app-config.js", (req, res) => {
-res
+/* =========================================================
+APP CONFIG
+========================================================= */
+
+app.get("/app-config.js", function (req, res) {
+return res
 .type("application/javascript")
 .send(
-`window.PROTRADERS_PUBLIC_APP_ID=${JSON.stringify(
-        DERIV_PUBLIC_APP_ID
-      )};`
+"window.PROTRADERS_PUBLIC_APP_ID=" +
+JSON.stringify(
+DERIV_PUBLIC_APP_ID
+) +
+";"
 );
 });
 
-app.get("/workspace", (req, res) => {
-res.sendFile(
+/* =========================================================
+WORKSPACE
+========================================================= */
+
+app.get("/workspace", function (req, res) {
+return res.sendFile(
 path.join(
 PUBLIC_DIR,
 "workspace.html"
@@ -961,14 +1092,18 @@ PUBLIC_DIR,
 );
 });
 
-app.get("/workspace.html", (req, res) => {
-res.sendFile(
+app.get("/workspace.html", function (req, res) {
+return res.sendFile(
 path.join(
 PUBLIC_DIR,
 "workspace.html"
 )
 );
 });
+
+/* =========================================================
+STATIC FRONTEND
+========================================================= */
 
 app.use(
 express.static(
@@ -979,7 +1114,11 @@ extensions: ["html"]
 )
 );
 
-app.use((req, res, next) => {
+/* =========================================================
+FRONTEND FALLBACK
+========================================================= */
+
+app.use(function (req, res, next) {
 if (
 req.method !== "GET" &&
 req.method !== "HEAD"
@@ -987,21 +1126,25 @@ req.method !== "HEAD"
 return next();
 }
 
-res.sendFile(
+return res.sendFile(
 path.join(
 PUBLIC_DIR,
 "index.html"
 ),
-(error) => {
+function (error) {
 if (error) {
-next(error);
+return next(error);
 }
 }
 );
 });
 
+/* =========================================================
+ERROR HANDLER
+========================================================= */
+
 app.use(
-(error, req, res, next) => {
+function (error, req, res, next) {
 console.error(
 "SERVER ERROR:",
 error
@@ -1012,7 +1155,7 @@ if (res.headersSent) {
   return next(error);
 }
 
-res.status(500).json({
+return res.status(500).json({
   error:
     "Internal server error"
 });
@@ -1021,12 +1164,17 @@ res.status(500).json({
 }
 );
 
+/* =========================================================
+START / VERCEL
+========================================================= */
+
 if (require.main === module) {
 app.listen(
 PORT,
-() => {
+function () {
 console.log(
-`[PROTRADERS FX] running on ${BASE_URL}`
+"[PROTRADERS FX] running on " +
+BASE_URL
 );
 }
 );
