@@ -9,6 +9,7 @@ Deriv-connected trading workspace backend with PKCE login, account proxying, con
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
+- Production schema changes are synchronized by Replit Publish: it diffs the exported Drizzle schema and applies the reviewed change during publish. Do not run custom production migrations or startup-time DDL.
 - Required production env: `BASE_URL`, `SESSION_SECRET`, `DERIV_CLIENT_ID`, and `DERIV_PUBLIC_APP_ID`
 - Optional signup env: `DERIV_AFFILIATE_TOKEN` plus the affiliate UTM settings
 - Optional cross-origin clients must be explicitly allowlisted with `ALLOWED_ORIGINS`; the web app is same-origin by default

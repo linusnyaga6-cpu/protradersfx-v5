@@ -1,0 +1,137 @@
+import crypto from "node:crypto";
+import { Router, type Request, type Response } from "express";
+import rateLimit from "express-rate-limit";
+import { and, desc, eq, isNull } from "drizzle-orm";
+import WebSocket, { type RawData } from "ws";
+import { z } from "zod/v4";
+import {
+  analyses, botEvents, botRuns, bots, botTemplates, db, recoveryIncidents,
+  riskAcknowledgements, snapshots,
+} from "@workspace/db";
+import { derivRequest, getSession } from "./protraders";
+
+const router = Router();
+const RISK_VERSION = "2025-01";
+const marketCache = new Map<string, { expiresAt: number; value: unknown }>();
+const advisorySchema = z.object({
+  summary: z.string().min(1).max(800),
+  observations: z.array(z.string().min(1).max(240)).max(6),
+  safeNextSteps: z.array(z.enum(["review_logs", "pause_and_review", "contact_support", "refresh_account_data", "run_dry_run"])).max(5),
+  limitations: z.string().min(1).max(500),
+}).strict();
+const builtIns = [
+  { id: "trend-following", name: "Trend following", description: "Uses transparent moving-average direction; it is educational and makes no performance claim.", strategy: { indicator: "ema", fast: 9, slow: 21, execution: "dry_run" } },
+  { id: "rsi-observer", name: "RSI observer", description: "Flags RSI extremes for review; it does not predict prices or promise returns.", strategy: { indicator: "rsi", period: 14, execution: "dry_run" } },
+];
+
+function fail(res: Response, status: number, error: string, message?: string) {
+  return res.status(status).json({ error, ...(message ? { message } : {}) });
+}
+router.use("/market", rateLimit({ windowMs: 60_000, max: 60, standardHeaders: true, legacyHeaders: false }));
+async function cachedMarket<T>(key: string, loader: () => Promise<T>) {
+  const current = marketCache.get(key);
+  if (current && current.expiresAt > Date.now()) return current.value as T;
+  const value = await loader();
+  marketCache.set(key, { value, expiresAt: Date.now() + 10_000 });
+  if (marketCache.size > 200) marketCache.delete(marketCache.keys().next().value!);
+  return value;
+}
+function string(value: unknown, maximum = 160) {
+  return typeof value === "string" && value.trim() && value.length <= maximum ? value.trim() : null;
+}
+async function owner(req: Request, res: Response) {
+  const session = await getSession(req, res);
+  if (!session) return null;
+  const account = await derivRequest(session.accessToken, { balance: 1 });
+  const loginId = String(account.balance?.loginid || "");
+  if (!loginId) throw new Error("Authenticated Deriv login ID unavailable");
+  return { session, key: crypto.createHash("sha256").update(`protraders-owner:${loginId}`).digest("hex") };
+}
+async function authenticated(req: Request, res: Response) {
+  try { return await owner(req, res); } catch (error) {
+    req.log?.warn({ err: error }, "workspace identity lookup failed");
+    fail(res, 502, "Account identity unavailable");
+    return null;
+  }
+}
+function publicDeriv(payload: Record<string, unknown>) {
+  const appId = process.env.DERIV_PUBLIC_APP_ID;
+  if (!appId) return Promise.reject(new Error("DERIV_PUBLIC_APP_ID is not configured"));
+  return new Promise<any>((resolve, reject) => {
+    const socket = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${encodeURIComponent(appId)}`);
+    let done = false;
+    const finish = (fn: (v: any) => void, value: any) => { if (!done) { done = true; clearTimeout(timeout); socket.close(); fn(value); } };
+    const timeout = setTimeout(() => finish(reject, new Error("Deriv public market request timeout")), 10_000);
+    socket.on("open", () => socket.send(JSON.stringify(payload)));
+    socket.on("message", (raw: RawData) => { try { const data = JSON.parse(raw.toString()); data.error ? finish(reject, new Error(data.error.message || "Deriv API error")) : finish(resolve, data); } catch { finish(reject, new Error("Invalid Deriv market response")); } });
+    socket.on("error", (error) => finish(reject, error));
+  });
+}
+function metrics(candles: Array<{ epoch: number; close: number }>) {
+  const closes = candles.map((c) => c.close);
+  const sma = (n: number) => closes.slice(-n).reduce((a, b) => a + b, 0) / n;
+  const ema = (n: number) => {
+    const values = closes.slice(-Math.max(n, 50));
+    let value = values.slice(0, n).reduce((a, b) => a + b, 0) / n;
+    const multiplier = 2 / (n + 1);
+    for (const close of values.slice(n)) value = (close - value) * multiplier + value;
+    return value;
+  };
+  const period = 14; let gains = 0; let losses = 0;
+  for (let i = closes.length - period; i < closes.length; i++) { const delta = closes[i] - closes[i - 1]; if (delta >= 0) gains += delta; else losses -= delta; }
+  const rsi = losses === 0 ? 100 : 100 - 100 / (1 + gains / losses);
+  const fast = ema(9), slow = ema(21);
+  return { sma20: sma(20), ema9: fast, ema21: slow, rsi14: rsi, trend: fast > slow ? "up" : fast < slow ? "down" : "flat" };
+}
+
+router.get("/market/symbols", async (_req, res) => {
+  try { const body = await cachedMarket("symbols", async () => { const data = await publicDeriv({ active_symbols: "brief" }); return { symbols: (data.active_symbols || []).map((s: any) => ({ symbol: s.symbol, displayName: s.display_name, market: s.market, submarket: s.submarket })) }; }); return res.json(body); }
+  catch (e) { return fail(res, 502, "Market symbols unavailable", e instanceof Error ? e.message : undefined); }
+});
+router.get("/market/ticker/:symbol", async (req, res) => {
+  const symbol = string(req.params.symbol, 30); if (!symbol || !/^[A-Z0-9_]+$/.test(symbol)) return fail(res, 400, "Invalid symbol");
+  try { const body = await cachedMarket(`ticker:${symbol}`, async () => {
+    const data = await publicDeriv({ ticks_history: symbol, style: "ticks", count: 1, end: "latest" });
+    const quote = Number(data.history?.prices?.at?.(-1));
+    const epoch = Number(data.history?.times?.at?.(-1));
+    if (!Number.isFinite(quote) || !Number.isFinite(epoch)) throw new Error("Invalid ticker response");
+    return { symbol, quote, epoch, pipSize: null, source: "latest-history-tick" };
+  }); return res.json(body); }
+  catch (e) { return fail(res, 502, "Ticker unavailable", e instanceof Error ? e.message : undefined); }
+});
+router.get("/market/candles/:symbol", async (req, res) => {
+  const symbol = string(req.params.symbol, 30), granularity = Number(req.query.granularity || 300), count = Number(req.query.count || 100);
+  if (!symbol || !/^[A-Z0-9_]+$/.test(symbol) || ![60, 120, 300, 600, 900, 1800, 3600, 7200, 14400, 28800, 86400].includes(granularity) || !Number.isInteger(count) || count < 30 || count > 500) return fail(res, 400, "Invalid candle parameters");
+  try { return res.json(await cachedMarket(`candles:${symbol}:${granularity}:${count}`, async () => {
+    const data = await publicDeriv({ ticks_history: symbol, style: "candles", granularity, count, end: "latest" });
+    const rows = Array.isArray(data.candles) ? data.candles.map((c: any) => ({ epoch: Number(c.epoch), open: Number(c.open), high: Number(c.high), low: Number(c.low), close: Number(c.close) })).filter((c: any) => Object.values(c).every(Number.isFinite)) : [];
+    if (rows.length < 30) throw new Error("Insufficient valid candle data");
+    const latest = rows.at(-1)!; const ageSeconds = Math.max(0, Math.floor(Date.now() / 1000 - latest.epoch));
+    return { symbol, granularity, candles: rows, indicators: metrics(rows), asOf: new Date(latest.epoch * 1000).toISOString(), freshnessSeconds: ageSeconds, confidence: ageSeconds <= granularity * 2 ? "data-current" : "data-delayed", disclaimer: "Indicators are deterministic descriptions of observed candles, not advice or a promise of any outcome." };
+  }));
+  } catch (e) { return fail(res, 502, "Candle data unavailable", e instanceof Error ? e.message : undefined); }
+});
+
+router.get("/templates", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const custom = await db.select().from(botTemplates).where(and(eq(botTemplates.ownerKey, auth.key), isNull(botTemplates.archivedAt))).orderBy(desc(botTemplates.createdAt)); return res.json({ builtIn: builtIns, templates: custom }); });
+router.post("/templates", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const name = string(req.body?.name), description = string(req.body?.description, 1000), strategy = req.body?.strategy; if (!name || !description || !strategy || typeof strategy !== "object" || Array.isArray(strategy)) return fail(res, 400, "Invalid template"); const [item] = await db.insert(botTemplates).values({ ownerKey: auth.key, name, description, strategy }).returning(); return res.status(201).json(item); });
+router.patch("/templates/:id", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const name = req.body?.name === undefined ? undefined : string(req.body.name), description = req.body?.description === undefined ? undefined : string(req.body.description, 1000); if ((req.body?.name !== undefined && !name) || (req.body?.description !== undefined && !description)) return fail(res, 400, "Invalid template"); const [item] = await db.update(botTemplates).set({ ...(name ? { name } : {}), ...(description ? { description } : {}), ...(req.body?.strategy && typeof req.body.strategy === "object" ? { strategy: req.body.strategy } : {}), updatedAt: new Date() }).where(and(eq(botTemplates.id, req.params.id), eq(botTemplates.ownerKey, auth.key))).returning(); return item ? res.json(item) : fail(res, 404, "Template not found"); });
+router.post("/templates/:id/archive", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const [item] = await db.update(botTemplates).set({ archivedAt: new Date(), updatedAt: new Date() }).where(and(eq(botTemplates.id, req.params.id), eq(botTemplates.ownerKey, auth.key))).returning(); return item ? res.json(item) : fail(res, 404, "Template not found"); });
+
+router.get("/bots", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; return res.json({ bots: await db.select().from(bots).where(and(eq(bots.ownerKey, auth.key), isNull(bots.archivedAt))).orderBy(desc(bots.createdAt)) }); });
+router.post("/bots", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const name = string(req.body?.name), symbol = string(req.body?.symbol, 30), config = req.body?.config; if (!name || !symbol || !/^[A-Z0-9_]+$/.test(symbol) || !config || typeof config !== "object") return fail(res, 400, "Invalid bot"); const [bot] = await db.insert(bots).values({ ownerKey: auth.key, name, symbol, config, templateId: typeof req.body?.templateId === "string" ? req.body.templateId : null }).returning(); return res.status(201).json(bot); });
+router.patch("/bots/:id", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const name = req.body?.name === undefined ? undefined : string(req.body.name); if (req.body?.name !== undefined && !name) return fail(res, 400, "Invalid bot"); const [bot] = await db.update(bots).set({ ...(name ? { name } : {}), ...(req.body?.config && typeof req.body.config === "object" ? { config: req.body.config } : {}), updatedAt: new Date() }).where(and(eq(bots.id, req.params.id), eq(bots.ownerKey, auth.key))).returning(); return bot ? res.json(bot) : fail(res, 404, "Bot not found"); });
+router.post(["/bots/:id/start", "/bots/:id/pause", "/bots/:id/stop", "/bots/:id/archive"], async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const action = req.path.split("/").at(-1)!; const status = action === "start" ? "observing" : action === "pause" ? "paused" : action === "stop" ? "stopped" : "archived"; const [bot] = await db.update(bots).set({ status, ...(action === "archive" ? { archivedAt: new Date() } : {}), updatedAt: new Date() }).where(and(eq(bots.id, String(req.params.id)), eq(bots.ownerKey, auth.key))).returning(); if (!bot) return fail(res, 404, "Bot not found"); await db.insert(botEvents).values({ ownerKey: auth.key, botId: bot.id, type: `lifecycle.${action}`, payload: { status } }); return res.json({ bot, capability: action === "start" ? "observation_only" : "state_persisted", note: action === "start" ? "This deployment has no long-running autonomous worker. Use run-once for a persisted dry-run evaluation." : "Vercel does not provide a long-running bot worker." }); });
+router.post("/bots/:id/run-once", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const [bot] = await db.select().from(bots).where(and(eq(bots.id, req.params.id), eq(bots.ownerKey, auth.key))); if (!bot) return fail(res, 404, "Bot not found"); const [run] = await db.insert(botRuns).values({ ownerKey: auth.key, botId: bot.id, mode: "dry_run", status: "running" }).returning(); try { const data = await publicDeriv({ ticks_history: bot.symbol, style: "candles", granularity: 300, count: 40, end: "latest" }); const candles = data.candles.map((c: any) => ({ epoch: Number(c.epoch), close: Number(c.close) })).filter((c: any) => Number.isFinite(c.epoch) && Number.isFinite(c.close)); if (candles.length < 30) throw new Error("Insufficient candle data"); const indicator = metrics(candles); const recommendation = { action: indicator.trend === "up" ? "review-call" : indicator.trend === "down" ? "review-put" : "no-action", dryRun: true, indicators: indicator, disclaimer: "This is a dry-run recommendation only. AI cannot execute trades and no order was placed." }; const [completed] = await db.update(botRuns).set({ status: "completed", result: recommendation, completedAt: new Date() }).where(eq(botRuns.id, run.id)).returning(); await db.insert(botEvents).values({ ownerKey: auth.key, botId: bot.id, runId: run.id, type: "run.evaluated", payload: recommendation }); return res.json(completed); } catch (e) { const message = e instanceof Error ? e.message : "evaluation failed"; await db.update(botRuns).set({ status: "failed", result: { error: message }, completedAt: new Date() }).where(eq(botRuns.id, run.id)); await db.insert(recoveryIncidents).values({ ownerKey: auth.key, botId: bot.id, title: "Bot dry-run evaluation failed", severity: "medium", facts: { runId: run.id, error: message } }); return fail(res, 502, "Bot evaluation unavailable", message); } });
+
+router.get("/snapshots", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; return res.json({ snapshots: await db.select().from(snapshots).where(eq(snapshots.ownerKey, auth.key)).orderBy(desc(snapshots.createdAt)) }); });
+router.post("/snapshots", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const label = string(req.body?.label); if (!label) return fail(res, 400, "Invalid snapshot"); try { const balance = await derivRequest(auth.session.accessToken, { balance: 1 }); const account = balance.balance; if (!account?.loginid || !Number.isFinite(Number(account.balance))) return fail(res, 502, "Account snapshot unavailable"); const clientContext = req.body?.clientContext; if (clientContext !== undefined && (typeof clientContext !== "object" || Array.isArray(clientContext))) return fail(res, 400, "Invalid non-authoritative client context"); const data = { authoritativeAccount: { loginid: String(account.loginid), balance: Number(account.balance), currency: account.currency ?? null, capturedAt: new Date().toISOString() }, ...(clientContext ? { nonAuthoritativeClientContext: clientContext } : {}) }; const [item] = await db.insert(snapshots).values({ ownerKey: auth.key, label, data }).returning(); return res.status(201).json(item); } catch (e) { return fail(res, 502, "Account snapshot unavailable", e instanceof Error ? e.message : undefined); } });
+router.get("/snapshots/:id", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const [item] = await db.select().from(snapshots).where(and(eq(snapshots.id, req.params.id), eq(snapshots.ownerKey, auth.key))); return item ? res.json(item) : fail(res, 404, "Snapshot not found"); });
+router.get("/risk-acknowledgements/status", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const [item] = await db.select().from(riskAcknowledgements).where(and(eq(riskAcknowledgements.ownerKey, auth.key), eq(riskAcknowledgements.version, RISK_VERSION))).orderBy(desc(riskAcknowledgements.acceptedAt)); return res.json({ version: RISK_VERSION, accepted: Boolean(item), acceptedAt: item?.acceptedAt ?? null }); });
+router.post("/risk-acknowledgements/accept", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const version = string(req.body?.version, 40); if (version !== RISK_VERSION) return fail(res, 400, "Unsupported risk acknowledgement version"); const [item] = await db.insert(riskAcknowledgements).values({ ownerKey: auth.key, version }).returning(); return res.status(201).json(item); });
+
+router.get("/recovery-incidents", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; return res.json({ incidents: await db.select().from(recoveryIncidents).where(eq(recoveryIncidents.ownerKey, auth.key)).orderBy(desc(recoveryIncidents.occurredAt)) }); });
+router.post("/recovery-incidents", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const title = string(req.body?.title), severity = string(req.body?.severity, 20); const facts = req.body?.facts; if (!title || !["low", "medium", "high"].includes(severity || "") || !facts || typeof facts !== "object" || Array.isArray(facts)) return fail(res, 400, "Invalid incident report"); const [item] = await db.insert(recoveryIncidents).values({ ownerKey: auth.key, botId: typeof req.body?.botId === "string" ? req.body.botId : null, title, severity: severity!, facts }).returning(); return res.status(201).json(item); });
+router.get("/recovery-incidents/:id", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const [item] = await db.select().from(recoveryIncidents).where(and(eq(recoveryIncidents.id, req.params.id), eq(recoveryIncidents.ownerKey, auth.key))); return item ? res.json(item) : fail(res, 404, "Incident not found"); });
+router.post("/recovery-incidents/:id/analyze", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const [incident] = await db.select().from(recoveryIncidents).where(and(eq(recoveryIncidents.id, req.params.id), eq(recoveryIncidents.ownerKey, auth.key))); if (!incident) return fail(res, 404, "Incident not found"); if (!process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || !process.env.AI_INTEGRATIONS_OPENAI_API_KEY) return fail(res, 503, "AI analysis unavailable", "The provisioned OpenAI integration is unavailable."); try { const { openai } = await import("@workspace/integrations-openai-ai-server"); const completion = await openai.chat.completions.create({ model: "gpt-5.6-luna", max_completion_tokens: 700, response_format: { type: "json_object" }, messages: [{ role: "system", content: "Return JSON only using safe action codes. Advisory only: no orders, transfers, or limit changes." }, { role: "user", content: JSON.stringify({ incident: { title: incident.title, severity: incident.severity, status: incident.status, facts: incident.facts }, accountScope: "authenticated Deriv account", botFacts: incident.botId }) }] }); const parsed = advisorySchema.parse(JSON.parse(completion.choices[0]?.message?.content || "{}")); const output = { ...parsed, advisoryOnly: true }; const [saved] = await db.insert(analyses).values({ ownerKey: auth.key, incidentId: incident.id, kind: "recovery_advisory", input: { incidentId: incident.id }, output }).returning(); return res.json({ analysis: saved, advisoryOnly: true }); } catch (e) { req.log?.warn({ err: e }, "recovery AI analysis failed"); return fail(res, 503, "AI analysis unavailable", "The advisory service did not return a valid response."); } });
+
+export default router;

@@ -68,11 +68,11 @@
   --app-font-mono: 'Space Mono', monospace;
 
   /* Sophisticated light financial palette */
-  --background: 210 20% 98%;
-  --foreground: 215 40% 15%;
-  --border: 214 25% 91%;
+  --background: 42 33% 96%;
+  --foreground: 216 31% 16%;
+  --border: 38 20% 86%;
   
-  --card: 0 0% 100%;
+  --card: 42 40% 99%;
   --card-foreground: 215 40% 15%;
   --card-border: 214 25% 91%;
 
@@ -81,36 +81,36 @@
   --popover-border: 214 25% 91%;
 
   /* Sharp technical blue */
-  --primary: 210 100% 45%;
+  --primary: 11 77% 48%;
   --primary-foreground: 0 0% 100%;
   
-  --secondary: 210 20% 94%;
+  --secondary: 39 24% 91%;
   --secondary-foreground: 215 40% 15%;
 
-  --muted: 210 20% 94%;
-  --muted-foreground: 215 25% 45%;
+  --muted: 39 24% 92%;
+  --muted-foreground: 215 15% 46%;
 
-  --accent: 210 100% 45%;
+  --accent: 157 42% 31%;
   --accent-foreground: 0 0% 100%;
 
   /* High contrast indicators */
   --destructive: 350 80% 55%;
   --destructive-foreground: 0 0% 100%;
   
-  --success: 150 80% 40%;
+  --success: 157 42% 31%;
   --success-foreground: 0 0% 100%;
 
   --input: 214 25% 91%;
   --ring: 210 100% 45%;
 
-  --sidebar: 0 0% 100%;
-  --sidebar-foreground: 215 40% 15%;
-  --sidebar-border: 214 25% 91%;
-  --sidebar-primary: 210 100% 45%;
+  --sidebar: 216 31% 16%;
+  --sidebar-foreground: 42 33% 96%;
+  --sidebar-border: 216 24% 25%;
+  --sidebar-primary: 11 77% 58%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 210 20% 94%;
-  --sidebar-accent-foreground: 215 40% 15%;
-  --sidebar-ring: 210 100% 45%;
+  --sidebar-accent: 216 24% 25%;
+  --sidebar-accent-foreground: 42 33% 96%;
+  --sidebar-ring: 11 77% 58%;
 
   --radius: 0.5rem;
 

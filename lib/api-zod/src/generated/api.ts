@@ -130,7 +130,8 @@ export const CreateTradeBody = zod.object({
   "symbol": zod.string(),
   "contract_type": zod.enum(['CALL', 'PUT']),
   "stake": zod.number().gt(createTradeBodyStakeExclusiveMin),
-  "duration": zod.number().min(1)
+  "duration": zod.number().min(1),
+  "live_confirmation": zod.enum(['CONFIRM_LIVE_TRADE']).optional().describe('Required only for real-money accounts; ignored for demo accounts.')
 })
 
 export const CreateTradeResponse = zod.object({
@@ -138,5 +139,191 @@ export const CreateTradeResponse = zod.object({
   "message": zod.string(),
   "contractId": zod.string().nullable()
 })
+
+
+/**
+ * @summary List active Deriv market symbols
+ */
+export const ListMarketSymbolsResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Read a live Deriv ticker
+ */
+export const GetMarketTickerParams = zod.object({
+  "symbol": zod.coerce.string()
+})
+
+export const GetMarketTickerResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Read candles and deterministic indicators
+ */
+export const GetMarketCandlesParams = zod.object({
+  "symbol": zod.coerce.string()
+})
+
+export const GetMarketCandlesQueryParams = zod.object({
+  "granularity": zod.coerce.number().int().optional(),
+  "count": zod.coerce.number().int().optional()
+})
+
+export const GetMarketCandlesResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary List built-in and owned bot templates
+ */
+export const ListBotTemplatesResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Create an owned bot template
+ */
+export const CreateBotTemplateBody = zod.record(zod.string(), zod.unknown())
+
+export const CreateBotTemplateResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Update an owned bot template
+ */
+export const UpdateBotTemplateParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateBotTemplateBody = zod.record(zod.string(), zod.unknown())
+
+export const UpdateBotTemplateResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Archive an owned bot template
+ */
+export const ArchiveBotTemplateParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const ArchiveBotTemplateResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary List owned bots
+ */
+export const ListBotsResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Create a bot
+ */
+export const CreateBotBody = zod.record(zod.string(), zod.unknown())
+
+export const CreateBotResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Update a bot
+ */
+export const UpdateBotParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateBotBody = zod.record(zod.string(), zod.unknown())
+
+export const UpdateBotResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Start pause stop or archive a bot
+ */
+export const ChangeBotLifecycleParams = zod.object({
+  "id": zod.coerce.string(),
+  "action": zod.enum(['start', 'pause', 'stop', 'archive'])
+})
+
+export const ChangeBotLifecycleResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Evaluate a bot once as a dry run
+ */
+export const RunBotOnceParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const RunBotOnceResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary List account snapshots
+ */
+export const ListSnapshotsResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Create an account snapshot
+ */
+export const CreateSnapshotBody = zod.record(zod.string(), zod.unknown())
+
+export const CreateSnapshotResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Read an account snapshot
+ */
+export const GetSnapshotParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetSnapshotResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Read risk acknowledgement status
+ */
+export const GetRiskAcknowledgementStatusResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Accept current risk disclosure
+ */
+export const AcceptRiskAcknowledgementBody = zod.record(zod.string(), zod.unknown())
+
+export const AcceptRiskAcknowledgementResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary List recovery incidents
+ */
+export const ListRecoveryIncidentsResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Report a recoverable incident
+ */
+export const CreateRecoveryIncidentBody = zod.record(zod.string(), zod.unknown())
+
+export const CreateRecoveryIncidentResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Read a recovery incident
+ */
+export const GetRecoveryIncidentParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetRecoveryIncidentResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Get bounded advisory AI incident analysis
+ */
+export const AnalyzeRecoveryIncidentParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const AnalyzeRecoveryIncidentResponse = zod.record(zod.string(), zod.unknown())
 
 

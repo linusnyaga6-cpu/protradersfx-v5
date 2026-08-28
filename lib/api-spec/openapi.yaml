@@ -184,6 +184,64 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /market/symbols:
+    get:
+      operationId: listMarketSymbols
+      tags: [protraders]
+      summary: List active Deriv market symbols
+      responses:
+        "200": { description: Active symbols, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }
+  /market/ticker/{symbol}:
+    get:
+      operationId: getMarketTicker
+      tags: [protraders]
+      summary: Read a live Deriv ticker
+      parameters: [{ name: symbol, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Ticker, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }
+  /market/candles/{symbol}:
+    get:
+      operationId: getMarketCandles
+      tags: [protraders]
+      summary: Read candles and deterministic indicators
+      parameters:
+        - { name: symbol, in: path, required: true, schema: { type: string } }
+        - { name: granularity, in: query, schema: { type: integer } }
+        - { name: count, in: query, schema: { type: integer } }
+      responses:
+        "200": { description: Candle data, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }
+  /templates:
+    get: { operationId: listBotTemplates, tags: [protraders], summary: List built-in and owned bot templates, responses: { "200": { description: Templates, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+    post: { operationId: createBotTemplate, tags: [protraders], summary: Create an owned bot template, requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }, responses: { "201": { description: Template created, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+  /templates/{id}:
+    patch: { operationId: updateBotTemplate, tags: [protraders], summary: Update an owned bot template, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }, responses: { "200": { description: Template updated, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+  /templates/{id}/archive:
+    post: { operationId: archiveBotTemplate, tags: [protraders], summary: Archive an owned bot template, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { "200": { description: Template archived, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+  /bots:
+    get: { operationId: listBots, tags: [protraders], summary: List owned bots, responses: { "200": { description: Bots, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+    post: { operationId: createBot, tags: [protraders], summary: Create a bot, requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }, responses: { "201": { description: Bot created, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+  /bots/{id}:
+    patch: { operationId: updateBot, tags: [protraders], summary: Update a bot, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }, responses: { "200": { description: Bot updated, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+  /bots/{id}/{action}:
+    post: { operationId: changeBotLifecycle, tags: [protraders], summary: Start pause stop or archive a bot, parameters: [{ name: id, in: path, required: true, schema: { type: string } }, { name: action, in: path, required: true, schema: { type: string, enum: [start, pause, stop, archive] } }], responses: { "200": { description: Lifecycle state persisted, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+  /bots/{id}/run-once:
+    post: { operationId: runBotOnce, tags: [protraders], summary: Evaluate a bot once as a dry run, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { "200": { description: Evaluation, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+  /snapshots:
+    get: { operationId: listSnapshots, tags: [protraders], summary: List account snapshots, responses: { "200": { description: Snapshots, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+    post: { operationId: createSnapshot, tags: [protraders], summary: Create an account snapshot, requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }, responses: { "201": { description: Snapshot created, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+  /snapshots/{id}:
+    get: { operationId: getSnapshot, tags: [protraders], summary: Read an account snapshot, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { "200": { description: Snapshot, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+  /risk-acknowledgements/status:
+    get: { operationId: getRiskAcknowledgementStatus, tags: [protraders], summary: Read risk acknowledgement status, responses: { "200": { description: Status, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+  /risk-acknowledgements/accept:
+    post: { operationId: acceptRiskAcknowledgement, tags: [protraders], summary: Accept current risk disclosure, requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }, responses: { "201": { description: Acknowledged, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+  /recovery-incidents:
+    get: { operationId: listRecoveryIncidents, tags: [protraders], summary: List recovery incidents, responses: { "200": { description: Incidents, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+    post: { operationId: createRecoveryIncident, tags: [protraders], summary: Report a recoverable incident, requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }, responses: { "201": { description: Incident reported, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+  /recovery-incidents/{id}:
+    get: { operationId: getRecoveryIncident, tags: [protraders], summary: Read a recovery incident, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { "200": { description: Incident, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+  /recovery-incidents/{id}/analyze:
+    post: { operationId: analyzeRecoveryIncident, tags: [protraders], summary: Get bounded advisory AI incident analysis, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { "200": { description: Advisory analysis, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }, "503": { description: AI unavailable, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } } } }
 components:
   schemas:
     HealthStatus:
@@ -202,6 +260,9 @@ components:
           type: string
       required:
         - error
+    WorkspaceData:
+      type: object
+      additionalProperties: true
     ProtradersConfig:
       type: object
       properties:
@@ -357,6 +418,10 @@ components:
         duration:
           type: number
           minimum: 1
+        live_confirmation:
+          type: string
+          enum: [CONFIRM_LIVE_TRADE]
+          description: Required only for real-money accounts; ignored for demo accounts.
       required:
         - symbol
         - contract_type

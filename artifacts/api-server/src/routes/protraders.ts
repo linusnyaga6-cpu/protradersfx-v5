@@ -2,6 +2,8 @@ import crypto from "node:crypto";
 import { Router, type Request, type Response } from "express";
 import rateLimit from "express-rate-limit";
 import WebSocket, { type RawData } from "ws";
+import { and, desc, eq } from "drizzle-orm";
+import { db, riskAcknowledgements } from "@workspace/db";
 
 type SessionValue = {
   accessToken: string;
@@ -40,6 +42,8 @@ const demoOnly = process.env.TRADING_DEMO_ONLY !== "false";
 const frontendConfigured = process.env.FRONTEND_CONFIGURED !== "false";
 const maxStake = positiveNumber(process.env.TRADING_MAX_STAKE, 10);
 const maxDuration = positiveInteger(process.env.TRADING_MAX_DURATION, 3600);
+const riskAcknowledgementVersion = "2025-01";
+const liveConfirmationToken = "CONFIRM_LIVE_TRADE";
 const allowedSymbols = new Set(
   String(process.env.TRADING_ALLOWED_SYMBOLS || "")
     .split(",")
@@ -167,7 +171,7 @@ function setSessionCookie(res: Response, value: SessionValue) {
   );
 }
 
-async function getSession(req: Request, res: Response) {
+export async function getSession(req: Request, res: Response) {
   const current = readSession(req);
   if (!current) return null;
   if (current.expiresAt > Date.now() + 30_000 || !current.refreshToken) {
@@ -351,7 +355,7 @@ router.get("/analytics", (_req, res) => {
   });
 });
 
-async function derivRequest(accessToken: string, payload: Record<string, unknown>) {
+export async function derivRequest(accessToken: string, payload: Record<string, unknown>) {
   if (!publicAppId) throw new Error("DERIV_PUBLIC_APP_ID is not configured");
 
   return new Promise<any>((resolve, reject) => {
@@ -482,6 +486,35 @@ router.post("/trades", async (req, res) => {
         "Demo account required",
         "Live trading is disabled by TRADING_DEMO_ONLY.",
       );
+    }
+    if (!isDemoAccount) {
+      if (req.body?.live_confirmation !== liveConfirmationToken) {
+        return errorResponse(
+          res,
+          403,
+          "Live trade confirmation required",
+          "Set live_confirmation to the explicit confirmation token before requesting a real-money order.",
+        );
+      }
+      const ownerKey = crypto.createHash("sha256")
+        .update(`protraders-owner:${loginId}`)
+        .digest("hex");
+      const [acknowledgement] = await db.select()
+        .from(riskAcknowledgements)
+        .where(and(
+          eq(riskAcknowledgements.ownerKey, ownerKey),
+          eq(riskAcknowledgements.version, riskAcknowledgementVersion),
+        ))
+        .orderBy(desc(riskAcknowledgements.acceptedAt))
+        .limit(1);
+      if (!acknowledgement) {
+        return errorResponse(
+          res,
+          409,
+          "Risk acknowledgement required",
+          "Accept the current risk acknowledgement before requesting a real-money order.",
+        );
+      }
     }
     const currency = account.balance?.currency;
     if (!currency) return errorResponse(res, 502, "Account currency unavailable");

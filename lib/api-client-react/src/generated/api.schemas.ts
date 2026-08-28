@@ -14,6 +14,8 @@ export interface ErrorResponse {
   message?: string;
 }
 
+export interface WorkspaceData { [key: string]: unknown }
+
 export interface ProtradersConfig {
   configured: boolean;
   loginConfigured: boolean;
@@ -103,6 +105,16 @@ export const TradeInputContractType = {
   PUT: 'PUT',
 } as const;
 
+/**
+ * Required only for real-money accounts; ignored for demo accounts.
+ */
+export type TradeInputLiveConfirmation = typeof TradeInputLiveConfirmation[keyof typeof TradeInputLiveConfirmation];
+
+
+export const TradeInputLiveConfirmation = {
+  CONFIRM_LIVE_TRADE: 'CONFIRM_LIVE_TRADE',
+} as const;
+
 export interface TradeInput {
   symbol: string;
   contract_type: TradeInputContractType;
@@ -110,6 +122,8 @@ export interface TradeInput {
   stake: number;
   /** @minimum 1 */
   duration: number;
+  /** Required only for real-money accounts; ignored for demo accounts. */
+  live_confirmation?: TradeInputLiveConfirmation;
 }
 
 export interface TradeResult {
@@ -118,4 +132,9 @@ export interface TradeResult {
   /** @nullable */
   contractId: string | null;
 }
+
+export type GetMarketCandlesParams = {
+granularity?: number;
+count?: number;
+};
 

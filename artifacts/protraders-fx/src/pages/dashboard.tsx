@@ -33,6 +33,9 @@ import {
   getGetSessionStatusQueryKey,
   useGetProtradersPreflight,
   getGetProtradersPreflightQueryKey,
+  useGetRiskAcknowledgementStatus,
+  getGetRiskAcknowledgementStatusQueryKey,
+  useAcceptRiskAcknowledgement,
   TradeInputContractType
 } from "@workspace/api-client-react"
 
@@ -66,6 +69,9 @@ export default function Dashboard() {
   })
 
   const createTrade = useCreateTrade()
+  const risk = useGetRiskAcknowledgementStatus({ query: { queryKey: getGetRiskAcknowledgementStatusQueryKey(), enabled: !!session?.authenticated } })
+  const acceptRisk = useAcceptRiskAcknowledgement()
+  const [liveConfirmed, setLiveConfirmed] = React.useState(false)
 
   const {
     register,
@@ -87,9 +93,12 @@ export default function Dashboard() {
   const symbols = preflight?.allowedSymbols?.length
     ? preflight.allowedSymbols
     : ["R_100", "R_10", "1HZ100V"]
+  const isReal = account?.accountType === "real"
   const canTrade = Boolean(
     preflight?.tradingEnabled &&
-    (preflight.demoOnly || preflight.readyForRealTrading),
+    (preflight.demoOnly || preflight.readyForRealTrading) &&
+    (!isReal || (risk.data as any)?.accepted) &&
+    (!isReal || liveConfirmed),
   )
 
   React.useEffect(() => {
@@ -115,7 +124,7 @@ export default function Dashboard() {
       })
       return
     }
-    createTrade.mutate({ data }, {
+     createTrade.mutate({ data: { ...data, ...(isReal ? { live_confirmation: "CONFIRM_LIVE_TRADE" } : {}) } as any }, {
       onSuccess: (result) => {
         if (result.ok) {
           toast({
@@ -254,6 +263,19 @@ export default function Dashboard() {
             <CardDescription>Configure and execute precision trades.</CardDescription>
           </CardHeader>
           <CardContent className="flex-1 pt-6">
+             {isReal && (
+               <Alert className="mb-6 border-amber-500/40 bg-amber-500/10">
+                 <ShieldAlert className="h-4 w-4" />
+                 <AlertTitle>Real account: explicit review required</AlertTitle>
+                 <AlertDescription className="space-y-3">
+                   <p>This is the active real Deriv account. Accept the current risk acknowledgement and explicitly confirm each live order.</p>
+                   <div className="flex flex-wrap gap-2">
+                     {(risk.data as any)?.accepted ? <Badge variant="success">Risk acknowledgement {(risk.data as any)?.version} accepted</Badge> : <Button type="button" size="sm" onClick={() => acceptRisk.mutate({data:{version:(risk.data as any)?.version ?? "2025-01"}},{onSuccess:()=>risk.refetch()})} disabled={acceptRisk.isPending} data-testid="button-accept-risk">Accept current acknowledgement</Button>}
+                   </div>
+                   <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={liveConfirmed} onChange={e=>setLiveConfirmed(e.target.checked)} data-testid="input-confirm-live"/> I reviewed this order and confirm a live-money request.</label>
+               </AlertDescription>
+               </Alert>
+             )}
             <form id="trade-form" onSubmit={handleSubmit(onSubmit)} className="space-y-8">
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

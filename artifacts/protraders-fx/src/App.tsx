@@ -8,6 +8,10 @@ import Home from '@/pages/home';
 import Dashboard from '@/pages/dashboard';
 import Readiness from '@/pages/readiness';
 import Activity from '@/pages/activity';
+import Markets from '@/pages/markets';
+import Bots from '@/pages/bots';
+import Snapshots from '@/pages/snapshots';
+import Recovery from '@/pages/recovery';
 import NotFound from '@/pages/not-found';
 import {
   Route,
@@ -29,6 +33,10 @@ function Router() {
             <Route path="/dashboard" component={Dashboard} />
             <Route path="/readiness" component={Readiness} />
             <Route path="/activity" component={Activity} />
+            <Route path="/markets" component={Markets} />
+            <Route path="/bots" component={Bots} />
+            <Route path="/snapshots" component={Snapshots} />
+            <Route path="/recovery" component={Recovery} />
             <Route component={NotFound} />
           </Switch>
         </RoutedErrorBoundary>

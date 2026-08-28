@@ -1,0 +1,2 @@
+- [GitHub connector write throttling](github-write-throttling.md) — bulk GitHub writes may hit Replit Cloudflare even when reads and isolated writes succeed.
+- [Deriv public quote compatibility](deriv-public-quotes.md) — latest history ticks can remain available when one-shot ticks and active-symbol discovery are unavailable.

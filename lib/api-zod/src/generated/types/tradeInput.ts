@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { TradeInputContractType } from './tradeInputContractType';
+import type { TradeInputLiveConfirmation } from './tradeInputLiveConfirmation';
 
 export interface TradeInput {
   symbol: string;
@@ -14,4 +15,6 @@ export interface TradeInput {
   stake: number;
   /** @minimum 1 */
   duration: number;
+  /** Required only for real-money accounts; ignored for demo accounts. */
+  live_confirmation?: TradeInputLiveConfirmation;
 }
