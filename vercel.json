@@ -1,3 +1,4 @@
+```json
 {
   "version": 2,
   "builds": [
@@ -8,8 +9,21 @@
   ],
   "routes": [
     {
+      "src": "/health",
+      "dest": "/api/health.js"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/server.js"
+    },
+    {
+      "src": "/oauth/(.*)",
+      "dest": "/server.js"
+    },
+    {
       "src": "/(.*)",
-      "dest": "server.js"
+      "dest": "/server.js"
     }
   ]
 }
+```
