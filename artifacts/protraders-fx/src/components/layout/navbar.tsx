@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils"
 import { Activity, ShieldCheck, Home, LayoutDashboard, LogOut, BarChart3, Bot, Camera, CircleAlert, UserRound } from "lucide-react"
 import { useGetSessionStatus, useLogout } from "@workspace/api-client-react"
 import { Button } from "@/components/ui/button"
+import { GlobalSearch } from "./global-search"
 
 export function Navbar() {
   const [location] = useLocation()
@@ -60,7 +61,8 @@ export function Navbar() {
               )
             })}
           </div>
-          <div className="ml-auto flex shrink-0 items-center gap-4">
+          <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-4">
+            <GlobalSearch />
             {session?.authenticated ? (
               <div className="flex items-center gap-4">
                 <span className="hidden text-xs text-muted-foreground sm:inline-block">Secure Session</span>

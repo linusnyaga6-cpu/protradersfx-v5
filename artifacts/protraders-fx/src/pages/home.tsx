@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { Activity, ArrowRight, ShieldCheck, TerminalSquare, TrendingUp, Lock, Zap } from "lucide-react"
+import { ArrowRight, ShieldCheck, TerminalSquare, TrendingUp, Lock, Zap, Radio } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -8,7 +8,9 @@ import {
   getGetProtradersPreflightQueryKey,
   useGetSessionStatus,
   getGetSessionStatusQueryKey,
-  useTrackEvent
+  useTrackEvent,
+  useGetMarketTicker,
+  getGetMarketTickerQueryKey
 } from "@workspace/api-client-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Link } from "wouter"
@@ -28,8 +30,9 @@ export default function Home() {
 
   return (
     <div className="flex flex-col min-h-full">
+      <MarketTicker />
       {/* Hero Section */}
-      <section className="relative px-4 py-24 md:py-32 lg:py-40 overflow-hidden flex-1 flex flex-col justify-center items-center">
+      <section className="relative px-4 py-20 md:py-28 lg:py-32 overflow-hidden flex-1 flex flex-col justify-center items-center">
         {/* Abstract background grid */}
         <div className="absolute inset-0 z-0 pointer-events-none opacity-20" style={{
           backgroundImage: `linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)`,
@@ -39,16 +42,15 @@ export default function Home() {
         
         <div className="container relative z-10 max-w-5xl mx-auto text-center space-y-8">
           <Badge variant="outline" className="px-4 py-1.5 rounded-full border-primary/20 bg-primary/5 text-primary tracking-wide text-xs mb-4">
-            Deriv Connected • Secure Terminal
+            Deriv workspace
           </Badge>
           
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-foreground balance-text">
-            Disciplined Trading <br className="hidden md:block" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">Engineered for Focus.</span>
+            Trade with <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">focus.</span>
           </h1>
           
-          <p className="max-w-2xl mx-auto text-lg md:text-xl text-muted-foreground balance-text font-light leading-relaxed">
-            ProTraders FX is a tightly controlled workspace that connects directly to your Deriv account. No noise, no distractions—just pure execution.
+          <p className="max-w-xl mx-auto text-base md:text-lg text-muted-foreground balance-text font-light leading-relaxed">
+            Markets, bots, and risk controls in one focused terminal.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8">
@@ -82,19 +84,19 @@ export default function Home() {
       </section>
 
       {/* Deployment Status Section */}
-      <section className="bg-secondary/50 border-t border-border py-16 px-4">
+      <section className="bg-secondary/50 border-t border-border py-12 px-4">
         <div className="container mx-auto max-w-5xl">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8 mb-12">
             <div>
-              <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+                <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
                 <ShieldCheck className="h-6 w-6 text-primary" />
-                System Preflight
+                  System status
               </h2>
-              <p className="text-muted-foreground mt-1">Real-time status of connection endpoints.</p>
+              <p className="text-muted-foreground mt-1">Live endpoint checks.</p>
             </div>
             <Button variant="outline" size="sm" asChild data-testid="link-readiness">
               <Link href="/readiness" className="gap-2">
-                View Full Diagnostics <ArrowRight className="h-4 w-4" />
+                View diagnostics <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
           </div>
@@ -157,20 +159,37 @@ export default function Home() {
               </CardContent>
             </Card>
           </div>
-          <p className="mt-10 text-center text-xs text-muted-foreground">
-            Public reference for Deriv trading tools:{" "}
-            <a
-              href="https://www.traderscheme.com/"
-              target="_blank"
-              rel="noreferrer"
-              className="font-medium text-primary underline-offset-4 hover:underline"
-            >
-              TraderScheme
-            </a>
-            . ProTraders FX is an independent workspace.
-          </p>
         </div>
       </section>
     </div>
+  )
+}
+
+const tickerSymbols = ["R_100", "R_75", "R_50", "R_25", "1HZ100V", "BOOM_500"]
+
+function MarketTicker() {
+  const liveQuote = useGetMarketTicker("R_100", {
+    query: {
+      queryKey: getGetMarketTickerQueryKey("R_100"),
+      staleTime: 60000,
+      refetchInterval: 60000
+    }
+  })
+
+  return (
+    <section className="overflow-hidden border-b bg-sidebar text-sidebar-foreground" aria-label="Live market ticker">
+      <div className="flex min-w-max items-center gap-6 px-4 py-2 text-[11px] md:justify-center">
+        {tickerSymbols.map((symbol, index) => {
+          const value = index === 0 ? ((liveQuote.data as any)?.quote ?? (liveQuote.data as any)?.price) : undefined
+          return (
+            <div key={symbol} className="flex items-center gap-2 font-mono">
+              <Radio className={`h-3 w-3 ${index === 0 && liveQuote.isError ? "text-destructive" : "text-sidebar-primary"}`} />
+              <span className="font-sans text-sidebar-foreground/70">{symbol}</span>
+              <span className={index === 0 && liveQuote.isError ? "text-destructive" : "text-sidebar-primary"}>{value ?? (index === 0 ? "—" : "watch")}</span>
+            </div>
+          )
+        })}
+      </div>
+    </section>
   )
 }
