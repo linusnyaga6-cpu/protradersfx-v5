@@ -41,6 +41,7 @@ Deriv-connected trading workspace backend with PKCE login, account proxying, con
 ## Product
 
 This project contains the production API, deployment wiring, and the ProTraders FX web frontend. The API reports frontend readiness as true unless `FRONTEND_CONFIGURED=false` is explicitly set.
+ProTraders FX is an affiliated, Deriv-account-connected trading website intended to function through authenticated trading accounts; it is not an education-only page. Educational explanations and risk disclosures may support the product, but must not replace account-linked functionality.
 
 ## User preferences
 

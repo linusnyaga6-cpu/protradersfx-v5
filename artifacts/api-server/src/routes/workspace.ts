@@ -30,7 +30,7 @@ const dryRunStrategySchema = z.object({
   execution: z.literal("dry_run"),
 }).strict();
 const builtIns = [
-  { id: "trend-following", name: "Trend following", description: "Uses transparent moving-average direction; it is educational and makes no performance claim.", strategy: { indicator: "ema", direction: "BOTH", stake: 1, duration: 5, riskCap: 10, notes: "Review EMA direction using current market candles.", execution: "dry_run" } },
+  { id: "trend-following", name: "Trend following", description: "Uses transparent moving-average direction for controlled account-connected review; it makes no performance claim.", strategy: { indicator: "ema", direction: "BOTH", stake: 1, duration: 5, riskCap: 10, notes: "Review EMA direction using current market candles.", execution: "dry_run" } },
   { id: "rsi-observer", name: "RSI observer", description: "Flags RSI extremes for review; it does not predict prices or promise returns.", strategy: { indicator: "rsi", direction: "BOTH", stake: 1, duration: 5, riskCap: 10, notes: "Review RSI extremes without placing an order.", execution: "dry_run" } },
 ];
 
