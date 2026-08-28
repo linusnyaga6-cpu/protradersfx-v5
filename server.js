@@ -1,4 +1,3 @@
-
 ```javascript
 "use strict";
 
@@ -54,7 +53,7 @@ const SESSION_SECRET =
 
 /* =========================================================
    IN-MEMORY ANALYTICS
-   VERCEL SAFE - NO FILESYSTEM WRITES
+   NO FILESYSTEM WRITES
 ========================================================= */
 
 const analytics = {
@@ -64,7 +63,7 @@ const analytics = {
 };
 
 /* =========================================================
-   CRYPTO HELPERS
+   CRYPTO
 ========================================================= */
 
 function base64url(buffer) {
@@ -196,27 +195,22 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-
         connectSrc: [
           "'self'",
           "https://auth.deriv.com",
           "https://api.derivws.com",
           "wss://*.derivws.com"
         ],
-
         scriptSrc: ["'self'"],
-
         styleSrc: [
           "'self'",
           "'unsafe-inline'"
         ],
-
         imgSrc: [
           "'self'",
           "data:",
           "https:"
         ],
-
         frameAncestors: ["'none'"]
       }
     }
@@ -249,6 +243,18 @@ app.use(
     legacyHeaders: false
   })
 );
+
+/* =========================================================
+   HEALTH
+========================================================= */
+
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    ok: true,
+    service: "protraders-fx",
+    time: new Date().toISOString()
+  });
+});
 
 /* =========================================================
    CONFIG
@@ -475,15 +481,11 @@ app.get("/oauth/callback", async (req, res) => {
     const body = new URLSearchParams({
       grant_type:
         "authorization_code",
-
       client_id:
         DERIV_CLIENT_ID,
-
       code,
-
       code_verifier:
         state.verifier,
-
       redirect_uri:
         `${BASE_URL}/oauth/callback`
     });
@@ -492,12 +494,10 @@ app.get("/oauth/callback", async (req, res) => {
       "https://auth.deriv.com/oauth2/token",
       {
         method: "POST",
-
         headers: {
           "content-type":
             "application/x-www-form-urlencoded"
         },
-
         body
       }
     );
@@ -533,10 +533,8 @@ app.get("/oauth/callback", async (req, res) => {
     const sessionCookie = seal({
       accessToken:
         token.access_token,
-
       refreshToken:
         token.refresh_token || null,
-
       expiresAt:
         Date.now() +
         expiresIn * 1000
@@ -547,14 +545,10 @@ app.get("/oauth/callback", async (req, res) => {
       sessionCookie,
       {
         httpOnly: true,
-
         secure: true,
-
         sameSite: "lax",
-
         maxAge:
           expiresIn * 1000,
-
         path: "/"
       }
     );
@@ -625,7 +619,7 @@ app.post("/api/logout", (req, res) => {
 });
 
 /* =========================================================
-   DERIV API
+   DERIV REQUEST
 ========================================================= */
 
 function derivRequest(
@@ -768,16 +762,12 @@ app.get("/api/account", async (req, res) => {
 
     return res.json({
       authenticated: true,
-
       balance:
         balance.balance ?? null,
-
       currency:
         balance.currency ?? null,
-
       loginid:
         balance.loginid ?? null,
-
       openPnl: 0
     });
   } catch (error) {
@@ -789,7 +779,6 @@ app.get("/api/account", async (req, res) => {
     return res.status(502).json({
       error:
         "Account data unavailable",
-
       message:
         error.message
     });
@@ -900,10 +889,8 @@ app.post("/api/trades", async (req, res) => {
 
     return res.json({
       ok: true,
-
       message:
         `Trade opened on ${symbol}.`,
-
       contractId:
         buy.buy?.contract_id ||
         null
@@ -917,7 +904,6 @@ app.post("/api/trades", async (req, res) => {
     return res.status(502).json({
       error:
         "Trade request failed",
-
       message:
         error.message
     });
@@ -945,12 +931,10 @@ app.post("/api/bot", async (req, res) => {
 
   return res.json({
     ok: true,
-
     message:
       action === "start"
         ? "Free bot interface started in controlled mode."
         : "Free bot stopped.",
-
     execution:
       "interface_only"
   });
@@ -964,39 +948,22 @@ app.get("/api/preflight", (req, res) => {
   res.json({
     productionBaseUrl:
       BASE_URL,
-
     redirectUri:
       `${BASE_URL}/oauth/callback`,
-
     https:
       BASE_URL.startsWith(
         "https://"
       ),
-
     oauthClientConfigured:
       Boolean(DERIV_CLIENT_ID),
-
     partnerTrackingConfigured:
       Boolean(
         DERIV_AFFILIATE_TOKEN
       ),
-
     sessionSecretConfigured:
       Boolean(
         process.env.SESSION_SECRET
       )
-  });
-});
-
-/* =========================================================
-   HEALTH
-========================================================= */
-
-app.get("/health", (req, res) => {
-  res.status(200).json({
-    ok: true,
-    service: "protraders-fx",
-    time: new Date().toISOString()
   });
 });
 
@@ -1012,6 +979,14 @@ app.get("/app-config.js", (req, res) => {
         DERIV_PUBLIC_APP_ID
       )};`
     );
+});
+
+/* =========================================================
+   FAVICON
+========================================================= */
+
+app.get("/favicon.ico", (req, res) => {
+  res.status(204).end();
 });
 
 /* =========================================================
@@ -1051,7 +1026,6 @@ app.use(
 
 /* =========================================================
    FRONTEND FALLBACK
-   REGEX FALLBACK - EXPRESS SAFE
 ========================================================= */
 
 app.use((req, res, next) => {
@@ -1098,7 +1072,7 @@ app.use(
 );
 
 /* =========================================================
-   LOCAL / VERCEL
+   LOCAL
 ========================================================= */
 
 if (require.main === module) {
