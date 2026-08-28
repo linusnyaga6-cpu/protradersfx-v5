@@ -49,7 +49,7 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-- Register `https://protradersfx.com/oauth/callback` exactly in Deriv and set the same value through `BASE_URL`.
+- Register `https://www.protradersfx.com/oauth/callback` exactly in Deriv and set `BASE_URL=https://www.protradersfx.com`.
 - Analytics in the API service is in-memory/ephemeral; it is not a durable source of business metrics.
 - Do not enable real-money trading until the controlled demo test and independent risk review pass. TraderScheme is an external, unaffiliated reference only.
 
