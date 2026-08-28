@@ -4,12 +4,30 @@
     {
       "src": "artifacts/api-server/api/index.ts",
       "use": "@vercel/node"
+    },
+    {
+      "src": "artifacts/protraders-fx/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist/public"
+      }
     }
   ],
   "routes": [
     {
-      "src": "/(.*)",
+      "src": "/api/(.*)",
       "dest": "artifacts/api-server/api/index.ts"
+    },
+    {
+      "src": "/oauth/(.*)",
+      "dest": "artifacts/api-server/api/index.ts"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }

@@ -8,7 +8,12 @@ import { handleOAuthCallback } from "./routes/protraders";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
+app.set("trust proxy", 1);
 app.use(
   pinoHttp({
     logger,
@@ -28,10 +33,12 @@ app.use(
     },
   }),
 );
-app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(",").map((origin) => origin.trim()) || true,
-  credentials: true,
-}));
+if (allowedOrigins.length > 0) {
+  app.use(cors({
+    origin: allowedOrigins,
+    credentials: true,
+  }));
+}
 app.use(helmet({
   contentSecurityPolicy: false,
   referrerPolicy: { policy: "strict-origin-when-cross-origin" },

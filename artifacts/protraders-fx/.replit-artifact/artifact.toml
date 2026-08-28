@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "ProTraders FX"
+description = "A secure Deriv-connected trading workspace for traders to review account status, monitor readiness, and place controlled demo trades from a focused web dashboard."
+version = "1.0.0"
+id = "artifacts/protraders-fx"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23299
+
+[services.development]
+run = "pnpm --filter @workspace/protraders-fx run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/protraders-fx", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/protraders-fx/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23299"
+BASE_PATH = "/"

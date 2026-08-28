@@ -11,7 +11,9 @@ Deriv-connected trading workspace backend with PKCE login, account proxying, con
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required production env: `BASE_URL`, `SESSION_SECRET`, `DERIV_CLIENT_ID`, and `DERIV_PUBLIC_APP_ID`
 - Optional signup env: `DERIV_AFFILIATE_TOKEN` plus the affiliate UTM settings
+- Optional cross-origin clients must be explicitly allowlisted with `ALLOWED_ORIGINS`; the web app is same-origin by default
 - Trading remains disabled unless `TRADING_ENABLED=true`; demo-only mode is the default
+- Real-money execution additionally requires `TRADING_LIVE_ENABLED=true`, `TRADING_DEMO_ONLY=false`, a non-empty `TRADING_ALLOWED_SYMBOLS` allowlist, and a passing preflight
 
 ## Stack
 
@@ -32,12 +34,12 @@ Deriv-connected trading workspace backend with PKCE login, account proxying, con
 
 - OAuth state is encrypted and bound to a short-lived, HttpOnly browser cookie to prevent login CSRF.
 - Access tokens stay in an encrypted HttpOnly cookie and are refreshed server-side when possible.
-- Trading is opt-in, demo-only by default, and bounded by stake, duration, and optional symbol limits.
+- Trading is opt-in, demo-only by default, and bounded by stake, duration, and symbol limits; real-money execution has a separate explicit gate.
 - Analytics never invents funded-account or P&L values; partner metrics must come from Deriv Partner Hub.
 
 ## Product
 
-This project currently contains the production API and deployment wiring. The uploaded source did not include the original `public/` frontend assets, so the API reports frontend readiness as false until those files are restored.
+This project contains the production API, deployment wiring, and the ProTraders FX web frontend. The API reports frontend readiness as true unless `FRONTEND_CONFIGURED=false` is explicitly set.
 
 ## User preferences
 
@@ -47,7 +49,7 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 - Register `https://protradersfx.com/oauth/callback` exactly in Deriv and set the same value through `BASE_URL`.
 - Analytics in the API service is in-memory/ephemeral; it is not a durable source of business metrics.
-- Do not enable real-money trading until the controlled demo test and independent risk review pass.
+- Do not enable real-money trading until the controlled demo test and independent risk review pass. TraderScheme is an external, unaffiliated reference only.
 
 ## Pointers
 

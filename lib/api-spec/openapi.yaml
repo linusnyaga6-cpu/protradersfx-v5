@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: protraders
+    description: ProTraders FX account and trading operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,164 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /config:
+    get:
+      operationId: getProtradersConfig
+      tags: [protraders]
+      summary: Read public Deriv configuration
+      responses:
+        "200":
+          description: Public configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProtradersConfig"
+  /preflight:
+    get:
+      operationId: getProtradersPreflight
+      tags: [protraders]
+      summary: Read deployment readiness
+      responses:
+        "200":
+          description: Readiness information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProtradersPreflight"
+  /deriv/login:
+    get:
+      operationId: startDerivLogin
+      tags: [protraders]
+      summary: Start Deriv login
+      responses:
+        "302":
+          description: Redirects to Deriv OAuth
+        "503":
+          description: OAuth is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /deriv/signup:
+    get:
+      operationId: startDerivSignup
+      tags: [protraders]
+      summary: Start Deriv signup
+      responses:
+        "302":
+          description: Redirects to Deriv OAuth registration
+        "503":
+          description: Signup is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /session:
+    get:
+      operationId: getSessionStatus
+      tags: [protraders]
+      summary: Read current authentication status
+      responses:
+        "200":
+          description: Session status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionStatus"
+  /logout:
+    post:
+      operationId: logout
+      tags: [protraders]
+      summary: End current session
+      responses:
+        "204":
+          description: Session ended
+  /track:
+    post:
+      operationId: trackEvent
+      tags: [protraders]
+      summary: Record an ephemeral product event
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrackEventInput"
+      responses:
+        "204":
+          description: Event recorded
+  /analytics:
+    get:
+      operationId: getAnalytics
+      tags: [protraders]
+      summary: Read ephemeral analytics
+      responses:
+        "200":
+          description: Ephemeral analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Analytics"
+  /account:
+    get:
+      operationId: getAccount
+      tags: [protraders]
+      summary: Read the authenticated Deriv account
+      responses:
+        "200":
+          description: Account data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Account"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /trades:
+    post:
+      operationId: createTrade
+      tags: [protraders]
+      summary: Open a controlled Deriv trade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TradeInput"
+      responses:
+        "200":
+          description: Trade opened
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TradeResult"
+        "400":
+          description: Invalid trade parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Demo account required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Trading disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +193,186 @@ components:
           type: string
       required:
         - status
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required:
+        - error
+    ProtradersConfig:
+      type: object
+      properties:
+        configured:
+          type: boolean
+        loginConfigured:
+          type: boolean
+        signupConfigured:
+          type: boolean
+        publicAppId:
+          type: string
+        partnerParam:
+          type: string
+        campaign:
+          type: string
+      required:
+        - configured
+        - loginConfigured
+        - signupConfigured
+        - publicAppId
+        - partnerParam
+        - campaign
+    ProtradersPreflight:
+      type: object
+      properties:
+        productionBaseUrl:
+          type: string
+        redirectUri:
+          type: string
+        https:
+          type: boolean
+        oauthClientConfigured:
+          type: boolean
+        partnerTrackingConfigured:
+          type: boolean
+        sessionSecretConfigured:
+          type: boolean
+        publicAppConfigured:
+          type: boolean
+        frontendConfigured:
+          type: boolean
+        tradingEnabled:
+          type: boolean
+        liveTradingEnabled:
+          type: boolean
+        demoOnly:
+          type: boolean
+        maxStake:
+          type: number
+        maxDuration:
+          type: number
+        allowedSymbols:
+          type: array
+          items:
+            type: string
+        executionMode:
+          type: string
+          enum: [DISABLED, DEMO, BOTH, "LIVE LOCKED"]
+        readyForControlledLiveTest:
+          type: boolean
+        readyForRealTrading:
+          type: boolean
+      required:
+        - productionBaseUrl
+        - redirectUri
+        - https
+        - oauthClientConfigured
+        - partnerTrackingConfigured
+        - sessionSecretConfigured
+        - publicAppConfigured
+        - frontendConfigured
+        - tradingEnabled
+        - liveTradingEnabled
+        - demoOnly
+        - maxStake
+        - maxDuration
+        - allowedSymbols
+        - executionMode
+        - readyForControlledLiveTest
+        - readyForRealTrading
+    SessionStatus:
+      type: object
+      properties:
+        authenticated:
+          type: boolean
+        expiresAt:
+          type: ["number", "null"]
+      required:
+        - authenticated
+    TrackEventInput:
+      type: object
+      properties:
+        type:
+          type: string
+        path:
+          type: string
+    Analytics:
+      type: object
+      properties:
+        visitors:
+          type: number
+        registrations:
+          type: number
+        oauthSuccesses:
+          type: number
+        fundedAccounts:
+          type: ["number", "null"]
+        note:
+          type: string
+        ephemeral:
+          type: boolean
+      required:
+        - visitors
+        - registrations
+        - oauthSuccesses
+        - fundedAccounts
+        - note
+        - ephemeral
+    Account:
+      type: object
+      properties:
+        authenticated:
+          type: boolean
+        balance:
+          type: ["number", "null"]
+        currency:
+          type: ["string", "null"]
+        loginid:
+          type: ["string", "null"]
+        accountType:
+          type: string
+          enum: [demo, real]
+        openPnl:
+          type: ["number", "null"]
+      required:
+        - authenticated
+        - balance
+        - currency
+        - loginid
+        - accountType
+        - openPnl
+    TradeInput:
+      type: object
+      properties:
+        symbol:
+          type: string
+        contract_type:
+          type: string
+          enum: [CALL, PUT]
+        stake:
+          type: number
+          exclusiveMinimum: 0
+        duration:
+          type: number
+          minimum: 1
+      required:
+        - symbol
+        - contract_type
+        - stake
+        - duration
+    TradeResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        message:
+          type: string
+        contractId:
+          type: ["string", "null"]
+      required:
+        - ok
+        - message
+        - contractId
 

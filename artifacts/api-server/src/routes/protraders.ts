@@ -35,7 +35,9 @@ const affiliateId = process.env.DERIV_AFFILIATE_ID || "";
 const campaign = process.env.DERIV_CAMPAIGN || "protraders-fx";
 const scope = process.env.DERIV_SCOPE || "trade account_manage";
 const tradingEnabled = process.env.TRADING_ENABLED === "true";
+const liveTradingEnabled = process.env.TRADING_LIVE_ENABLED === "true";
 const demoOnly = process.env.TRADING_DEMO_ONLY !== "false";
+const frontendConfigured = process.env.FRONTEND_CONFIGURED !== "false";
 const maxStake = positiveNumber(process.env.TRADING_MAX_STAKE, 10);
 const maxDuration = positiveInteger(process.env.TRADING_MAX_DURATION, 3600);
 const allowedSymbols = new Set(
@@ -43,6 +45,21 @@ const allowedSymbols = new Set(
     .split(",")
     .map((symbol) => symbol.trim())
     .filter(Boolean),
+);
+const deploymentReady = Boolean(
+  baseUrl.startsWith("https://") &&
+  clientId &&
+  affiliateToken &&
+  sessionSecret &&
+  publicAppId &&
+  frontendConfigured,
+);
+const realTradingReady = Boolean(
+  deploymentReady &&
+  tradingEnabled &&
+  liveTradingEnabled &&
+  !demoOnly &&
+  allowedSymbols.size > 0,
 );
 
 const analytics = {
@@ -272,16 +289,22 @@ router.get("/preflight", (_req, res) => {
     partnerTrackingConfigured,
     sessionSecretConfigured,
     publicAppConfigured,
-    frontendConfigured: false,
+    frontendConfigured,
     tradingEnabled,
+    liveTradingEnabled,
     demoOnly,
-    readyForControlledLiveTest: Boolean(
-      baseUrl.startsWith("https://") &&
-      oauthClientConfigured &&
-      partnerTrackingConfigured &&
-      sessionSecretConfigured &&
-      publicAppConfigured,
-    ),
+    maxStake,
+    maxDuration,
+    allowedSymbols: Array.from(allowedSymbols),
+    executionMode: !tradingEnabled
+      ? "DISABLED"
+      : demoOnly
+        ? "DEMO"
+        : liveTradingEnabled
+          ? "BOTH"
+          : "LIVE LOCKED",
+    readyForControlledLiveTest: deploymentReady,
+    readyForRealTrading: realTradingReady,
   });
 });
 
@@ -386,6 +409,7 @@ router.get("/account", async (req, res) => {
       balance: account.balance ?? null,
       currency: account.currency ?? null,
       loginid: account.loginid ?? null,
+      accountType: /^VRTC/i.test(String(account.loginid || "")) ? "demo" : "real",
       openPnl: null,
     });
   } catch (error) {
@@ -405,6 +429,22 @@ router.post("/trades", async (req, res) => {
       503,
       "Trading disabled",
       "Enable TRADING_ENABLED only after the controlled demo test passes.",
+    );
+  }
+  if (!demoOnly && !liveTradingEnabled) {
+    return errorResponse(
+      res,
+      403,
+      "Live trading disabled",
+      "Set TRADING_LIVE_ENABLED=true only after an independent risk review.",
+    );
+  }
+  if (!demoOnly && !realTradingReady) {
+    return errorResponse(
+      res,
+      503,
+      "Live trading not ready",
+      "Complete HTTPS, Deriv, session, frontend, and symbol-allowlist configuration first.",
     );
   }
 
@@ -434,7 +474,8 @@ router.post("/trades", async (req, res) => {
   try {
     const account = await derivRequest(session.accessToken, { balance: 1 });
     const loginId = String(account.balance?.loginid || "");
-    if (demoOnly && !/^VRTC/i.test(loginId)) {
+    const isDemoAccount = /^VRTC/i.test(loginId);
+    if (demoOnly && !isDemoAccount) {
       return errorResponse(
         res,
         403,
@@ -533,7 +574,7 @@ export async function handleOAuthCallback(req: Request, res: Response) {
       at: new Date().toISOString(),
     });
     if (state.mode === "signup") analytics.registrations += 1;
-    return res.redirect("/workspace.html");
+    return res.redirect("/dashboard");
   } catch (error) {
     clearOAuthCookie(res);
     console.error("[oauth]", error instanceof Error ? error.message : error);
