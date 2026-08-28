@@ -1,4 +1,4 @@
-import { type ComponentType, type ReactNode } from 'react';
+import { useEffect, type ComponentType, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useGetSessionStatus } from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -33,6 +33,7 @@ function Router() {
         <RoutedErrorBoundary>
           <Switch>
             <Route path="/" component={Home} />
+            <Route path="/oauth/callback" component={OAuthCallbackBridge} />
             <Route path="/about" component={About} />
             <Route path="/dashboard" component={DashboardRoute} />
             <Route path="/readiness" component={Readiness} />
@@ -80,6 +81,21 @@ function ProtectedPage({ page: Page }: { page: ComponentType }) {
   }
 
   return <Page />;
+}
+
+function OAuthCallbackBridge() {
+  useEffect(() => {
+    window.location.replace(`/api/oauth/callback${window.location.search}`);
+  }, []);
+
+  return (
+    <div className="grid min-h-[55vh] place-items-center px-5 text-center">
+      <div>
+        <div className="text-sm font-semibold text-foreground">Completing your secure Deriv connection…</div>
+        <p className="mt-2 text-sm text-muted-foreground">Please keep this page open while your account session is verified.</p>
+      </div>
+    </div>
+  );
 }
 
 const DashboardRoute = () => <ProtectedPage page={Dashboard} />;

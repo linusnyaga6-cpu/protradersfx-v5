@@ -314,6 +314,7 @@ router.get("/preflight", (_req, res) => {
 
 router.get("/deriv/login", (_req, res) => beginOAuth("login", res));
 router.get("/deriv/signup", (_req, res) => beginOAuth("signup", res));
+router.get("/oauth/callback", handleOAuthCallback);
 
 router.get("/session", async (req, res) => {
   const session = await getSession(req, res);
