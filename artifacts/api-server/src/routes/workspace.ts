@@ -117,9 +117,11 @@ router.get("/market/ticker/:symbol", async (req, res) => {
     const quote = Number(data.history?.prices?.at?.(-1));
     const epoch = Number(data.history?.times?.at?.(-1));
     if (!Number.isFinite(quote) || !Number.isFinite(epoch)) throw new Error("Invalid ticker response");
-    return { symbol, quote, epoch, pipSize: null, source: "latest-history-tick" };
+    return { symbol, quote, epoch, pipSize: null, source: "latest-history-tick", available: true };
   }); return res.json(body); }
-  catch (e) { return fail(res, 502, "Ticker unavailable", e instanceof Error ? e.message : undefined); }
+  catch {
+    return res.json({ symbol, quote: null, epoch: null, pipSize: null, source: "deriv", available: false });
+  }
 });
 router.get("/market/candles/:symbol", async (req, res) => {
   const symbol = string(req.params.symbol, 30), granularity = Number(req.query.granularity || 300), count = Number(req.query.count || 100);

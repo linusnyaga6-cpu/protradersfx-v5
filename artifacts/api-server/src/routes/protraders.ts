@@ -16,6 +16,7 @@ type OAuthState = {
   mode: "login" | "signup";
   nonce: string;
   issuedAt: number;
+  targetAccount?: "demo" | "real";
 };
 
 const router = Router();
@@ -208,7 +209,7 @@ export async function getSession(req: Request, res: Response) {
   }
 }
 
-function oauthRequest(mode: "login" | "signup") {
+function oauthRequest(mode: "login" | "signup", targetAccount?: "demo" | "real") {
   if (!clientId) throw new Error("DERIV_CLIENT_ID is not configured");
   if (mode === "signup" && !affiliateToken) {
     throw new Error("Deriv signup attribution is not configured");
@@ -216,7 +217,7 @@ function oauthRequest(mode: "login" | "signup") {
 
   const verifier = encode(crypto.randomBytes(64));
   const nonce = encode(crypto.randomBytes(16));
-  const state: OAuthState = { verifier, mode, nonce, issuedAt: Date.now() };
+  const state: OAuthState = { verifier, mode, nonce, issuedAt: Date.now(), targetAccount };
   const parameters = new URLSearchParams({
     response_type: "code",
     client_id: clientId,
@@ -243,9 +244,9 @@ function oauthRequest(mode: "login" | "signup") {
   };
 }
 
-function beginOAuth(mode: "login" | "signup", res: Response) {
+function beginOAuth(mode: "login" | "signup", res: Response, targetAccount?: "demo" | "real") {
   try {
-    const request = oauthRequest(mode);
+    const request = oauthRequest(mode, targetAccount);
     res.cookie(
       "protraders_oauth_state",
       seal({ nonce: request.nonce }),
@@ -312,7 +313,12 @@ router.get("/preflight", (_req, res) => {
   });
 });
 
-router.get("/deriv/login", (_req, res) => beginOAuth("login", res));
+router.get("/deriv/login", (req, res) => {
+  const target = req.query.target === "demo" || req.query.target === "real"
+    ? req.query.target
+    : undefined;
+  return beginOAuth("login", res, target);
+});
 router.get("/deriv/signup", (_req, res) => beginOAuth("signup", res));
 router.get("/oauth/callback", handleOAuthCallback);
 
@@ -597,18 +603,28 @@ export async function handleOAuthCallback(req: Request, res: Response) {
     };
     if (!token.access_token) throw new Error("No access token returned");
 
-    setSessionCookie(res, {
+    const nextSession: SessionValue = {
       accessToken: token.access_token,
       refreshToken: token.refresh_token || null,
       expiresAt: Date.now() + Number(token.expires_in || 3600) * 1000,
-    });
+    };
+    if (state.targetAccount) {
+      const accountData = await derivRequest(nextSession.accessToken, { balance: 1 });
+      const loginId = String(accountData.balance?.loginid || "");
+      const actualAccount = /^VRTC/i.test(loginId) ? "demo" : "real";
+      if (!loginId || actualAccount !== state.targetAccount) {
+        clearOAuthCookie(res);
+        return res.redirect(`/dashboard?account_switch=mismatch&expected=${state.targetAccount}`);
+      }
+    }
+    setSessionCookie(res, nextSession);
     clearOAuthCookie(res);
     analytics.events.push({
       type: state.mode === "signup" ? "oauth_signup_success" : "oauth_login_success",
       at: new Date().toISOString(),
     });
     if (state.mode === "signup") analytics.registrations += 1;
-    return res.redirect("/dashboard");
+    return res.redirect(state.targetAccount ? `/dashboard?account_switched=${state.targetAccount}` : "/dashboard");
   } catch (error) {
     clearOAuthCookie(res);
     console.error("[oauth]", error instanceof Error ? error.message : error);

@@ -15,6 +15,7 @@ import Markets from '@/pages/markets';
 import Bots from '@/pages/bots';
 import Snapshots from '@/pages/snapshots';
 import Recovery from '@/pages/recovery';
+import BulkTrade from '@/pages/bulk-trade';
 import NotFound from '@/pages/not-found';
 import {
   Route,
@@ -42,6 +43,7 @@ function Router() {
             <Route path="/bots" component={BotsRoute} />
             <Route path="/snapshots" component={SnapshotsRoute} />
             <Route path="/recovery" component={RecoveryRoute} />
+            <Route path="/bulk-trade" component={BulkTradeRoute} />
             <Route component={NotFound} />
           </Switch>
         </RoutedErrorBoundary>
@@ -103,6 +105,7 @@ const MarketsRoute = () => <ProtectedPage page={Markets} />;
 const BotsRoute = () => <ProtectedPage page={Bots} />;
 const SnapshotsRoute = () => <ProtectedPage page={Snapshots} />;
 const RecoveryRoute = () => <ProtectedPage page={Recovery} />;
+const BulkTradeRoute = () => <ProtectedPage page={BulkTrade} />;
 
 function RoutedErrorBoundary({ children }: { children: ReactNode }) {
   const [location] = useLocation();

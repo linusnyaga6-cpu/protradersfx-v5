@@ -1,7 +1,6 @@
 import { useEffect } from "react"
-import { ArrowRight, ShieldCheck, TerminalSquare, TrendingUp, Lock, Zap, Radio } from "lucide-react"
+import { ArrowRight, ShieldCheck, TerminalSquare, TrendingUp, Lock, Zap, Radio, Activity, BarChart3, Bot, Camera, CircleAlert, Settings2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { 
   useGetProtradersPreflight,
@@ -29,51 +28,56 @@ export default function Home() {
   }, [])
 
   return (
-    <div className="flex flex-col min-h-full">
+    <div className="flex flex-col min-h-full w-full">
       <MarketTicker />
+      
       {/* Hero Section */}
-      <section className="relative px-4 py-20 md:py-28 lg:py-32 overflow-hidden flex-1 flex flex-col justify-center items-center">
-        {/* Abstract background grid */}
-        <div className="absolute inset-0 z-0 pointer-events-none opacity-20" style={{
-          backgroundImage: `linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)`,
-          backgroundSize: '4rem 4rem',
-          maskImage: 'radial-gradient(ellipse 60% 50% at 50% 50%, black, transparent)'
-        }} />
+      <section className="relative flex flex-col items-center justify-center min-h-[80vh] px-4 py-20 text-center overflow-hidden border-b border-white/5">
+        {/* Deep atmospheric glow */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-primary/10 via-background to-background pointer-events-none" />
         
-        <div className="container relative z-10 max-w-5xl mx-auto text-center space-y-8">
-          <Badge variant="outline" className="px-4 py-1.5 rounded-full border-primary/20 bg-primary/5 text-primary tracking-wide text-xs mb-4">
-            Deriv workspace
-          </Badge>
+        {/* Subtle grid */}
+        <div className="absolute inset-0 z-0 opacity-10 pointer-events-none" style={{
+          backgroundImage: `linear-gradient(to right, hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--foreground)) 1px, transparent 1px)`,
+          backgroundSize: '4rem 4rem',
+          maskImage: 'radial-gradient(ellipse 70% 60% at 50% 40%, black, transparent)'
+        }} />
+
+        <div className="container relative z-10 max-w-4xl mx-auto px-6 space-y-8 mt-[-4rem]">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-mono uppercase tracking-widest mb-2 shadow-[0_0_20px_rgba(var(--primary),0.1)]">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            Workspace Terminal
+          </div>
           
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-foreground balance-text">
-            Trade with <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">focus.</span>
+          <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight text-foreground balance-text">
+            Trade with <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-white/40">clarity.</span>
           </h1>
           
-          <p className="max-w-xl mx-auto text-base md:text-lg text-muted-foreground balance-text font-light leading-relaxed">
-            Markets, bots, and risk controls in one focused terminal.
+          <p className="max-w-2xl mx-auto text-lg md:text-xl text-muted-foreground font-light leading-relaxed">
+            Live market context, bot templates, and visible risk boundaries. A focused environment built for discipline, devoid of noise.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8">
             {loadingSession ? (
-              <Skeleton className="h-12 w-48 rounded-md" />
+              <Skeleton className="h-12 w-48 rounded-md bg-white/5" />
             ) : session?.authenticated ? (
-              <Button size="xl" asChild className="gap-2 group shadow-xl shadow-primary/20" data-testid="hero-dashboard-btn">
+              <Button size="xl" asChild className="gap-2 group shadow-[0_0_30px_rgba(var(--primary),0.2)] hover:shadow-[0_0_40px_rgba(var(--primary),0.3)] transition-shadow bg-primary text-primary-foreground border-transparent" data-testid="hero-dashboard-btn">
                 <Link href="/dashboard">
                   Enter Workspace
                   <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </Button>
             ) : (
-              <Button size="xl" asChild className="gap-2 group shadow-xl shadow-primary/20" data-testid="hero-login-btn">
+              <Button size="xl" asChild className="gap-2 group shadow-[0_0_30px_rgba(var(--primary),0.2)] hover:shadow-[0_0_40px_rgba(var(--primary),0.3)] transition-shadow bg-primary text-primary-foreground border-transparent" data-testid="hero-login-btn">
                 <a href="/api/deriv/login">
                   Connect via Deriv
-                  <TerminalSquare className="h-5 w-5 ml-1" />
+                  <TerminalSquare className="h-5 w-5 ml-1 opacity-80" />
                 </a>
               </Button>
             )}
             
             {!session?.authenticated && (
-              <Button size="xl" variant="outline" asChild className="gap-2" data-testid="hero-signup-btn">
+              <Button size="xl" variant="outline" asChild className="gap-2 border-white/10 hover:bg-white/5" data-testid="hero-signup-btn">
                 <a href="/api/deriv/signup">
                   Create Account
                 </a>
@@ -83,81 +87,121 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Deployment Status Section */}
-      <section className="bg-secondary/50 border-t border-border py-12 px-4">
-        <div className="container mx-auto max-w-5xl">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-8 mb-12">
+      {/* Tool Directory */}
+      <section className="py-24 px-6 bg-background relative z-10 border-b border-white/5">
+        <div className="container max-w-5xl mx-auto">
+          <div className="flex flex-col items-start justify-between gap-4 border-b border-white/5 pb-8 sm:flex-row sm:items-end">
             <div>
-                <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-                <ShieldCheck className="h-6 w-6 text-primary" />
-                  System status
-              </h2>
-              <p className="text-muted-foreground mt-1">Live endpoint checks.</p>
+              <div className="text-xs font-mono uppercase tracking-[0.28em] text-primary">Workspace tools</div>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight text-foreground/90">Choose your next move.</h2>
             </div>
-            <Button variant="outline" size="sm" asChild data-testid="link-readiness">
+            <p className="max-w-xs text-sm leading-6 text-muted-foreground sm:text-right">Open a focused workspace. Review first, execute only when enabled.</p>
+          </div>
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {toolCards.map(({ title, description, href, icon: Icon, eyebrow }) => (
+              <Link
+                key={href}
+                href={href}
+                className="group relative rounded-2xl border border-white/5 bg-card/30 p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:bg-card/80 hover:shadow-[0_18px_50px_rgba(0,0,0,.16)]"
+                data-testid={`card-tool-${title.toLowerCase().replaceAll(" ", "-")}`}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary transition-transform duration-300 group-hover:scale-110 group-hover:bg-primary/20">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform duration-300 group-hover:translate-x-1 group-hover:text-primary" />
+                </div>
+                <div className="mt-7 text-[10px] font-mono uppercase tracking-[0.22em] text-muted-foreground">{eyebrow}</div>
+                <h3 className="mt-2 text-lg font-semibold text-foreground/90">{title}</h3>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Deployment Status Section */}
+      <section className="bg-background py-24 px-6 relative overflow-hidden">
+        {/* Subtle bottom glow */}
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-64 bg-primary/5 blur-[100px] pointer-events-none rounded-t-full" />
+        
+        <div className="container mx-auto max-w-5xl relative z-10">
+          <div className="flex flex-col md:flex-row items-end justify-between gap-8 mb-12 border-b border-white/5 pb-8">
+            <div>
+              <h2 className="text-3xl font-bold tracking-tight mb-2 text-foreground/90">System Telemetry</h2>
+              <p className="text-muted-foreground text-sm">Live endpoint checks and environment readiness.</p>
+            </div>
+            <Button variant="outline" size="sm" asChild className="border-white/10 hover:bg-white/5 font-mono text-xs tracking-wide" data-testid="link-readiness">
               <Link href="/readiness" className="gap-2">
-                View diagnostics <ArrowRight className="h-4 w-4" />
+                <Activity className="h-3.5 w-3.5" />
+                View diagnostics
               </Link>
             </Button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="bg-background shadow-sm">
-              <CardContent className="p-6 flex flex-col items-center text-center space-y-4">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Lock className="h-6 w-6 text-primary" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="flex items-center justify-between p-5 rounded-xl border border-white/5 bg-card/40">
+              <div className="flex items-center gap-4">
+                <div className="p-2.5 rounded-lg bg-primary/10">
+                  <Lock className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-semibold">OAuth Configured</h3>
-                  <p className="text-sm text-muted-foreground mt-1">Secure authentication tunnel</p>
+                  <div className="text-sm font-medium text-foreground/80">OAuth Tunnel</div>
+                  <div className="text-xs text-muted-foreground mt-0.5 font-mono">auth_config</div>
                 </div>
+              </div>
+              <div>
                 {loadingPreflight ? (
-                  <Skeleton className="h-6 w-16 mt-2" />
+                  <Skeleton className="h-6 w-16 bg-white/5" />
                 ) : (
-                  <Badge variant={preflight?.oauthClientConfigured ? "success" : "destructive"}>
+                  <Badge variant="outline" className={preflight?.oauthClientConfigured ? "border-success/30 text-success bg-success/10" : "border-destructive/30 text-destructive bg-destructive/10"}>
                     {preflight?.oauthClientConfigured ? "VERIFIED" : "PENDING"}
                   </Badge>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            <Card className="bg-background shadow-sm">
-              <CardContent className="p-6 flex flex-col items-center text-center space-y-4">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <TrendingUp className="h-6 w-6 text-primary" />
+            <div className="flex items-center justify-between p-5 rounded-xl border border-white/5 bg-card/40">
+              <div className="flex items-center gap-4">
+                <div className="p-2.5 rounded-lg bg-primary/10">
+                  <TrendingUp className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-semibold">Trading Engine</h3>
-                  <p className="text-sm text-muted-foreground mt-1">Live execution status</p>
+                  <div className="text-sm font-medium text-foreground/80">Trading Engine</div>
+                  <div className="text-xs text-muted-foreground mt-0.5 font-mono">exec_state</div>
                 </div>
+              </div>
+              <div>
                 {loadingPreflight ? (
-                  <Skeleton className="h-6 w-16 mt-2" />
+                  <Skeleton className="h-6 w-16 bg-white/5" />
                 ) : (
-                  <Badge variant={preflight?.tradingEnabled ? "success" : "destructive"}>
+                  <Badge variant="outline" className={preflight?.tradingEnabled ? "border-success/30 text-success bg-success/10" : "border-destructive/30 text-destructive bg-destructive/10"}>
                     {preflight?.tradingEnabled ? "ONLINE" : "DISABLED"}
                   </Badge>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            <Card className="bg-background shadow-sm">
-              <CardContent className="p-6 flex flex-col items-center text-center space-y-4">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Zap className="h-6 w-6 text-primary" />
+            <div className="flex items-center justify-between p-5 rounded-xl border border-white/5 bg-card/40">
+              <div className="flex items-center gap-4">
+                <div className="p-2.5 rounded-lg bg-primary/10">
+                  <Zap className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-semibold">Environment</h3>
-                  <p className="text-sm text-muted-foreground mt-1">Current operation mode</p>
+                  <div className="text-sm font-medium text-foreground/80">Environment</div>
+                  <div className="text-xs text-muted-foreground mt-0.5 font-mono">op_mode</div>
                 </div>
+              </div>
+              <div>
                 {loadingPreflight ? (
-                  <Skeleton className="h-6 w-16 mt-2" />
+                  <Skeleton className="h-6 w-16 bg-white/5" />
                 ) : (
-                  <Badge variant={preflight?.executionMode === "BOTH" ? "success" : "secondary"} className={preflight?.executionMode !== "BOTH" ? "bg-amber-500/10 text-amber-700 dark:text-amber-500 border-transparent" : ""}>
+                  <Badge variant="outline" className={preflight?.executionMode === "BOTH" ? "border-success/30 text-success bg-success/10" : "border-amber-500/30 text-amber-500 bg-amber-500/10"}>
                     {preflight?.executionMode || "CHECKING"}
                   </Badge>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -166,6 +210,16 @@ export default function Home() {
 }
 
 const tickerSymbols = ["R_100", "R_75", "R_50", "R_25", "1HZ100V", "BOOM_500"]
+
+const toolCards = [
+  { title: "Manual Trade", eyebrow: "Execution", description: "Set one controlled trade with visible limits.", href: "/dashboard", icon: TrendingUp },
+  { title: "AI Scanner", eyebrow: "Analysis", description: "Inspect quotes, candles, and deterministic signals.", href: "/markets", icon: Activity },
+  { title: "Bulk Trade", eyebrow: "Review queue", description: "Build a multi-market batch for review before action.", href: "/bulk-trade", icon: BarChart3 },
+  { title: "Bot Builder", eyebrow: "Automation", description: "Create observation-first strategies from templates.", href: "/bots", icon: Bot },
+  { title: "Recovery", eyebrow: "Advisory", description: "Review incidents and request a human-reviewed explanation.", href: "/recovery", icon: CircleAlert },
+  { title: "Snapshots", eyebrow: "Checkpoints", description: "Capture server-verified account context before changes.", href: "/snapshots", icon: Camera },
+  { title: "Readiness", eyebrow: "System", description: "Check OAuth, trading gates, and environment status.", href: "/readiness", icon: Settings2 },
+]
 
 function MarketTicker() {
   const liveQuote = useGetMarketTicker("R_100", {
@@ -177,19 +231,22 @@ function MarketTicker() {
   })
 
   return (
-    <section className="overflow-hidden border-b bg-sidebar text-sidebar-foreground" aria-label="Live market ticker">
-      <div className="flex min-w-max items-center gap-6 px-4 py-2 text-[11px] md:justify-center">
+    <div className="w-full border-b border-white/5 bg-card/50 text-xs font-mono py-2 overflow-hidden flex items-center justify-center relative z-20 shadow-sm" aria-label="Live market ticker">
+      <div className="flex min-w-max items-center gap-8 px-4 md:justify-center animate-in fade-in duration-1000">
         {tickerSymbols.map((symbol, index) => {
           const value = index === 0 ? ((liveQuote.data as any)?.quote ?? (liveQuote.data as any)?.price) : undefined
+          const unavailable = index === 0 && ((liveQuote.data as any)?.available === false || liveQuote.isError)
           return (
-            <div key={symbol} className="flex items-center gap-2 font-mono">
-              <Radio className={`h-3 w-3 ${index === 0 && liveQuote.isError ? "text-destructive" : "text-sidebar-primary"}`} />
-              <span className="font-sans text-sidebar-foreground/70">{symbol}</span>
-              <span className={index === 0 && liveQuote.isError ? "text-destructive" : "text-sidebar-primary"}>{value ?? (index === 0 ? "—" : "watch")}</span>
+            <div key={symbol} className="flex items-center gap-2.5">
+              <Radio className={`h-3 w-3 ${unavailable ? "text-amber-500" : "text-primary/70"}`} />
+              <span className="text-muted-foreground">{symbol}</span>
+              <span className={unavailable ? "text-amber-500 font-medium" : "text-foreground font-medium"}>
+                {unavailable ? "offline" : value ?? (index === 0 ? "—" : "watch")}
+              </span>
             </div>
           )
         })}
       </div>
-    </section>
+    </div>
   )
 }

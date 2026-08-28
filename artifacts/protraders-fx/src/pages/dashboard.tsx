@@ -101,6 +101,12 @@ export default function Dashboard() {
     (!isReal || liveConfirmed),
   )
 
+  const switchAccount = (target: string) => {
+    if (target !== account?.accountType && (target === "demo" || target === "real")) {
+      window.location.href = `/api/deriv/login?target=${target}`
+    }
+  }
+
   React.useEffect(() => {
     if (!sessionLoading && !session?.authenticated) {
       setLocation("/")
@@ -168,25 +174,32 @@ export default function Dashboard() {
 
   return (
     <div className="flex-1 p-4 md:p-8 bg-background max-w-6xl mx-auto w-full">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+      <div className="mb-8 flex flex-col gap-5 rounded-2xl border border-white/5 bg-card/50 p-5 shadow-xl md:flex-row md:items-center md:justify-between">
         <div>
+          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.22em] text-success">
+            <span className="h-2 w-2 rounded-full bg-success shadow-[0_0_14px_hsl(var(--success))]" />
+            Connected
+          </div>
           <h1 className="text-3xl font-bold tracking-tight">Trading Workspace</h1>
           <p className="text-muted-foreground mt-1 flex items-center gap-2">
-            <Lock className="h-4 w-4" /> Secure connection established
+            <Lock className="h-4 w-4" /> Encrypted Deriv session
           </p>
         </div>
-        <div className="text-right">
-          <Badge variant="outline" className="font-mono tabular-nums text-sm bg-secondary/50">
-            ID: {account?.loginid || 'CONNECTING...'}
-          </Badge>
-               {account?.accountType && (
-                 <Badge
-                   variant={account.accountType === "real" ? "destructive" : "secondary"}
-                   className="mt-2 ml-2 uppercase"
-                 >
-                   {account.accountType} account
-                 </Badge>
-               )}
+        <div className="flex w-full flex-col gap-2 md:w-[250px]">
+          <Label htmlFor="active-account" className="text-[10px] uppercase tracking-[.2em] text-muted-foreground">Active account</Label>
+          <Select value={account?.accountType || "demo"} onValueChange={switchAccount}>
+            <SelectTrigger id="active-account" className="h-11 bg-background/70" data-testid="select-account-type">
+              <SelectValue placeholder="Choose account" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="demo">Demo account</SelectItem>
+              <SelectItem value="real">Real account</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <span className="font-mono">{account?.loginid || "SYNCING"}</span>
+            <span>Switch via Deriv</span>
+          </div>
         </div>
       </div>
 
@@ -203,9 +216,14 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Account Overview Panel */}
         <div className="lg:col-span-1 space-y-6">
-          <Card className="border-t-4 border-t-primary shadow-md">
+          <Card className="overflow-hidden border-primary/20 shadow-xl">
             <CardHeader className="pb-4">
-              <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Account Balance</CardTitle>
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Available Balance</CardTitle>
+                <Badge variant={account?.accountType === "real" ? "destructive" : "success"} className="uppercase">
+                  {account?.accountType || "syncing"}
+                </Badge>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-4xl font-bold font-numeric tracking-tighter" data-testid="text-balance">
