@@ -219,9 +219,11 @@ paths:
     post: { operationId: archiveBotTemplate, tags: [protraders], summary: Archive an owned bot template, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { "200": { description: Template archived, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
   /bots:
     get: { operationId: listBots, tags: [protraders], summary: List owned bots, responses: { "200": { description: Bots, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
-    post: { operationId: createBot, tags: [protraders], summary: Create a bot, requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }, responses: { "201": { description: Bot created, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+    post: { operationId: createBot, tags: [protraders], summary: Create a dry-run-only bot, requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/BotInput" } } } }, responses: { "201": { description: Bot created, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
   /bots/{id}:
-    patch: { operationId: updateBot, tags: [protraders], summary: Update a bot, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }, responses: { "200": { description: Bot updated, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+    patch: { operationId: updateBot, tags: [protraders], summary: Update a dry-run-only bot, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/BotPatchInput" } } } }, responses: { "200": { description: Bot updated, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+  /bots/{id}/runs:
+    get: { operationId: listBotRuns, tags: [protraders], summary: List persisted owner-scoped bot runs newest first, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { "200": { description: Bot runs and authoritative trading gate state, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }, "401": { description: Not authenticated, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }, "404": { description: Bot not found, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } } } }
   /bots/{id}/{action}:
     post: { operationId: changeBotLifecycle, tags: [protraders], summary: Start pause stop or archive a bot, parameters: [{ name: id, in: path, required: true, schema: { type: string } }, { name: action, in: path, required: true, schema: { type: string, enum: [start, pause, stop, archive] } }], responses: { "200": { description: Lifecycle state persisted, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
   /bots/{id}/run-once:
@@ -263,6 +265,34 @@ components:
     WorkspaceData:
       type: object
       additionalProperties: true
+    DryRunStrategy:
+      type: object
+      additionalProperties: false
+      required: [indicator, direction, stake, duration, riskCap, execution]
+      properties:
+        indicator: { type: string, enum: [ema, rsi, macd] }
+        direction: { type: string, enum: [CALL, PUT, BOTH] }
+        stake: { type: number, exclusiveMinimum: 0, maximum: 10000 }
+        duration: { type: number, minimum: 1, maximum: 3600, multipleOf: 1 }
+        riskCap: { type: number, exclusiveMinimum: 0, maximum: 100000 }
+        notes: { type: string, maxLength: 1000 }
+        execution: { type: string, enum: [dry_run] }
+    BotInput:
+      type: object
+      additionalProperties: false
+      required: [name, symbol, config]
+      properties:
+        name: { type: string, maxLength: 160 }
+        symbol: { type: string, maxLength: 30 }
+        templateId: { type: ["string", "null"] }
+        config: { $ref: "#/components/schemas/DryRunStrategy" }
+    BotPatchInput:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, maxLength: 160 }
+        symbol: { type: string, maxLength: 30 }
+        config: { $ref: "#/components/schemas/DryRunStrategy" }
     ProtradersConfig:
       type: object
       properties:

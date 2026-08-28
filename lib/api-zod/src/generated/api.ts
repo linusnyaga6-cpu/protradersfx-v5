@@ -215,23 +215,92 @@ export const ListBotsResponse = zod.record(zod.string(), zod.unknown())
 
 
 /**
- * @summary Create a bot
+ * @summary Create a dry-run-only bot
  */
-export const CreateBotBody = zod.record(zod.string(), zod.unknown())
+export const createBotBodyNameMax = 160;
+
+export const createBotBodySymbolMax = 30;
+
+export const createBotBodyConfigStakeExclusiveMin = 0;
+export const createBotBodyConfigStakeMax = 10000;
+
+export const createBotBodyConfigDurationMax = 3600;
+export const createBotBodyConfigDurationMultipleOf = 1;
+
+export const createBotBodyConfigRiskCapExclusiveMin = 0;
+export const createBotBodyConfigRiskCapMax = 100000;
+
+export const createBotBodyConfigNotesMax = 1000;
+
+
+
+export const CreateBotBody = zod.object({
+  "name": zod.string().max(createBotBodyNameMax),
+  "symbol": zod.string().max(createBotBodySymbolMax),
+  "templateId": zod.string().nullish(),
+  "config": zod.object({
+  "indicator": zod.enum(['ema', 'rsi', 'macd']),
+  "direction": zod.enum(['CALL', 'PUT', 'BOTH']),
+  "stake": zod.number().gt(createBotBodyConfigStakeExclusiveMin).max(createBotBodyConfigStakeMax),
+  "duration": zod.number().min(1).max(createBotBodyConfigDurationMax).multipleOf(createBotBodyConfigDurationMultipleOf),
+  "riskCap": zod.number().gt(createBotBodyConfigRiskCapExclusiveMin).max(createBotBodyConfigRiskCapMax),
+  "notes": zod.string().max(createBotBodyConfigNotesMax).optional(),
+  "execution": zod.enum(['dry_run'])
+})
+})
 
 export const CreateBotResponse = zod.record(zod.string(), zod.unknown())
 
 
 /**
- * @summary Update a bot
+ * @summary Update a dry-run-only bot
  */
 export const UpdateBotParams = zod.object({
   "id": zod.coerce.string()
 })
 
-export const UpdateBotBody = zod.record(zod.string(), zod.unknown())
+export const updateBotBodyNameMax = 160;
+
+export const updateBotBodySymbolMax = 30;
+
+export const updateBotBodyConfigStakeExclusiveMin = 0;
+export const updateBotBodyConfigStakeMax = 10000;
+
+export const updateBotBodyConfigDurationMax = 3600;
+export const updateBotBodyConfigDurationMultipleOf = 1;
+
+export const updateBotBodyConfigRiskCapExclusiveMin = 0;
+export const updateBotBodyConfigRiskCapMax = 100000;
+
+export const updateBotBodyConfigNotesMax = 1000;
+
+
+
+export const UpdateBotBody = zod.object({
+  "name": zod.string().max(updateBotBodyNameMax).optional(),
+  "symbol": zod.string().max(updateBotBodySymbolMax).optional(),
+  "config": zod.object({
+  "indicator": zod.enum(['ema', 'rsi', 'macd']),
+  "direction": zod.enum(['CALL', 'PUT', 'BOTH']),
+  "stake": zod.number().gt(updateBotBodyConfigStakeExclusiveMin).max(updateBotBodyConfigStakeMax),
+  "duration": zod.number().min(1).max(updateBotBodyConfigDurationMax).multipleOf(updateBotBodyConfigDurationMultipleOf),
+  "riskCap": zod.number().gt(updateBotBodyConfigRiskCapExclusiveMin).max(updateBotBodyConfigRiskCapMax),
+  "notes": zod.string().max(updateBotBodyConfigNotesMax).optional(),
+  "execution": zod.enum(['dry_run'])
+}).optional()
+})
 
 export const UpdateBotResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary List persisted owner-scoped bot runs newest first
+ */
+export const ListBotRunsParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const ListBotRunsResponse = zod.record(zod.string(), zod.unknown())
 
 
 /**

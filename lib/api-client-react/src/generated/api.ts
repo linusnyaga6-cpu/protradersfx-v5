@@ -22,6 +22,8 @@ import type {
 import type {
   Account,
   Analytics,
+  BotInput,
+  BotPatchInput,
   ErrorResponse,
   GetMarketCandlesParams,
   HealthStatus,
@@ -1511,16 +1513,16 @@ export const getCreateBotUrl = () => {
 }
 
 /**
- * @summary Create a bot
+ * @summary Create a dry-run-only bot
  */
-export const createBot = async (workspaceData: WorkspaceData, options?: Parameters<typeof customFetch>[1]): Promise<WorkspaceData> => {
+export const createBot = async (botInput: BotInput, options?: Parameters<typeof customFetch>[1]): Promise<WorkspaceData> => {
 
   return customFetch<WorkspaceData>(getCreateBotUrl(),
   {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(workspaceData)
+    body: JSON.stringify(botInput)
   }
 );}
 
@@ -1529,8 +1531,8 @@ export const createBot = async (workspaceData: WorkspaceData, options?: Paramete
 
 
 export const getCreateBotMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBot>>, TError,{data: BodyType<WorkspaceData>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof createBot>>, TError,{data: BodyType<WorkspaceData>}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBot>>, TError,{data: BodyType<BotInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createBot>>, TError,{data: BodyType<BotInput>}, TContext> => {
 
 const mutationKey = ['createBot'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -1542,7 +1544,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createBot>>, {data: BodyType<WorkspaceData>}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createBot>>, {data: BodyType<BotInput>}> = (props) => {
           const {data} = props ?? {};
 
           return  createBot(data,requestOptions)
@@ -1556,18 +1558,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type CreateBotMutationResult = NonNullable<Awaited<ReturnType<typeof createBot>>>
-    export type CreateBotMutationBody = BodyType<WorkspaceData>
+    export type CreateBotMutationBody = BodyType<BotInput>
     export type CreateBotMutationError = ErrorType<unknown>
 
     /**
- * @summary Create a bot
+ * @summary Create a dry-run-only bot
  */
 export const useCreateBot = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBot>>, TError,{data: BodyType<WorkspaceData>}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBot>>, TError,{data: BodyType<BotInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createBot>>,
         TError,
-        {data: BodyType<WorkspaceData>},
+        {data: BodyType<BotInput>},
         TContext
       > => {
       return useMutation(getCreateBotMutationOptions(options));
@@ -1582,17 +1584,17 @@ export const getUpdateBotUrl = (id: string,) => {
 }
 
 /**
- * @summary Update a bot
+ * @summary Update a dry-run-only bot
  */
 export const updateBot = async (id: string,
-    workspaceData: WorkspaceData, options?: Parameters<typeof customFetch>[1]): Promise<WorkspaceData> => {
+    botPatchInput: BotPatchInput, options?: Parameters<typeof customFetch>[1]): Promise<WorkspaceData> => {
 
   return customFetch<WorkspaceData>(getUpdateBotUrl(id),
   {
     ...options,
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(workspaceData)
+    body: JSON.stringify(botPatchInput)
   }
 );}
 
@@ -1601,8 +1603,8 @@ export const updateBot = async (id: string,
 
 
 export const getUpdateBotMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBot>>, TError,{id: string;data: BodyType<WorkspaceData>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof updateBot>>, TError,{id: string;data: BodyType<WorkspaceData>}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBot>>, TError,{id: string;data: BodyType<BotPatchInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateBot>>, TError,{id: string;data: BodyType<BotPatchInput>}, TContext> => {
 
 const mutationKey = ['updateBot'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -1614,7 +1616,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateBot>>, {id: string;data: BodyType<WorkspaceData>}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateBot>>, {id: string;data: BodyType<BotPatchInput>}> = (props) => {
           const {id,data} = props ?? {};
 
           return  updateBot(id,data,requestOptions)
@@ -1628,22 +1630,99 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type UpdateBotMutationResult = NonNullable<Awaited<ReturnType<typeof updateBot>>>
-    export type UpdateBotMutationBody = BodyType<WorkspaceData>
+    export type UpdateBotMutationBody = BodyType<BotPatchInput>
     export type UpdateBotMutationError = ErrorType<unknown>
 
     /**
- * @summary Update a bot
+ * @summary Update a dry-run-only bot
  */
 export const useUpdateBot = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBot>>, TError,{id: string;data: BodyType<WorkspaceData>}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBot>>, TError,{id: string;data: BodyType<BotPatchInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof updateBot>>,
         TError,
-        {id: string;data: BodyType<WorkspaceData>},
+        {id: string;data: BodyType<BotPatchInput>},
         TContext
       > => {
       return useMutation(getUpdateBotMutationOptions(options));
     }
+
+export const getListBotRunsUrl = (id: string,) => {
+
+
+
+
+  return `/api/bots/${id}/runs`
+}
+
+/**
+ * @summary List persisted owner-scoped bot runs newest first
+ */
+export const listBotRuns = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<WorkspaceData> => {
+
+  return customFetch<WorkspaceData>(getListBotRunsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListBotRunsQueryKey = (id: string,) => {
+    return [
+    `/api/bots/${id}/runs`
+    ] as const;
+    }
+
+
+export const getListBotRunsQueryOptions = <TData = Awaited<ReturnType<typeof listBotRuns>>, TError = ErrorType<ErrorResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBotRuns>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListBotRunsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listBotRuns>>> = ({ signal }) => listBotRuns(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listBotRuns>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListBotRunsQueryResult = NonNullable<Awaited<ReturnType<typeof listBotRuns>>>
+export type ListBotRunsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary List persisted owner-scoped bot runs newest first
+ */
+
+export function useListBotRuns<TData = Awaited<ReturnType<typeof listBotRuns>>, TError = ErrorType<ErrorResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBotRuns>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListBotRunsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getChangeBotLifecycleUrl = (id: string,
     action: 'start' | 'pause' | 'stop' | 'archive',) => {

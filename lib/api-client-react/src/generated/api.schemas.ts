@@ -16,6 +16,72 @@ export interface ErrorResponse {
 
 export interface WorkspaceData { [key: string]: unknown }
 
+export type DryRunStrategyIndicator = typeof DryRunStrategyIndicator[keyof typeof DryRunStrategyIndicator];
+
+
+export const DryRunStrategyIndicator = {
+  ema: 'ema',
+  rsi: 'rsi',
+  macd: 'macd',
+} as const;
+
+export type DryRunStrategyDirection = typeof DryRunStrategyDirection[keyof typeof DryRunStrategyDirection];
+
+
+export const DryRunStrategyDirection = {
+  CALL: 'CALL',
+  PUT: 'PUT',
+  BOTH: 'BOTH',
+} as const;
+
+export type DryRunStrategyExecution = typeof DryRunStrategyExecution[keyof typeof DryRunStrategyExecution];
+
+
+export const DryRunStrategyExecution = {
+  dry_run: 'dry_run',
+} as const;
+
+export interface DryRunStrategy {
+  indicator: DryRunStrategyIndicator;
+  direction: DryRunStrategyDirection;
+  /**
+     * @maximum 10000
+     * @exclusiveMinimum 0
+     */
+  stake: number;
+  /**
+     * @minimum 1
+     * @maximum 3600
+     */
+  duration: number;
+  /**
+     * @maximum 100000
+     * @exclusiveMinimum 0
+     */
+  riskCap: number;
+  /** @maxLength 1000 */
+  notes?: string;
+  execution: DryRunStrategyExecution;
+}
+
+export interface BotInput {
+  /** @maxLength 160 */
+  name: string;
+  /** @maxLength 30 */
+  symbol: string;
+  /** @nullable */
+  templateId?: string | null;
+  config: DryRunStrategy;
+}
+
+export interface BotPatchInput {
+  /** @maxLength 160 */
+  name?: string;
+  /** @maxLength 30 */
+  symbol?: string;
+  config?: DryRunStrategy;
+}
+
 export interface ProtradersConfig {
   configured: boolean;
   loginConfigured: boolean;

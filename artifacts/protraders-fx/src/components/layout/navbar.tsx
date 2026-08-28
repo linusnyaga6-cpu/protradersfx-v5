@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter"
 import { cn } from "@/lib/utils"
-import { Activity, ShieldCheck, Home, LayoutDashboard, LogOut, BarChart3, Bot, Camera, CircleAlert } from "lucide-react"
+import { Activity, ShieldCheck, Home, LayoutDashboard, LogOut, BarChart3, Bot, Camera, CircleAlert, UserRound } from "lucide-react"
 import { useGetSessionStatus, useLogout } from "@workspace/api-client-react"
 import { Button } from "@/components/ui/button"
 
@@ -14,6 +14,7 @@ export function Navbar() {
     { path: "/dashboard", label: "Workspace", icon: LayoutDashboard, show: session?.authenticated },
     { path: "/readiness", label: "Preflight", icon: ShieldCheck, show: true },
     { path: "/activity", label: "Activity", icon: Activity, show: true },
+    { path: "/about", label: "About", icon: UserRound, show: true },
     { path: "/markets", label: "Markets", icon: BarChart3, show: session?.authenticated },
     { path: "/bots", label: "Bots", icon: Bot, show: session?.authenticated },
     { path: "/snapshots", label: "Snapshots", icon: Camera, show: session?.authenticated },

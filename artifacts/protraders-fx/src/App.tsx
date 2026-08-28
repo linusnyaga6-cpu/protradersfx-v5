@@ -1,10 +1,13 @@
-import { type ReactNode } from 'react';
+import { type ComponentType, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useGetSessionStatus } from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Navbar } from '@/components/layout/navbar';
+import { Footer } from '@/components/layout/footer';
 import Home from '@/pages/home';
+import About from '@/pages/about';
 import Dashboard from '@/pages/dashboard';
 import Readiness from '@/pages/readiness';
 import Activity from '@/pages/activity';
@@ -30,20 +33,60 @@ function Router() {
         <RoutedErrorBoundary>
           <Switch>
             <Route path="/" component={Home} />
-            <Route path="/dashboard" component={Dashboard} />
+            <Route path="/about" component={About} />
+            <Route path="/dashboard" component={DashboardRoute} />
             <Route path="/readiness" component={Readiness} />
             <Route path="/activity" component={Activity} />
-            <Route path="/markets" component={Markets} />
-            <Route path="/bots" component={Bots} />
-            <Route path="/snapshots" component={Snapshots} />
-            <Route path="/recovery" component={Recovery} />
+            <Route path="/markets" component={MarketsRoute} />
+            <Route path="/bots" component={BotsRoute} />
+            <Route path="/snapshots" component={SnapshotsRoute} />
+            <Route path="/recovery" component={RecoveryRoute} />
             <Route component={NotFound} />
           </Switch>
         </RoutedErrorBoundary>
       </main>
+      <Footer />
     </div>
   );
 }
+
+function ProtectedPage({ page: Page }: { page: ComponentType }) {
+  const { data: session, isLoading, isError } = useGetSessionStatus();
+
+  if (isLoading) {
+    return <div className="grid min-h-[45vh] place-items-center text-sm text-muted-foreground">Checking your secure session…</div>;
+  }
+
+  if (isError || !session?.authenticated) {
+    return (
+      <section className="mx-auto grid min-h-[55vh] w-full max-w-3xl place-items-center px-5 py-12">
+        <div className="w-full rounded-xl border bg-card p-7 text-center shadow-sm md:p-10">
+          <div className="text-xs font-semibold uppercase tracking-[.24em] text-primary">Secure workspace</div>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight">Connect your Deriv account to continue</h1>
+          <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
+            Markets, bots, snapshots, recovery, and account controls require an active encrypted session. Demo trading remains the default.
+          </p>
+          <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+            <a className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground hover:bg-primary/90" href="/api/deriv/login">
+              Connect Deriv account
+            </a>
+            <a className="inline-flex h-10 items-center justify-center rounded-md border bg-background px-5 text-sm font-medium hover:bg-secondary" href="/">
+              Return home
+            </a>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  return <Page />;
+}
+
+const DashboardRoute = () => <ProtectedPage page={Dashboard} />;
+const MarketsRoute = () => <ProtectedPage page={Markets} />;
+const BotsRoute = () => <ProtectedPage page={Bots} />;
+const SnapshotsRoute = () => <ProtectedPage page={Snapshots} />;
+const RecoveryRoute = () => <ProtectedPage page={Recovery} />;
 
 function RoutedErrorBoundary({ children }: { children: ReactNode }) {
   const [location] = useLocation();
