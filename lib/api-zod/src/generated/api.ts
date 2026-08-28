@@ -173,6 +173,22 @@ export const GetMarketCandlesResponse = zod.record(zod.string(), zod.unknown())
 
 
 /**
+ * @summary Generate a bounded advisory market scan
+ */
+export const analyzeMarketBodySymbolMax = 30;
+
+
+export const analyzeMarketBodySymbolRegExp = new RegExp('^[A-Z0-9_]+$');
+
+
+export const AnalyzeMarketBody = zod.object({
+  "symbol": zod.string().min(1).max(analyzeMarketBodySymbolMax).regex(analyzeMarketBodySymbolRegExp)
+})
+
+export const AnalyzeMarketResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
  * @summary List built-in and owned bot templates
  */
 export const ListBotTemplatesResponse = zod.record(zod.string(), zod.unknown())
@@ -241,6 +257,7 @@ export const CreateBotBody = zod.object({
   "config": zod.object({
   "indicator": zod.enum(['ema', 'rsi', 'macd']),
   "direction": zod.enum(['CALL', 'PUT', 'BOTH']),
+  "mode": zod.enum(['market_observer', 'recovery_guard']).optional(),
   "stake": zod.number().gt(createBotBodyConfigStakeExclusiveMin).max(createBotBodyConfigStakeMax),
   "duration": zod.number().min(1).max(createBotBodyConfigDurationMax).multipleOf(createBotBodyConfigDurationMultipleOf),
   "riskCap": zod.number().gt(createBotBodyConfigRiskCapExclusiveMin).max(createBotBodyConfigRiskCapMax),
@@ -282,6 +299,7 @@ export const UpdateBotBody = zod.object({
   "config": zod.object({
   "indicator": zod.enum(['ema', 'rsi', 'macd']),
   "direction": zod.enum(['CALL', 'PUT', 'BOTH']),
+  "mode": zod.enum(['market_observer', 'recovery_guard']).optional(),
   "stake": zod.number().gt(updateBotBodyConfigStakeExclusiveMin).max(updateBotBodyConfigStakeMax),
   "duration": zod.number().min(1).max(updateBotBodyConfigDurationMax).multipleOf(updateBotBodyConfigDurationMultipleOf),
   "riskCap": zod.number().gt(updateBotBodyConfigRiskCapExclusiveMin).max(updateBotBodyConfigRiskCapMax),

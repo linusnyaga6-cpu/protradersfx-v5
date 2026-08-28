@@ -27,6 +27,7 @@ import type {
   ErrorResponse,
   GetMarketCandlesParams,
   HealthStatus,
+  MarketScanInput,
   ProtradersConfig,
   ProtradersPreflight,
   SessionStatus,
@@ -1135,6 +1136,77 @@ export function useGetMarketCandles<TData = Awaited<ReturnType<typeof getMarketC
 
 
 
+
+export const getAnalyzeMarketUrl = () => {
+
+
+
+
+  return `/api/market/analyze`
+}
+
+/**
+ * @summary Generate a bounded advisory market scan
+ */
+export const analyzeMarket = async (marketScanInput: MarketScanInput, options?: Parameters<typeof customFetch>[1]): Promise<WorkspaceData> => {
+
+  return customFetch<WorkspaceData>(getAnalyzeMarketUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(marketScanInput)
+  }
+);}
+
+
+
+
+
+export const getAnalyzeMarketMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof analyzeMarket>>, TError,{data: BodyType<MarketScanInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof analyzeMarket>>, TError,{data: BodyType<MarketScanInput>}, TContext> => {
+
+const mutationKey = ['analyzeMarket'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof analyzeMarket>>, {data: BodyType<MarketScanInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  analyzeMarket(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AnalyzeMarketMutationResult = NonNullable<Awaited<ReturnType<typeof analyzeMarket>>>
+    export type AnalyzeMarketMutationBody = BodyType<MarketScanInput>
+    export type AnalyzeMarketMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Generate a bounded advisory market scan
+ */
+export const useAnalyzeMarket = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof analyzeMarket>>, TError,{data: BodyType<MarketScanInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof analyzeMarket>>,
+        TError,
+        {data: BodyType<MarketScanInput>},
+        TContext
+      > => {
+      return useMutation(getAnalyzeMarketMutationOptions(options));
+    }
 
 export const getListBotTemplatesUrl = () => {
 

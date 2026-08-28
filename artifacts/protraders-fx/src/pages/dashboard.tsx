@@ -12,7 +12,8 @@ import {
   DollarSign, 
   Lock,
   ChevronRight,
-  ShieldAlert
+  ShieldAlert,
+  BarChart3
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -203,12 +204,23 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <div className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <ToolLink href="#manual-trading" icon={<TrendingUp className="h-4 w-4" />} title="Manual Trading" text="One controlled order review" />
+        <ToolLink href="/markets" icon={<ActivityIcon />} title="AI Scanner" text="Fresh market context" />
+        <ToolLink href="/bots" icon={<BotIcon />} title="Free Bots" text="Dry-run templates" />
+        <ToolLink href="/bulk-trade" icon={<LayersIcon />} title="Bulk Trader" text="Review-only planner" />
+      </div>
+
       {accountError && (
         <Alert variant="destructive" className="mb-8">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Connection Interrupted</AlertTitle>
           <AlertDescription>
-            Failed to fetch real-time account data from Deriv. Retrying automatically.
+            <p>Real-time account data could not be verified. Retry the sync or reconnect Deriv to refresh authorization.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={() => window.location.reload()}>Retry sync</Button>
+              <Button size="sm" asChild><a href="/api/deriv/login">Reconnect Deriv</a></Button>
+            </div>
           </AlertDescription>
         </Alert>
       )}
@@ -272,7 +284,7 @@ export default function Dashboard() {
         </div>
 
         {/* Execution Terminal */}
-        <Card className="lg:col-span-2 shadow-md flex flex-col">
+         <Card id="manual-trading" className="lg:col-span-2 shadow-md flex flex-col">
           <CardHeader className="border-b bg-secondary/10 pb-4">
             <CardTitle className="flex items-center gap-2 text-xl">
               <TrendingUp className="h-5 w-5 text-primary" />
@@ -396,3 +408,11 @@ export default function Dashboard() {
     </div>
   )
 }
+
+function ToolLink({ href, icon, title, text }: { href: string; icon: React.ReactNode; title: string; text: string }) {
+  return <Link href={href} className="group rounded-xl border border-white/5 bg-card/45 p-4 transition-colors hover:border-primary/30 hover:bg-card/80"><div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary">{icon}</span><span className="min-w-0"><span className="block text-sm font-semibold">{title}</span><span className="block truncate text-xs text-muted-foreground">{text}</span></span><ChevronRight className="ml-auto h-4 w-4 text-muted-foreground group-hover:text-primary" /></div></Link>
+}
+
+function ActivityIcon() { return <TrendingUp className="h-4 w-4" /> }
+function BotIcon() { return <ShieldAlert className="h-4 w-4" /> }
+function LayersIcon() { return <BarChart3 className="h-4 w-4" /> }

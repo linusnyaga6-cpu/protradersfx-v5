@@ -34,6 +34,14 @@ export const DryRunStrategyDirection = {
   BOTH: 'BOTH',
 } as const;
 
+export type DryRunStrategyMode = typeof DryRunStrategyMode[keyof typeof DryRunStrategyMode];
+
+
+export const DryRunStrategyMode = {
+  market_observer: 'market_observer',
+  recovery_guard: 'recovery_guard',
+} as const;
+
 export type DryRunStrategyExecution = typeof DryRunStrategyExecution[keyof typeof DryRunStrategyExecution];
 
 
@@ -44,6 +52,7 @@ export const DryRunStrategyExecution = {
 export interface DryRunStrategy {
   indicator: DryRunStrategyIndicator;
   direction: DryRunStrategyDirection;
+  mode?: DryRunStrategyMode;
   /**
      * @maximum 10000
      * @exclusiveMinimum 0
@@ -62,6 +71,15 @@ export interface DryRunStrategy {
   /** @maxLength 1000 */
   notes?: string;
   execution: DryRunStrategyExecution;
+}
+
+export interface MarketScanInput {
+  /**
+     * @minLength 1
+     * @maxLength 30
+     * @pattern ^[A-Z0-9_]+$
+     */
+  symbol: string;
 }
 
 export interface BotInput {

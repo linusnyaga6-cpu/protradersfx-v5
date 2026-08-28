@@ -13,9 +13,9 @@ export function Navbar() {
   const navItems = [
     { path: "/", label: "Home", icon: Home, show: true },
     { path: "/dashboard", label: "Workspace", icon: LayoutDashboard, show: session?.authenticated },
-    { path: "/readiness", label: "Preflight", icon: ShieldCheck, show: true },
-    { path: "/activity", label: "Activity", icon: Activity, show: true },
-    { path: "/about", label: "About", icon: UserRound, show: true },
+    { path: "/readiness", label: "Preflight", icon: ShieldCheck, show: !!session?.authenticated },
+    { path: "/activity", label: "Activity", icon: Activity, show: !!session?.authenticated },
+    { path: "/about", label: "About", icon: UserRound, show: !!session?.authenticated },
     { path: "/markets", label: "Markets", icon: BarChart3, show: session?.authenticated },
     { path: "/bots", label: "Bots", icon: Bot, show: session?.authenticated },
     { path: "/snapshots", label: "Snapshots", icon: Camera, show: session?.authenticated },
@@ -63,7 +63,7 @@ export function Navbar() {
             })}
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-4">
-            <GlobalSearch />
+            {session?.authenticated && <GlobalSearch />}
             {session?.authenticated ? (
               <div className="flex items-center gap-4">
                 <span className="hidden text-xs text-muted-foreground font-mono sm:inline-block border border-white/10 px-2 py-1 rounded-md bg-white/5">Secure Session</span>
@@ -80,13 +80,18 @@ export function Navbar() {
                 </Button>
               </div>
             ) : (
-              <Button asChild size="sm" className="font-semibold shadow-md bg-primary text-primary-foreground hover:bg-primary/90" data-testid="link-login">
-                <a href="/api/deriv/login">Terminal Access</a>
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button asChild size="sm" variant="ghost" className="text-muted-foreground hover:bg-white/5 hover:text-foreground" data-testid="link-login">
+                  <a href="/api/deriv/login">Log In</a>
+                </Button>
+                <Button asChild size="sm" className="font-semibold shadow-md bg-primary text-primary-foreground hover:bg-primary/90" data-testid="link-signup">
+                  <a href="/api/deriv/signup">Create Account</a>
+                </Button>
+              </div>
             )}
           </div>
         </div>
-        <div className="-mx-4 flex gap-1 overflow-x-auto border-t border-white/5 px-4 py-2 md:hidden">
+        {session?.authenticated && <div className="-mx-4 flex gap-1 overflow-x-auto border-t border-white/5 px-4 py-2 md:hidden">
           {navItems.filter(item => item.show).map((item) => {
             const Icon = item.icon
             const active = location === item.path
@@ -106,7 +111,7 @@ export function Navbar() {
               </Link>
             )
           })}
-        </div>
+        </div>}
       </div>
     </nav>
   )

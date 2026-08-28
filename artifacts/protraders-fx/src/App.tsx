@@ -16,6 +16,8 @@ import Bots from '@/pages/bots';
 import Snapshots from '@/pages/snapshots';
 import Recovery from '@/pages/recovery';
 import BulkTrade from '@/pages/bulk-trade';
+import Initializing from '@/pages/initializing';
+import { FloatingScanner } from '@/components/trading/floating-scanner';
 import NotFound from '@/pages/not-found';
 import {
   Route,
@@ -35,6 +37,7 @@ function Router() {
           <Switch>
             <Route path="/" component={Home} />
             <Route path="/oauth/callback" component={OAuthCallbackBridge} />
+            <Route path="/initializing" component={Initializing} />
             <Route path="/about" component={About} />
             <Route path="/dashboard" component={DashboardRoute} />
             <Route path="/readiness" component={Readiness} />
@@ -49,6 +52,7 @@ function Router() {
         </RoutedErrorBoundary>
       </main>
       <Footer />
+      <FloatingScanner />
     </div>
   );
 }

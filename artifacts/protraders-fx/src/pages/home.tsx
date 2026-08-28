@@ -46,7 +46,7 @@ export default function Home() {
         <div className="container relative z-10 max-w-4xl mx-auto px-6 space-y-8 mt-[-4rem]">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-mono uppercase tracking-widest mb-2 shadow-[0_0_20px_rgba(var(--primary),0.1)]">
             <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-            Workspace Terminal
+             Trade like a pro.
           </div>
           
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight text-foreground balance-text">
@@ -70,7 +70,7 @@ export default function Home() {
             ) : (
               <Button size="xl" asChild className="gap-2 group shadow-[0_0_30px_rgba(var(--primary),0.2)] hover:shadow-[0_0_40px_rgba(var(--primary),0.3)] transition-shadow bg-primary text-primary-foreground border-transparent" data-testid="hero-login-btn">
                 <a href="/api/deriv/login">
-                  Connect via Deriv
+                  Log In
                   <TerminalSquare className="h-5 w-5 ml-1 opacity-80" />
                 </a>
               </Button>
@@ -87,7 +87,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Tool Directory */}
+      {session?.authenticated && <>{/* Tool Directory */}
       <section className="py-24 px-6 bg-background relative z-10 border-b border-white/5">
         <div className="container max-w-5xl mx-auto">
           <div className="flex flex-col items-start justify-between gap-4 border-b border-white/5 pb-8 sm:flex-row sm:items-end">
@@ -118,10 +118,10 @@ export default function Home() {
             ))}
           </div>
         </div>
-      </section>
+      </section></>}
 
       {/* Deployment Status Section */}
-      <section className="bg-background py-24 px-6 relative overflow-hidden">
+      {session?.authenticated && <section className="bg-background py-24 px-6 relative overflow-hidden">
         {/* Subtle bottom glow */}
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-64 bg-primary/5 blur-[100px] pointer-events-none rounded-t-full" />
         
@@ -204,7 +204,7 @@ export default function Home() {
             </div>
           </div>
         </div>
-      </section>
+      </section>}
     </div>
   )
 }
@@ -213,9 +213,10 @@ const tickerSymbols = ["R_100", "R_75", "R_50", "R_25", "1HZ100V", "BOOM_500"]
 
 const toolCards = [
   { title: "Manual Trade", eyebrow: "Execution", description: "Set one controlled trade with visible limits.", href: "/dashboard", icon: TrendingUp },
-  { title: "AI Scanner", eyebrow: "Analysis", description: "Inspect quotes, candles, and deterministic signals.", href: "/markets", icon: Activity },
+  { title: "AI Scanner", eyebrow: "Analysis", description: "Inspect quotes, candles, and transparent advisory signals.", href: "/markets", icon: Activity },
   { title: "Bulk Trade", eyebrow: "Review queue", description: "Build a multi-market batch for review before action.", href: "/bulk-trade", icon: BarChart3 },
-  { title: "Bot Builder", eyebrow: "Automation", description: "Create observation-first strategies from templates.", href: "/bots", icon: Bot },
+  { title: "Free Bots", eyebrow: "Observation", description: "Start with no-cost dry-run templates and a visual builder.", href: "/bots", icon: Bot },
+  { title: "Recovery Bot", eyebrow: "Guardrails", description: "Build a bounded pause-and-review recovery observer.", href: "/bots", icon: CircleAlert },
   { title: "Recovery", eyebrow: "Advisory", description: "Review incidents and request a human-reviewed explanation.", href: "/recovery", icon: CircleAlert },
   { title: "Snapshots", eyebrow: "Checkpoints", description: "Capture server-verified account context before changes.", href: "/snapshots", icon: Camera },
   { title: "Readiness", eyebrow: "System", description: "Check OAuth, trading gates, and environment status.", href: "/readiness", icon: Settings2 },

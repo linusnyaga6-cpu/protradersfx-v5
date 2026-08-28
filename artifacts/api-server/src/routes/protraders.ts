@@ -26,7 +26,7 @@ const baseUrl = (
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:5000")
 ).replace(/\/$/, "");
 const redirectUri = `${baseUrl}/oauth/callback`;
-const cookieSecure = baseUrl.startsWith("https://");
+const cookieSecure = isProduction ? true : baseUrl.startsWith("https://");
 const sessionSecret = process.env.SESSION_SECRET || (
   isProduction ? "" : crypto.randomBytes(32).toString("hex")
 );
@@ -246,6 +246,9 @@ function oauthRequest(mode: "login" | "signup", targetAccount?: "demo" | "real")
 
 function beginOAuth(mode: "login" | "signup", res: Response, targetAccount?: "demo" | "real") {
   try {
+    if (isProduction && !baseUrl.startsWith("https://")) {
+      throw new Error("OAuth requires an HTTPS BASE_URL in production");
+    }
     const request = oauthRequest(mode, targetAccount);
     res.cookie(
       "protraders_oauth_state",
@@ -363,11 +366,12 @@ router.get("/analytics", (_req, res) => {
 });
 
 export async function derivRequest(accessToken: string, payload: Record<string, unknown>) {
-  if (!publicAppId) throw new Error("DERIV_PUBLIC_APP_ID is not configured");
+  const authenticatedAppId = clientId || publicAppId;
+  if (!authenticatedAppId) throw new Error("DERIV_CLIENT_ID is not configured");
 
   return new Promise<any>((resolve, reject) => {
     const socket = new WebSocket(
-      `wss://ws.derivws.com/websockets/v3?app_id=${encodeURIComponent(publicAppId)}`,
+      `wss://ws.derivws.com/websockets/v3?app_id=${encodeURIComponent(authenticatedAppId)}`,
     );
     let settled = false;
     const timer = setTimeout(() => {
@@ -413,7 +417,12 @@ router.get("/account", async (req, res) => {
   if (!session) return errorResponse(res, 401, "Not authenticated");
 
   try {
-    const data = await derivRequest(session.accessToken, { balance: 1 });
+    let data: any;
+    try {
+      data = await derivRequest(session.accessToken, { balance: 1 });
+    } catch {
+      data = await derivRequest(session.accessToken, { balance: 1 });
+    }
     const account = data.balance || {};
     return res.json({
       authenticated: true,
@@ -424,11 +433,16 @@ router.get("/account", async (req, res) => {
       openPnl: null,
     });
   } catch (error) {
+    const message = error instanceof Error ? error.message : undefined;
+    if (message && /(invalid|expired).*(token|authoriz)|token.*(invalid|expired)|not authorized/i.test(message)) {
+      res.clearCookie("protraders_session", cookieOptions(0));
+      return errorResponse(res, 401, "Session expired", "Reconnect your Deriv account to refresh authorization.");
+    }
     return errorResponse(
       res,
       502,
       "Account data unavailable",
-      error instanceof Error ? error.message : undefined,
+      message,
     );
   }
 });
@@ -614,7 +628,7 @@ export async function handleOAuthCallback(req: Request, res: Response) {
       const actualAccount = /^VRTC/i.test(loginId) ? "demo" : "real";
       if (!loginId || actualAccount !== state.targetAccount) {
         clearOAuthCookie(res);
-        return res.redirect(`/dashboard?account_switch=mismatch&expected=${state.targetAccount}`);
+        return res.redirect(`/initializing?account_switch=mismatch&expected=${state.targetAccount}`);
       }
     }
     setSessionCookie(res, nextSession);
@@ -624,7 +638,7 @@ export async function handleOAuthCallback(req: Request, res: Response) {
       at: new Date().toISOString(),
     });
     if (state.mode === "signup") analytics.registrations += 1;
-    return res.redirect(state.targetAccount ? `/dashboard?account_switched=${state.targetAccount}` : "/dashboard");
+    return res.redirect(state.targetAccount ? `/initializing?account_switched=${state.targetAccount}` : "/initializing");
   } catch (error) {
     clearOAuthCookie(res);
     console.error("[oauth]", error instanceof Error ? error.message : error);

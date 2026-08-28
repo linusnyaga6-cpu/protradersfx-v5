@@ -8,10 +8,12 @@
 import type { DryRunStrategyDirection } from './dryRunStrategyDirection';
 import type { DryRunStrategyExecution } from './dryRunStrategyExecution';
 import type { DryRunStrategyIndicator } from './dryRunStrategyIndicator';
+import type { DryRunStrategyMode } from './dryRunStrategyMode';
 
 export interface DryRunStrategy {
   indicator: DryRunStrategyIndicator;
   direction: DryRunStrategyDirection;
+  mode?: DryRunStrategyMode;
   /**
      * @maximum 10000
      * @exclusiveMinimum 0

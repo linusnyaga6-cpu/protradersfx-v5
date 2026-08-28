@@ -210,6 +210,21 @@ paths:
         - { name: count, in: query, schema: { type: integer } }
       responses:
         "200": { description: Candle data, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }
+  /market/analyze:
+    post:
+      operationId: analyzeMarket
+      tags: [protraders]
+      summary: Generate a bounded advisory market scan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MarketScanInput"
+      responses:
+        "200": { description: Advisory market analysis, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }
+        "401": { description: Not authenticated, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "503": { description: Scanner unavailable, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
   /templates:
     get: { operationId: listBotTemplates, tags: [protraders], summary: List built-in and owned bot templates, responses: { "200": { description: Templates, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
     post: { operationId: createBotTemplate, tags: [protraders], summary: Create an owned bot template, requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }, responses: { "201": { description: Template created, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
@@ -272,11 +287,18 @@ components:
       properties:
         indicator: { type: string, enum: [ema, rsi, macd] }
         direction: { type: string, enum: [CALL, PUT, BOTH] }
+        mode: { type: string, enum: [market_observer, recovery_guard] }
         stake: { type: number, exclusiveMinimum: 0, maximum: 10000 }
         duration: { type: number, minimum: 1, maximum: 3600, multipleOf: 1 }
         riskCap: { type: number, exclusiveMinimum: 0, maximum: 100000 }
         notes: { type: string, maxLength: 1000 }
         execution: { type: string, enum: [dry_run] }
+    MarketScanInput:
+      type: object
+      additionalProperties: false
+      required: [symbol]
+      properties:
+        symbol: { type: string, minLength: 1, maxLength: 30, pattern: "^[A-Z0-9_]+$" }
     BotInput:
       type: object
       additionalProperties: false

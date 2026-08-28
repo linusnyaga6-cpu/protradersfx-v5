@@ -53,6 +53,7 @@ export default function Bots() {
         config: {
           indicator: template.strategy?.indicator || "ema",
           direction: template.strategy?.direction || "CALL",
+           mode: template.strategy?.mode || "market_observer",
           stake: Number(template.strategy?.stake) || 10,
           duration: Number(template.strategy?.duration) || 5,
           riskCap: Number(template.strategy?.riskCap) || 100,
@@ -210,6 +211,7 @@ function BotBuilder({ bot, onUpdate }: { bot: any, onUpdate: () => void }) {
   const [symbol, setSymbol] = useState(bot.symbol || "R_100");
   const [indicator, setIndicator] = useState(bot.config?.indicator || "ema");
   const [direction, setDirection] = useState(bot.config?.direction || "CALL");
+  const [mode, setMode] = useState(bot.config?.mode || "market_observer");
   const [stake, setStake] = useState(bot.config?.stake?.toString() || "10");
   const [duration, setDuration] = useState(bot.config?.duration?.toString() || "5");
   const [notes, setNotes] = useState(bot.config?.notes || "");
@@ -220,6 +222,7 @@ function BotBuilder({ bot, onUpdate }: { bot: any, onUpdate: () => void }) {
     setSymbol(bot.symbol || "R_100");
     setIndicator(bot.config?.indicator || "ema");
     setDirection(bot.config?.direction || "CALL");
+    setMode(bot.config?.mode || "market_observer");
     setStake(bot.config?.stake?.toString() || "10");
     setDuration(bot.config?.duration?.toString() || "5");
     setNotes(bot.config?.notes || "");
@@ -255,6 +258,7 @@ function BotBuilder({ bot, onUpdate }: { bot: any, onUpdate: () => void }) {
         config: {
           indicator,
           direction,
+           mode,
           stake: stakeNum,
           duration: durationNum,
           ...(notes.trim() ? { notes: notes.trim().substring(0, 1000) } : {}),
@@ -283,7 +287,7 @@ function BotBuilder({ bot, onUpdate }: { bot: any, onUpdate: () => void }) {
         name: `${name} Template`,
         description: notes || `Template derived from ${name}`,
         strategy: {
-          indicator, direction, stake: Number(stake) || 10, duration: Number(duration) || 5, riskCap: Number(riskCap) || 100,
+           indicator, direction, mode, stake: Number(stake) || 10, duration: Number(duration) || 5, riskCap: Number(riskCap) || 100,
           ...(notes.trim() ? { notes: notes.trim().substring(0, 1000) } : {}),
           execution: "dry_run"
         }
@@ -306,7 +310,7 @@ function BotBuilder({ bot, onUpdate }: { bot: any, onUpdate: () => void }) {
             <CardTitle className="text-2xl font-bold tracking-tight">{name || "Unnamed Bot"}</CardTitle>
             <CardDescription className="mt-2 flex flex-wrap items-center gap-2">
               <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 uppercase tracking-wider">
-                <ShieldCheck className="h-3 w-3 mr-1" /> Observation Only (dry_run)
+                <ShieldCheck className="h-3 w-3 mr-1" /> {mode === "recovery_guard" ? "Recovery Guard (dry_run)" : "Observation Only (dry_run)"}
               </Badge>
               <Badge variant="secondary" className="uppercase tracking-wider">
                 Status: {bot.status === 'archived' || bot.status === 'stopped' ? bot.status : (bot.status === 'observing' ? 'observing' : (bot.status ?? "draft"))}
