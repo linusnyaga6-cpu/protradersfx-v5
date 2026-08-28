@@ -2,15 +2,13 @@
 
 const express = require("express");
 const path = require("path");
+const fs = require("fs");
 
 const app = express();
 
 const PORT = Number(process.env.PORT || 3000);
-const BASE_URL = String(
-process.env.BASE_URL || "https://www.protradersfx.com"
-).replace(//+$/, "");
-
-const PUBLIC_DIR = path.join(__dirname, "public");
+const ROOT = __dirname;
+const PUBLIC = path.join(ROOT, "public");
 
 app.disable("x-powered-by");
 
@@ -18,22 +16,32 @@ app.use(express.json({ limit: "20kb" }));
 app.use(express.urlencoded({ extended: false, limit: "20kb" }));
 
 app.get("/health", function (req, res) {
-return res.status(200).json({
+res.status(200).json({
 ok: true,
 service: "protraders-fx",
 status: "healthy"
 });
 });
 
+app.get("/favicon.ico", function (req, res) {
+const file = path.join(PUBLIC, "favicon.ico");
+
+if (fs.existsSync(file)) {
+return res.sendFile(file);
+}
+
+return res.status(204).end();
+});
+
 app.get("/api/config", function (req, res) {
-return res.status(200).json({
+res.status(200).json({
 configured: Boolean(process.env.DERIV_CLIENT_ID),
 publicAppId: process.env.DERIV_PUBLIC_APP_ID || ""
 });
 });
 
 app.get("/api/session", function (req, res) {
-return res.status(200).json({
+res.status(200).json({
 authenticated: false,
 accountId: null,
 balance: null,
@@ -42,21 +50,22 @@ currency: null
 });
 
 app.get("/api/preflight", function (req, res) {
-return res.status(200).json({
-productionBaseUrl: BASE_URL,
-redirectUri: BASE_URL + "/oauth/callback",
-https: BASE_URL.indexOf("https://") === 0,
-oauthClientConfigured: Boolean(
-process.env.DERIV_CLIENT_ID
-),
-sessionSecretConfigured: Boolean(
-process.env.SESSION_SECRET
-)
+res.status(200).json({
+productionBaseUrl:
+process.env.BASE_URL || "https://protradersfx.com",
+redirectUri:
+(process.env.BASE_URL || "https://protradersfx.com") +
+"/oauth/callback",
+https: true,
+oauthClientConfigured:
+Boolean(process.env.DERIV_CLIENT_ID),
+sessionSecretConfigured:
+Boolean(process.env.SESSION_SECRET)
 });
 });
 
 app.get("/app-config.js", function (req, res) {
-return res
+res
 .type("application/javascript")
 .send(
 "window.PROTRADERS_PUBLIC_APP_ID=" +
@@ -67,62 +76,68 @@ process.env.DERIV_PUBLIC_APP_ID || ""
 );
 });
 
-app.get("/favicon.ico", function (req, res) {
-return res.status(204).end();
-});
-
-app.use(
-express.static(PUBLIC_DIR, {
-extensions: ["html"],
-fallthrough: true
-})
-);
+if (fs.existsSync(PUBLIC)) {
+app.use(express.static(PUBLIC));
+}
 
 app.get("/", function (req, res) {
-const indexFile = path.join(
-PUBLIC_DIR,
+const publicIndex = path.join(
+PUBLIC,
 "index.html"
 );
 
-return res.sendFile(indexFile, function (error) {
-if (error) {
-console.error("INDEX ERROR:", error);
+const rootIndex = path.join(
+ROOT,
+"index.html"
+);
+
+if (fs.existsSync(publicIndex)) {
+return res.sendFile(publicIndex);
+}
+
+if (fs.existsSync(rootIndex)) {
+return res.sendFile(rootIndex);
+}
+
 return res.status(200).send(
 "<!doctype html><html><head><title>ProTraders FX</title></head><body><h1>ProTraders FX</h1><p>Server is running.</p></body></html>"
 );
-}
-
-```
-return undefined;
-```
-
-});
 });
 
-app.get("*", function (req, res) {
-if (
-req.path === "/health" ||
-req.path === "/favicon.ico"
-) {
-return undefined;
-}
-
-const indexFile = path.join(
-PUBLIC_DIR,
-"index.html"
+app.get("/workspace", function (req, res) {
+const file = path.join(
+PUBLIC,
+"workspace.html"
 );
 
-return res.sendFile(indexFile, function (error) {
-if (error) {
-return res.status(404).json({
-error: "Not found"
-});
+if (fs.existsSync(file)) {
+return res.sendFile(file);
 }
 
-```
-return undefined;
-```
+return res.status(404).send(
+"workspace.html not found"
+);
+});
 
+app.get("/workspace.html", function (req, res) {
+const file = path.join(
+PUBLIC,
+"workspace.html"
+);
+
+if (fs.existsSync(file)) {
+return res.sendFile(file);
+}
+
+return res.status(404).send(
+"workspace.html not found"
+);
+});
+
+app.use(function (req, res) {
+res.status(404).json({
+error: "Not found",
+path: req.path
 });
 });
 
@@ -133,7 +148,7 @@ if (res.headersSent) {
 return next(error);
 }
 
-return res.status(500).json({
+res.status(500).json({
 error: "Internal server error"
 });
 });
@@ -141,7 +156,8 @@ error: "Internal server error"
 if (require.main === module) {
 app.listen(PORT, function () {
 console.log(
-"[PROTRADERS FX] running on " + BASE_URL
+"[PROTRADERS FX] Server running on port " +
+PORT
 );
 });
 }
