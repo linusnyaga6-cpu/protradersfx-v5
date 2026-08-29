@@ -1510,6 +1510,77 @@ export const useAnalyzeMarket = <TError = ErrorType<ErrorResponse>,
       return useMutation(getAnalyzeMarketMutationOptions(options));
     }
 
+export const getScanBestMarketUrl = () => {
+
+
+
+
+  return `/api/market/scan-best`
+}
+
+/**
+ * @summary Rank fresh volatility markets for review
+ */
+export const scanBestMarket = async ( options?: Parameters<typeof customFetch>[1]): Promise<WorkspaceData> => {
+
+  return customFetch<WorkspaceData>(getScanBestMarketUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getScanBestMarketMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scanBestMarket>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof scanBestMarket>>, TError,void, TContext> => {
+
+const mutationKey = ['scanBestMarket'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof scanBestMarket>>, void> = () => {
+
+
+          return  scanBestMarket(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ScanBestMarketMutationResult = NonNullable<Awaited<ReturnType<typeof scanBestMarket>>>
+
+    export type ScanBestMarketMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Rank fresh volatility markets for review
+ */
+export const useScanBestMarket = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scanBestMarket>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof scanBestMarket>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getScanBestMarketMutationOptions(options));
+    }
+
 export const getListBotTemplatesUrl = () => {
 
 

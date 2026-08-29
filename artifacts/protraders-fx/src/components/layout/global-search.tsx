@@ -18,7 +18,7 @@ const pages = [
   { label: "Analysis Tools", hint: "Live quotes and movement", href: "/analysis", icon: BarChart3 },
   { label: "Markets", hint: "Quotes, charts, and instruments", href: "/markets", icon: BarChart3 },
   { label: "Bots", hint: "Templates and visual builder", href: "/bots", icon: Bot },
-  { label: "Bulk Trade", hint: "Review a multi-market batch", href: "/bulk-trade", icon: BarChart3 },
+  { label: "Instant Trade", hint: "Review and place one market order", href: "/bulk-trade", icon: BarChart3 },
 ]
 
 export function GlobalSearch() {

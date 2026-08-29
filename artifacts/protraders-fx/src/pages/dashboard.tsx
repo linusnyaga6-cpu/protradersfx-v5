@@ -72,7 +72,7 @@ export default function Dashboard() {
       <div className="grid gap-3 sm:grid-cols-3">
         <ActionCard href="/markets" icon={<Activity className="h-4 w-4" />} title="Scan market" />
         <ActionCard href="/bots" icon={<Bot className="h-4 w-4" />} title="Run bot" />
-        <ActionCard href="/bulk-trade" icon={<Layers3 className="h-4 w-4" />} title="Bulk trader" />
+        <ActionCard href="/bulk-trade" icon={<Layers3 className="h-4 w-4" />} title="Instant trade" />
       </div>
 
       <TransactionLedger accountBalance={account.data?.balance} accountCurrency={account.data?.currency} />

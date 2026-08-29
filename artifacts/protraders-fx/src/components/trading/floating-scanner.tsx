@@ -5,6 +5,7 @@ import {
   getGetMarketTickerQueryKey,
   getGetSessionStatusQueryKey,
   useAnalyzeMarket,
+  useScanBestMarket,
   useGetMarketCandles,
   useGetMarketTicker,
   useGetSessionStatus,
@@ -48,6 +49,7 @@ export function FloatingScanner() {
   const [error, setError] = useState("")
   const drag = useRef<{ x: number; y: number; startX: number; startY: number } | null>(null)
   const analyzeMarket = useAnalyzeMarket()
+  const scanBestMarket = useScanBestMarket()
   const ticker = useGetMarketTicker(symbol, { query: { queryKey: getGetMarketTickerQueryKey(symbol), enabled: !!session?.authenticated && open, refetchInterval: 15000 } })
   const candleParams = { count: 60, granularity: 60 }
   const candles = useGetMarketCandles(symbol, candleParams, { query: { queryKey: getGetMarketCandlesQueryKey(symbol, candleParams), enabled: !!session?.authenticated && open, staleTime: 30000 } })
@@ -67,6 +69,22 @@ export function FloatingScanner() {
     analyzeMarket.mutate({ data: { symbol } }, {
       onSuccess: (body) => setResult(body as ScannerResult),
       onError: (scannerError) => setError(scannerError instanceof Error ? scannerError.message : "Scanner unavailable"),
+    })
+  }
+
+  const runBestMarketScan = () => {
+    setError("")
+    scanBestMarket.mutate(undefined, {
+      onSuccess: (body) => {
+        const best = (body as any)?.best
+        if (!best) {
+          setError("No volatility market returned enough fresh data to rank.")
+          return
+        }
+        setSymbol(best.symbol)
+        setResult(null)
+      },
+      onError: (scanError) => setError(scanError instanceof Error ? scanError.message : "Best-market scan unavailable"),
     })
   }
 
@@ -151,6 +169,10 @@ export function FloatingScanner() {
             <span className="sr-only">Run analysis</span>
           </Button>
         </div>
+        <Button className="w-full" variant="outline" onClick={runBestMarketScan} disabled={scanBestMarket.isPending} data-testid="button-scan-best-market">
+          {scanBestMarket.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Activity className="mr-2 h-4 w-4" />}
+          {scanBestMarket.isPending ? "Comparing fresh volatility markets..." : "Find best market to review"}
+        </Button>
          <div className="grid grid-cols-3 gap-2">
           <Metric label="Latest quote" value={tick?.available === false ? "Offline" : String(tick?.quote ?? "—")} />
            <Metric label="Volatility" value={candleData?.indicators ? formatVolatility(candleData.indicators.volatilityLevel, candleData.indicators.volatilityPct) : "Unavailable"} />
@@ -203,6 +225,21 @@ export function FloatingScanner() {
             <p className="text-[11px] leading-5 text-muted-foreground">{result.analysis.limitations}</p>
           </div>
         )}
+         {Array.isArray((scanBestMarket.data as any)?.markets) && (
+           <div className="space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
+             <div className="flex items-center justify-between gap-3">
+               <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Fresh-market ranking</div>
+               <span className="text-[10px] text-muted-foreground">{(scanBestMarket.data as any)?.availableCount || 0} available</span>
+             </div>
+             {(scanBestMarket.data as any).markets.slice(0, 5).map((market: any, index: number) => (
+               <button key={market.symbol} type="button" className="flex w-full items-center justify-between rounded-lg border border-white/10 bg-background/50 px-3 py-2 text-left hover:border-primary/40" onClick={() => { setSymbol(market.symbol); setResult(null) }}>
+                 <span><span className="mr-2 font-mono text-xs text-primary">#{index + 1}</span><span className="text-xs">{market.displayName}</span><span className="ml-2 font-mono text-[10px] text-muted-foreground">{market.symbol}</span></span>
+                 <span className="font-mono text-xs">{market.score}</span>
+               </button>
+             ))}
+             <p className="text-[10px] leading-4 text-muted-foreground">{(scanBestMarket.data as any).disclaimer}</p>
+           </div>
+         )}
         <div className="flex items-center gap-2 border-t border-white/10 pt-3 text-[10px] uppercase tracking-wider text-muted-foreground">
           <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Advisory only · no order execution
         </div>

@@ -33,8 +33,7 @@ export default function BulkTrade() {
   const [barrier, setBarrier] = useState("5")
   const [stopLoss, setStopLoss] = useState("1")
   const [stake, setStake] = useState("10")
-  const [duration, setDuration] = useState("5")
-  const [batchSize, setBatchSize] = useState("3")
+  const [duration, setDuration] = useState("1")
   const [results, setResults] = useState<any[]>([])
   const [isRunning, setIsRunning] = useState(false)
   const createTrade = useCreateTrade()
@@ -84,25 +83,20 @@ export default function BulkTrade() {
   }, [availableTypes.join("|"), contractType])
   const needsBarrier = Boolean(CONTRACT_LABELS[contractType]?.needsBarrier)
 
-  const requestedBatchSize = Math.min(10, Math.max(1, Math.floor(Number(batchSize) || 0)))
-  const validOrder = Number(stake) > 0 && Number(stopLoss) > 0 && Number(duration) > 0 && Number.isInteger(Number(duration)) && Number.isInteger(Number(batchSize)) && Number(batchSize) >= 1 && Number(batchSize) <= 10 && availableTypes.includes(contractType) && (!needsBarrier || /^[0-9]$/.test(barrier))
-  const executeBatch = async () => {
+  const validOrder = Number(stake) > 0 && Number(stopLoss) > 0 && Number(duration) > 0 && Number.isInteger(Number(duration)) && availableTypes.includes(contractType) && (!needsBarrier || /^[0-9]$/.test(barrier))
+  const executeOrder = async () => {
     if (!canRun || !validOrder || isRunning) return
-    const count = requestedBatchSize
     setIsRunning(true)
-    setResults(Array.from({ length: count }, (_, index) => ({
-      id: index,
+    setResults([{
+      id: 0,
              symbol: selectedMarket,
       ok: null,
-      status: "queued",
-      message: `Waiting for entry ${index + 1} of ${count}`,
-    })))
+      status: "sending",
+      message: "Submitting one order to Deriv...",
+    }])
 
-    for (let index = 0; index < count; index += 1) {
-      setResults(current => current.map(item => item.id === index ? { ...item, status: "sending", message: "Submitting demo order..." } : item))
-      try {
-        // Bulk execution intentionally reuses the reviewed demo contract path one entry at a time.
-        // The contract type remains server-compatible while direction controls stay out of the UI.
+    try {
+        // This action always submits exactly one contract through the protected trade path.
         const result = await createTrade.mutateAsync({
           data: {
             symbol: selectedMarket,
@@ -111,24 +105,23 @@ export default function BulkTrade() {
             stop_loss: Number(stopLoss),
             stake: Number(stake),
             duration: Number(duration),
-            source: "bulk",
-             request_label: `${selectedMarket} batch entry ${index + 1} of ${count}`,
+            source: "manual",
+              request_label: `${selectedMarket} manual order`,
           } as any,
         })
-        setResults(current => current.map(item => item.id === index ? {
+          setResults(current => current.map(item => item.id === 0 ? {
           ...item,
           ok: result.ok,
            status: result.ok ? "accepted" : (result.status || "rejected"),
-          message: result.message || (result.ok ? "Demo order accepted" : "Order rejected"),
+          message: result.message || (result.ok && result.contractId ? `Deriv accepted contract ${result.contractId}` : "Order rejected"),
         } : item))
-      } catch (error) {
-        setResults(current => current.map(item => item.id === index ? {
+    } catch (error) {
+        setResults(current => current.map(item => item.id === 0 ? {
           ...item,
           ok: false,
           status: "rejected",
           message: error instanceof Error ? error.message : "Order rejected",
         } : item))
-      }
     }
     setIsRunning(false)
     await Promise.all([
@@ -143,8 +136,8 @@ export default function BulkTrade() {
 
        <div className="flex items-end justify-between gap-3">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-[.22em] text-primary">Bulk</div>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Bulk trader</h1>
+          <div className="text-xs font-semibold uppercase tracking-[.22em] text-primary">Trade</div>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Instant trader</h1>
         </div>
       </div>
 
@@ -213,27 +206,25 @@ export default function BulkTrade() {
               <p className="text-xs leading-5 text-muted-foreground">Applied to each accepted contract through Deriv’s contract-update API. Any provider rejection is shown in the result.</p>
             </div>
              <div className="space-y-2">
-              <Label htmlFor="bulk-duration">Duration</Label>
-              <Input id="bulk-duration" type="number" min="1" step="1" value={duration} onChange={event => setDuration(event.target.value)} />
+              <Label htmlFor="bulk-duration">Ticks before expiry</Label>
+              <div className="grid grid-cols-4 gap-2">
+                {["1", "2", "3", "5"].map(ticks => <Button key={ticks} type="button" size="sm" variant={duration === ticks ? "default" : "outline"} onClick={() => setDuration(ticks)}>{ticks}</Button>)}
+              </div>
+              <Input id="bulk-duration" type="number" min="1" max="10" step="1" value={duration} onChange={event => setDuration(event.target.value)} />
+              <p className="text-xs leading-5 text-muted-foreground">Reduce this before submitting. One tick is the shortest selectable duration; Deriv validates whether it is available for the chosen contract.</p>
             </div>
-             <div className="space-y-2">
-               <Label htmlFor="bulk-size">Demo batch entries</Label>
-               <Input id="bulk-size" type="number" min="1" max="10" step="1" value={batchSize} onChange={event => setBatchSize(event.target.value)} />
-               <p className="text-xs leading-5 text-muted-foreground">Runs up to 10 reviewed demo entries sequentially so every result is visible.</p>
-             </div>
             <div className="rounded-lg bg-secondary/40 p-3 text-sm">
                 <div className="flex justify-between"><span className="text-muted-foreground">Market</span><span className="font-mono">{selectedMarket}</span></div>
                 <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Type</span><span>{CONTRACT_LABELS[contractType]?.action || contractType}{needsBarrier ? ` ${barrier}` : ""}</span></div>
-                <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Entries</span><span>{requestedBatchSize}</span></div>
-                <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Stop loss / entry</span><span>{formatMoney(Number(stopLoss || 0), accountCurrency)}</span></div>
-                <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Total stake</span><span>{formatMoney(Number(stake || 0) * requestedBatchSize, accountCurrency)}</span></div>
+                 <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Stop loss</span><span>{formatMoney(Number(stopLoss || 0), accountCurrency)}</span></div>
+                 <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Stake</span><span>{formatMoney(Number(stake || 0), accountCurrency)}</span></div>
             </div>
-              {!validOrder && <p className="text-xs text-destructive">Choose an available Deriv contract and enter valid stake, stop loss, duration, and batch size.</p>}
-              <Button className="w-full" onClick={executeBatch} disabled={!canRun || !validOrder || isRunning || marketOffline} data-testid="button-execute-bulk">
+               {!validOrder && <p className="text-xs text-destructive">Choose an available Deriv contract and enter valid stake, stop loss, and duration.</p>}
+               <Button className="w-full" onClick={executeOrder} disabled={!canRun || !validOrder || isRunning || marketOffline} data-testid="button-execute-order">
                {isRunning && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isRunning ? "Running reviewed batch..." : "Run reviewed batch"}
+                 {isRunning ? "Submitting one order..." : "Review and place one order"}
             </Button>
-              <p className="text-[11px] leading-5 text-muted-foreground">Every entry uses the protected trade flow. Entries are marked accepted only after Deriv confirms the request; settlement values appear only when Deriv reports them.</p>
+               <p className="text-[11px] leading-5 text-muted-foreground">One click submits one contract through the protected trade flow. It is marked accepted only after Deriv confirms the request; settlement values appear only when Deriv reports them.</p>
           </CardContent>
         </Card>
       </div>
@@ -245,7 +236,7 @@ export default function BulkTrade() {
              {results.map((result: any) => (
                <div key={result.id} className="flex items-center justify-between gap-3 p-4 text-sm">
                  <div>
-                   <div className="font-mono">{result.symbol} · entry {result.id + 1}</div>
+                    <div className="font-mono">{result.symbol} · single order</div>
                    <div className="mt-1 text-xs text-muted-foreground">{result.message}</div>
                  </div>
                  <span className={result.ok === true ? "text-success" : result.ok === false ? "text-destructive" : "text-muted-foreground"}>{result.status || "queued"}</span>

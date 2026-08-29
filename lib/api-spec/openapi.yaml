@@ -261,6 +261,15 @@ paths:
         "200": { description: Advisory market analysis, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }
         "401": { description: Not authenticated, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
         "503": { description: Scanner unavailable, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+  /market/scan-best:
+    post:
+      operationId: scanBestMarket
+      tags: [protraders]
+      summary: Rank fresh volatility markets for review
+      responses:
+        "200": { description: Ranked volatility markets, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }
+        "401": { description: Not authenticated, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "503": { description: Scan unavailable, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
   /templates:
     get: { operationId: listBotTemplates, tags: [protraders], summary: List built-in and owned bot templates, responses: { "200": { description: Templates, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
     post: { operationId: createBotTemplate, tags: [protraders], summary: Create an owned bot template, requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }, responses: { "201": { description: Template created, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }

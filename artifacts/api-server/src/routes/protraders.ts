@@ -753,6 +753,9 @@ router.post("/trades", async (req, res) => {
     }, session.accountId);
     if (buy.error) return errorResponse(res, 502, "Trade request failed", buy.error.message);
     const contractId = buy.buy?.contract_id ? Number(buy.buy.contract_id) : null;
+    if (!contractId || !Number.isFinite(contractId)) {
+      return errorResponse(res, 502, "Trade not accepted", "Deriv did not return an accepted contract ID. No transaction was recorded.");
+    }
     let stopLossApplied: boolean | null = null;
     let stopLossMessage: string | null = null;
     if (stopLoss !== undefined && contractId) {
@@ -780,7 +783,7 @@ router.post("/trades", async (req, res) => {
       stake: String(stake),
       currency,
       duration: String(duration),
-      contractId: contractId ? String(contractId) : null,
+       contractId: String(contractId),
       status: "pending",
       metadata: {
         proposalId: proposal.proposal?.id || null,
@@ -793,8 +796,8 @@ router.post("/trades", async (req, res) => {
     }).returning();
     return res.json({
       ok: true,
-      message: `Trade opened on ${symbol}. Contract ${contractId || "created"}.${stopLossApplied === false ? " Stop loss was rejected by Deriv; review the open contract." : stopLossApplied ? " Stop loss applied." : ""}`,
-      contractId: contractId ? String(contractId) : null,
+       message: `Trade accepted on ${symbol}. Contract ${contractId}.${stopLossApplied === false ? " Stop loss was rejected by Deriv; review the open contract." : stopLossApplied ? " Stop loss applied." : ""}`,
+       contractId: String(contractId),
       transactionId: transaction[0]?.id || null,
       status: "pending",
       netProfit: null,

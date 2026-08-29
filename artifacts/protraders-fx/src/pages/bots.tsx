@@ -67,7 +67,7 @@ export default function Bots() {
           direction: "BOTH",
            mode: template.strategy?.mode || "market_observer",
           stake: Number(template.strategy?.stake) || 10,
-          duration: Number(template.strategy?.duration) || 5,
+          duration: Number(template.strategy?.duration) || 1,
           riskCap: Number(template.strategy?.riskCap) || 100,
           ...(template.strategy?.notes ? { notes: String(template.strategy.notes).substring(0, 1000) } : {}),
           execution: "dry_run"
@@ -95,19 +95,16 @@ export default function Bots() {
       setNotice("Bot execution requires the protected Deriv demo mode.");
       return;
     }
-    const count = Math.min(10, Math.max(1, Number(bot.config?.runCount) || 1));
-    if (!window.confirm(`Run ${count} demo ${count === 1 ? "entry" : "entries"} for ${bot.name}? Each entry uses the displayed stake and stop loss.`)) return;
+    if (!window.confirm(`Place one demo order for ${bot.name}? The selected market, contract type, stake, and stop loss will be submitted for review.`)) return;
     stopRequested.current = false;
     setExecutingBotId(String(bot.id));
     let accepted = 0;
     try {
-      for (let index = 0; index < count && !stopRequested.current; index += 1) {
-        const observation = await run.mutateAsync({ id: String(bot.id) });
-        const action = String((observation as any)?.result?.action || "");
-        if (!action.startsWith("review-")) {
-          setNotice(`Bot paused after observation ${index + 1}: no entry condition was present.`);
-          break;
-        }
+      const observation = await run.mutateAsync({ id: String(bot.id) });
+      const action = String((observation as any)?.result?.action || "");
+      if (!action.startsWith("review-")) {
+        setNotice("Bot paused: no entry condition was present.");
+      } else if (!stopRequested.current) {
         const contractType = String(bot.config?.contractType || (action === "review-put" ? "PUT" : "CALL"));
         await trade.mutateAsync({
           data: {
@@ -115,16 +112,17 @@ export default function Bots() {
             contract_type: contractType as any,
             ...(CONTRACT_LABELS[contractType]?.needsBarrier ? { barrier: String(bot.config?.barrier || "5") } : {}),
             stake: Number(bot.config?.stake || 1),
-            duration: Number(bot.config?.duration || 5),
+            duration: Number(bot.config?.duration || 1),
             stop_loss: Number(bot.config?.stopLoss || 1),
             source: "bot_assisted",
-            request_label: `${bot.name} demo entry ${index + 1} of ${count}`,
+            request_label: `${bot.name} reviewed demo order`,
           },
         })
-        accepted += 1;
+        accepted = 1;
         await client.invalidateQueries({ queryKey: getGetAccountQueryKey() });
       }
-      setNotice(stopRequested.current ? `Bot stopped after ${accepted} accepted demo ${accepted === 1 ? "entry" : "entries"}.` : `Bot sequence ended with ${accepted} accepted demo ${accepted === 1 ? "entry" : "entries"}.`);
+      if (stopRequested.current) setNotice("Bot stopped before placing the order.");
+      else if (accepted) setNotice("Bot placed one reviewed demo order.");
     } catch (error) {
       setNotice(`Bot execution stopped: ${error instanceof Error ? error.message : "Deriv rejected the request"}`);
     } finally {
@@ -209,7 +207,7 @@ export default function Bots() {
                         executeBot(bot);
                       }
                     }} disabled={Boolean(executingBotId && executingBotId !== String(bot.id))} data-testid={`button-execute-bot-${bot.id}`}>
-                      {executingBotId === String(bot.id) ? <><Pause className="mr-2 h-3 w-3" />Stop after current entry</> : <><Play className="mr-2 h-3 w-3" />Run demo sequence</>}
+                      {executingBotId === String(bot.id) ? <><Pause className="mr-2 h-3 w-3" />Submitting one order</> : <><Play className="mr-2 h-3 w-3" />Run bot</>}
                     </Button>
                   )}
                 </div>
@@ -291,12 +289,11 @@ function BotBuilder({ bot, accountCurrency, onUpdate }: { bot: any, accountCurre
   const [contractType, setContractType] = useState(bot.config?.contractType || "CALL");
   const [barrier, setBarrier] = useState(bot.config?.barrier || "5");
   const [stopLoss, setStopLoss] = useState(bot.config?.stopLoss?.toString() || "1");
-  const [runCount, setRunCount] = useState(bot.config?.runCount?.toString() || "1");
   const [indicator, setIndicator] = useState(bot.config?.indicator || "ema");
   const direction = "BOTH";
   const [mode, setMode] = useState(bot.config?.mode || "market_observer");
   const [stake, setStake] = useState(bot.config?.stake?.toString() || "10");
-  const [duration, setDuration] = useState(bot.config?.duration?.toString() || "5");
+  const [duration, setDuration] = useState(bot.config?.duration?.toString() || "1");
   const [notes, setNotes] = useState(bot.config?.notes || "");
   const [riskCap, setRiskCap] = useState(bot.config?.riskCap?.toString() || "100");
   const contracts = useGetMarketContracts(symbol, {
@@ -319,11 +316,10 @@ function BotBuilder({ bot, accountCurrency, onUpdate }: { bot: any, accountCurre
     setContractType(bot.config?.contractType || "CALL");
     setBarrier(bot.config?.barrier || "5");
     setStopLoss(bot.config?.stopLoss?.toString() || "1");
-    setRunCount(bot.config?.runCount?.toString() || "1");
     setIndicator(bot.config?.indicator || "ema");
     setMode(bot.config?.mode || "market_observer");
     setStake(bot.config?.stake?.toString() || "10");
-    setDuration(bot.config?.duration?.toString() || "5");
+    setDuration(bot.config?.duration?.toString() || "1");
     setNotes(bot.config?.notes || "");
     setRiskCap(bot.config?.riskCap?.toString() || "100");
     setErrors({});
@@ -343,7 +339,6 @@ function BotBuilder({ bot, accountCurrency, onUpdate }: { bot: any, accountCurre
     const capNum = Number(riskCap);
     if (isNaN(capNum) || capNum <= 0) errs.riskCap = "Risk cap must be positive";
     if (!Number.isFinite(Number(stopLoss)) || Number(stopLoss) <= 0) errs.stopLoss = "Stop loss must be positive";
-    if (!Number.isInteger(Number(runCount)) || Number(runCount) < 1 || Number(runCount) > 10) errs.runCount = "Run count must be 1–10";
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -363,7 +358,6 @@ function BotBuilder({ bot, accountCurrency, onUpdate }: { bot: any, accountCurre
           contractType,
           ...(CONTRACT_LABELS[contractType]?.needsBarrier ? { barrier } : {}),
           stopLoss: Number(stopLoss),
-          runCount: Number(runCount),
            mode,
           stake: stakeNum,
           duration: durationNum,
@@ -393,7 +387,7 @@ function BotBuilder({ bot, accountCurrency, onUpdate }: { bot: any, accountCurre
         name: `${name} Template`,
         description: notes || `Template derived from ${name}`,
         strategy: {
-           indicator, direction, mode, stake: Number(stake) || 10, duration: Number(duration) || 5, riskCap: Number(riskCap) || 100,
+           indicator, direction, mode, stake: Number(stake) || 10, duration: Number(duration) || 1, riskCap: Number(riskCap) || 100,
           ...(notes.trim() ? { notes: notes.trim().substring(0, 1000) } : {}),
           execution: "dry_run"
         }
@@ -489,15 +483,14 @@ function BotBuilder({ bot, accountCurrency, onUpdate }: { bot: any, accountCurre
               <Input type="number" min="0.01" step="0.01" value={stopLoss} onChange={e => setStopLoss(e.target.value)} className="bg-background shadow-sm font-numeric" />
               {errors.stopLoss && <p className="text-xs text-destructive">{errors.stopLoss}</p>}
             </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Demo entries per run</Label>
-              <Input type="number" min="1" max="10" step="1" value={runCount} onChange={e => setRunCount(e.target.value)} className="bg-background shadow-sm font-numeric" />
-              {errors.runCount && <p className="text-xs text-destructive">{errors.runCount}</p>}
-            </div>
 
             <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Duration (Ticks)</Label>
-              <Input type="number" step="1" value={duration} onChange={e => setDuration(e.target.value)} className="bg-background shadow-sm font-numeric" />
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ticks before expiry</Label>
+              <div className="grid grid-cols-4 gap-2">
+                {["1", "2", "3", "5"].map(ticks => <Button key={ticks} type="button" size="sm" variant={duration === ticks ? "default" : "outline"} onClick={() => setDuration(ticks)}>{ticks}</Button>)}
+              </div>
+              <Input type="number" min="1" max="10" step="1" value={duration} onChange={e => setDuration(e.target.value)} className="bg-background shadow-sm font-numeric" />
+              <p className="text-xs text-muted-foreground">Choose the tick count before running the bot. One click can place at most one contract.</p>
               {errors.duration && <p className="text-xs text-destructive">{errors.duration}</p>}
             </div>
 

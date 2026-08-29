@@ -6,6 +6,7 @@ import {
   getGetMarketTickerQueryKey,
   useGetMarketCandles,
   useGetMarketTicker,
+  useScanBestMarket,
 } from "@workspace/api-client-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -17,6 +18,7 @@ import { useDerivMarkets } from "@/hooks/use-deriv-markets"
 export default function Analysis() {
   const [selectedSymbol, setSelectedSymbol] = useState(DEFAULT_MARKET_SYMBOL)
   const marketQuery = useDerivMarkets()
+  const bestScan = useScanBestMarket()
   useEffect(() => {
     if (marketQuery.markets.length && !marketQuery.markets.some(item => item.symbol === selectedSymbol)) setSelectedSymbol(marketQuery.defaultSymbol)
   }, [marketQuery.markets, marketQuery.defaultSymbol, selectedSymbol])
@@ -36,6 +38,11 @@ export default function Analysis() {
   const price = tick?.quote ?? tick?.price
   const offline = tick?.available === false || ticker.isError
   const latest = Array.isArray(history?.candles) ? history.candles.at(-1) : undefined
+  const scanBest = () => bestScan.mutate(undefined, {
+    onSuccess: (body: any) => {
+      if (body?.best?.symbol) setSelectedSymbol(body.best.symbol)
+    },
+  })
 
   return (
     <div className="noise-layer min-h-full overflow-hidden bg-background">
@@ -141,7 +148,9 @@ export default function Analysis() {
                 <DataTile label="MACD histogram" value={history?.indicators?.macdHistogram} />
               </div>
               <div className="flex flex-wrap gap-3 border-t border-white/[.08] pt-5">
-                <Button asChild><Link href="/markets">Open full market view <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
+                <Button onClick={scanBest} disabled={bestScan.isPending}>{bestScan.isPending ? "Comparing markets…" : "Find best market"}</Button>
+                <Button asChild><Link href={`/bulk-trade?symbol=${encodeURIComponent(selectedSymbol)}`}>Open manual order <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
+                <Button asChild variant="outline"><Link href="/markets">Open full market view</Link></Button>
                 <Button asChild variant="outline"><Link href="/course">Read the course</Link></Button>
               </div>
             </CardContent>

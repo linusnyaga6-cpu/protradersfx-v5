@@ -181,6 +181,53 @@ function metrics(candles: Array<{ epoch: number; close: number }>) {
   };
 }
 
+function isVolatilitySymbol(symbol: string) {
+  return /^R_(10|15|25|30|50|75|90|100)$/.test(symbol)
+    || /^1HZ(10|15|25|30|50|75|90|100|150|250)V$/.test(symbol);
+}
+
+async function scanVolatilityMarket(symbol: string) {
+  try {
+    const data = await cachedMarket(`scan:${symbol}`, () => publicDeriv({ ticks_history: symbol, style: "candles", granularity: 60, count: 60, end: "latest" }));
+    const candles = Array.isArray((data as any).candles)
+      ? (data as any).candles.map((c: any) => ({ epoch: Number(c.epoch), close: Number(c.close) })).filter((c: any) => Number.isFinite(c.epoch) && Number.isFinite(c.close))
+      : [];
+    if (candles.length < 30) return null;
+    const indicators = metrics(candles);
+    const latestEpoch = candles.at(-1)!.epoch;
+    const freshnessSeconds = Math.max(0, Math.floor(Date.now() / 1000 - latestEpoch));
+    if (freshnessSeconds > 600) return null;
+    const bias = indicators.trend === "up" && indicators.macdHistogram > 0
+      ? "bullish"
+      : indicators.trend === "down" && indicators.macdHistogram < 0
+        ? "bearish"
+        : "neutral";
+    const directionalAgreement = bias === "neutral" ? 0 : 1;
+    const score = Math.round(Math.min(100, Math.max(0,
+      50 + Math.min(25, Math.abs(indicators.macdHistogram) / Math.max(Math.abs(indicators.ema21), 1) * 10000)
+      + directionalAgreement * 15
+      + Math.min(10, Math.max(0, (600 - freshnessSeconds) / 60)),
+    )));
+    return {
+      symbol,
+      bias,
+      score,
+      freshnessSeconds,
+      asOf: new Date(latestEpoch * 1000).toISOString(),
+      indicators: {
+        trend: indicators.trend,
+        rsi14: indicators.rsi14,
+        macdHistogram: indicators.macdHistogram,
+        volatilityPct: indicators.volatilityPct,
+        volatilityLevel: indicators.volatilityLevel,
+      },
+      disclaimer: "Ranked by recent candle agreement and freshness only. This is not a prediction, recommendation, or guarantee of profit.",
+    };
+  } catch {
+    return null;
+  }
+}
+
 router.get("/market/symbols", async (_req, res) => {
   try {
     const body = await cachedMarket("symbols", async () => {
@@ -329,6 +376,49 @@ router.post("/market/analyze", async (req, res) => {
     });
   } catch (error) {
     return fail(res, 503, "Scanner unavailable", error instanceof Error ? error.message : undefined);
+  }
+});
+
+router.post("/market/scan-best", async (req, res) => {
+  const auth = await authenticated(req, res);
+  if (!auth) return;
+  try {
+    const symbolsBody = await cachedMarket("symbols", async () => {
+      const data = await publicDeriv({ active_symbols: "full" });
+      const providerSymbols = (data.active_symbols || []).map((s: any) => ({
+        symbol: s.symbol,
+        displayName: s.display_name,
+        market: s.market,
+        marketDisplayName: s.market_display_name,
+        submarket: s.submarket,
+        submarketDisplayName: s.submarket_display_name,
+        exchangeIsOpen: s.exchange_is_open !== 0,
+        pip: s.pip,
+        discovered: true,
+      })).filter((item: any) => typeof item.symbol === "string" && item.symbol.length > 0);
+      return providerSymbols.length
+        ? { symbols: providerSymbols, source: "deriv-active-symbols", discoveryAvailable: true }
+        : { symbols: configuredVolatilitySymbols, source: "configured-volatility-catalog", discoveryAvailable: false };
+    });
+    const candidates = (symbolsBody.symbols || []).filter((item: any) => isVolatilitySymbol(String(item.symbol)));
+    const results: any[] = [];
+    for (let offset = 0; offset < candidates.length; offset += 4) {
+      const batch = await Promise.all(candidates.slice(offset, offset + 4).map((item: any) => scanVolatilityMarket(String(item.symbol))));
+      batch.forEach((result, index) => {
+        if (result) results.push({ ...result, displayName: candidates[offset + index].displayName || result.symbol });
+      });
+    }
+    results.sort((a, b) => b.score - a.score || a.freshnessSeconds - b.freshnessSeconds);
+    return res.json({
+      source: "deriv-candles",
+      scannedCount: candidates.length,
+      availableCount: results.length,
+      best: results[0] || null,
+      markets: results,
+      disclaimer: "Best means strongest recent indicator agreement among fresh data, not a promise or instruction to trade.",
+    });
+  } catch (error) {
+    return fail(res, 503, "Best-market scan unavailable", error instanceof Error ? error.message : undefined);
   }
 });
 

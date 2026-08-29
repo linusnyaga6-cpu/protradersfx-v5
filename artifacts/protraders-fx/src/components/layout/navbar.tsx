@@ -22,7 +22,7 @@ export function Navbar() {
     { path: "/markets", label: "Markets", icon: BarChart3, show: session?.authenticated },
     { path: "/bots", label: "Bots", icon: Bot, show: session?.authenticated },
     { path: "/recovery", label: "Recovery", icon: CircleAlert, show: session?.authenticated },
-    { path: "/bulk-trade", label: "Bulk", icon: BarChart3, show: session?.authenticated },
+    { path: "/bulk-trade", label: "Trade", icon: BarChart3, show: session?.authenticated },
   ]
 
   const handleLogout = async () => {

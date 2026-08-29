@@ -239,6 +239,12 @@ export const AnalyzeMarketResponse = zod.record(zod.string(), zod.unknown())
 
 
 /**
+ * @summary Rank fresh volatility markets for review
+ */
+export const ScanBestMarketResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
  * @summary List built-in and owned bot templates
  */
 export const ListBotTemplatesResponse = zod.record(zod.string(), zod.unknown())
