@@ -46,6 +46,7 @@ export function FloatingScanner() {
     }
   })
   const [result, setResult] = useState<ScannerResult | null>(null)
+  const [bestMarket, setBestMarket] = useState<any>(null)
   const [error, setError] = useState("")
   const drag = useRef<{ x: number; y: number; startX: number; startY: number } | null>(null)
   const wasDragged = useRef(false)
@@ -67,6 +68,7 @@ export function FloatingScanner() {
 
   const analyze = () => {
     setError("")
+    setBestMarket(null)
     analyzeMarket.mutate({ data: { symbol } }, {
       onSuccess: (body) => setResult(body as ScannerResult),
       onError: (scannerError) => setError(scannerError instanceof Error ? scannerError.message : "Scanner unavailable"),
@@ -79,11 +81,13 @@ export function FloatingScanner() {
       onSuccess: (body) => {
         const best = (body as any)?.best
         if (!best) {
+          setBestMarket(null)
           setError("No volatility market returned enough fresh data to rank.")
           return
         }
         setSymbol(best.symbol)
         setResult(null)
+        setBestMarket(best)
       },
       onError: (scanError) => setError(scanError instanceof Error ? scanError.message : "Best-market scan unavailable"),
     })
@@ -185,7 +189,7 @@ export function FloatingScanner() {
         ) : (
           <>
         <div className="flex gap-2">
-          <Select value={symbol} onValueChange={(value) => { setSymbol(value); setResult(null); setError("") }}>
+          <Select value={symbol} onValueChange={(value) => { setSymbol(value); setResult(null); setBestMarket(null); setError("") }}>
             <SelectTrigger className="bg-background/70"><SelectValue /></SelectTrigger>
             <SelectContent>{scannerMarkets.map(item => <SelectItem key={item.symbol} value={item.symbol}>{marketLabel(item, item.symbol)}</SelectItem>)}</SelectContent>
           </Select>
@@ -196,12 +200,12 @@ export function FloatingScanner() {
         </div>
         <Button className="w-full" variant="outline" onClick={runBestMarketScan} disabled={scanBestMarket.isPending} data-testid="button-scan-best-market">
           {scanBestMarket.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Activity className="mr-2 h-4 w-4" />}
-          {scanBestMarket.isPending ? "Comparing fresh volatility markets..." : "Find best market to review"}
+          {scanBestMarket.isPending ? "Comparing fresh volatility markets..." : "Find highest observed hit rate"}
         </Button>
          <div className="grid grid-cols-3 gap-2">
           <Metric label="Latest quote" value={tick?.available === false ? "Offline" : String(tick?.quote ?? "—")} />
            <Metric label="Volatility" value={candleData?.indicators ? formatVolatility(candleData.indicators.volatilityLevel, candleData.indicators.volatilityPct) : "Unavailable"} />
-           <Metric label="AI win rate" value={aiWinRate} />
+            <Metric label="Observed hit rate" value={bestMarket?.observedSignalWinRate != null ? `${Number(bestMarket.observedSignalWinRate).toFixed(1)}%` : aiWinRate} />
         </div>
         {error && <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">{error}</div>}
         {!result && !error && (
@@ -209,7 +213,30 @@ export function FloatingScanner() {
             Scan the selected market.
           </div>
         )}
-        {result && (
+         {bestMarket && (
+           <div className="space-y-3 rounded-xl border border-primary/30 bg-primary/5 p-4">
+             <div className="flex items-start justify-between gap-3">
+               <div>
+                 <div className="text-[10px] uppercase tracking-wider text-primary">Top market from fresh Deriv scan</div>
+                 <div className="mt-1 text-lg font-semibold">{bestMarket.displayName || bestMarket.symbol}</div>
+                 <div className="font-mono text-xs text-muted-foreground">{bestMarket.symbol}</div>
+               </div>
+               <Badge variant="success">{Number(bestMarket.observedSignalWinRate).toFixed(1)}% observed</Badge>
+             </div>
+             <div className="grid grid-cols-2 gap-2">
+               <Metric label="Historical signal hit rate" value={`${Number(bestMarket.observedSignalWinRate).toFixed(1)}%`} />
+               <Metric label="Signals tested" value={String(bestMarket.signalSampleSize)} />
+             </div>
+             <p className="text-xs leading-5 text-muted-foreground">This is a recent one-step candle backtest, not a guaranteed Deriv win percentage. Review the market and contract before placing any order.</p>
+             <Button className="w-full" variant="outline" onClick={() => {
+               const direction = bestMarket.bias === "bearish" ? "PUT" : "CALL"
+               window.location.href = `/bulk-trade?symbol=${encodeURIComponent(bestMarket.symbol)}&contract=${direction}&source=ai_assisted`
+             }} data-testid="button-review-best-market">
+               Use this market in Trade <ArrowRight className="ml-1 h-3.5 w-3.5" />
+             </Button>
+           </div>
+         )}
+         {result && !bestMarket && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Badge variant={result.analysis.bias === "neutral" ? "outline" : result.analysis.bias === "bullish" ? "success" : "destructive"}>
@@ -250,7 +277,7 @@ export function FloatingScanner() {
             <p className="text-[11px] leading-5 text-muted-foreground">{result.analysis.limitations}</p>
           </div>
         )}
-         {Array.isArray((scanBestMarket.data as any)?.markets) && (
+          {Array.isArray((scanBestMarket.data as any)?.markets) && !bestMarket && (
            <div className="space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
              <div className="flex items-center justify-between gap-3">
                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Fresh-market ranking</div>
@@ -271,7 +298,7 @@ export function FloatingScanner() {
         <div className="flex items-center gap-2 border-t border-white/10 pt-3 text-[10px] uppercase tracking-wider text-muted-foreground">
           <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Advisory only · no order execution
         </div>
-         <p className="text-[11px] leading-5 text-muted-foreground">AI win rate is shown only when authoritative settled AI-labelled history is available; otherwise it remains unavailable.</p>
+          <p className="text-[11px] leading-5 text-muted-foreground">The scanner ranks fresh markets by observed historical signal hit rate only. It does not claim a guaranteed win percentage.</p>
           </>
         )}
       </div>

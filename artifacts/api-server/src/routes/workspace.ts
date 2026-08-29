@@ -197,6 +197,21 @@ async function scanVolatilityMarket(symbol: string) {
     const latestEpoch = candles.at(-1)!.epoch;
     const freshnessSeconds = Math.max(0, Math.floor(Date.now() / 1000 - latestEpoch));
     if (freshnessSeconds > 600) return null;
+    let signalCount = 0;
+    let signalWins = 0;
+    for (let index = 29; index < candles.length - 1; index += 1) {
+      const historical = metrics(candles.slice(0, index + 1));
+      const direction = historical.trend === "up" && historical.macdHistogram > 0
+        ? "up"
+        : historical.trend === "down" && historical.macdHistogram < 0
+          ? "down"
+          : null;
+      const nextMove = candles[index + 1].close - candles[index].close;
+      if (!direction || nextMove === 0) continue;
+      signalCount += 1;
+      if ((direction === "up" && nextMove > 0) || (direction === "down" && nextMove < 0)) signalWins += 1;
+    }
+    const observedSignalWinRate = signalCount >= 10 ? Number(((signalWins / signalCount) * 100).toFixed(1)) : null;
     const bias = indicators.trend === "up" && indicators.macdHistogram > 0
       ? "bullish"
       : indicators.trend === "down" && indicators.macdHistogram < 0
@@ -212,6 +227,8 @@ async function scanVolatilityMarket(symbol: string) {
       symbol,
       bias,
       score,
+      observedSignalWinRate,
+      signalSampleSize: signalCount,
       freshnessSeconds,
       asOf: new Date(latestEpoch * 1000).toISOString(),
       indicators: {
@@ -221,7 +238,7 @@ async function scanVolatilityMarket(symbol: string) {
         volatilityPct: indicators.volatilityPct,
         volatilityLevel: indicators.volatilityLevel,
       },
-      disclaimer: "Ranked by recent candle agreement and freshness only. This is not a prediction, recommendation, or guarantee of profit.",
+       disclaimer: "Historical signal hit rate is a one-step candle backtest from recent Deriv candles, not a Deriv win rate, prediction, recommendation, or guarantee of profit.",
     };
   } catch {
     return null;
@@ -408,14 +425,17 @@ router.post("/market/scan-best", async (req, res) => {
         if (result) results.push({ ...result, displayName: candidates[offset + index].displayName || result.symbol });
       });
     }
-    results.sort((a, b) => b.score - a.score || a.freshnessSeconds - b.freshnessSeconds);
+    const ranked = results.filter((item) => item.observedSignalWinRate !== null);
+    ranked.sort((a, b) => b.observedSignalWinRate - a.observedSignalWinRate || b.signalSampleSize - a.signalSampleSize || a.freshnessSeconds - b.freshnessSeconds);
     return res.json({
       source: "deriv-candles",
       scannedCount: candidates.length,
-      availableCount: results.length,
-      best: results[0] || null,
-      markets: results,
-      disclaimer: "Best means strongest recent indicator agreement among fresh data, not a promise or instruction to trade.",
+      availableCount: ranked.length,
+      best: ranked[0] || null,
+      markets: ranked,
+      disclaimer: ranked.length
+        ? "The selected market has the highest observed historical signal hit rate in this scan. This is not a Deriv win rate, a prediction, recommendation, or guarantee of profit."
+        : "No market had enough non-neutral historical signals to calculate an observed hit rate.",
     });
   } catch (error) {
     return fail(res, 503, "Best-market scan unavailable", error instanceof Error ? error.message : undefined);
