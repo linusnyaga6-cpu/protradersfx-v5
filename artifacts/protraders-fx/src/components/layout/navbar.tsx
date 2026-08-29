@@ -1,14 +1,16 @@
+import { useState } from "react"
 import { Link, useLocation } from "wouter"
 import { cn } from "@/lib/utils"
 import { Activity, ShieldCheck, Home, LayoutDashboard, LogOut, BarChart3, Bot, Camera, CircleAlert, UserRound } from "lucide-react"
-import { useGetSessionStatus, useLogout } from "@workspace/api-client-react"
+import { useGetSessionStatus } from "@workspace/api-client-react"
 import { Button } from "@/components/ui/button"
 import { GlobalSearch } from "./global-search"
+import { endSession } from "@/lib/logout"
 
 export function Navbar() {
   const [location] = useLocation()
   const { data: session } = useGetSessionStatus()
-  const logout = useLogout()
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   const navItems = [
     { path: "/", label: "Home", icon: Home, show: true },
@@ -23,12 +25,9 @@ export function Navbar() {
     { path: "/bulk-trade", label: "Bulk", icon: BarChart3, show: session?.authenticated },
   ]
 
-  const handleLogout = () => {
-    logout.mutate(undefined, {
-      onSuccess: () => {
-        window.location.href = "/"
-      }
-    })
+  const handleLogout = async () => {
+    setIsLoggingOut(true)
+    await endSession()
   }
 
   return (
@@ -71,12 +70,12 @@ export function Navbar() {
                   variant="ghost"
                   size="sm"
                   onClick={handleLogout}
-                  disabled={logout.isPending}
+                   disabled={isLoggingOut}
                   className="gap-2 text-muted-foreground hover:text-foreground hover:bg-white/5"
                   data-testid="button-logout"
                 >
-                  <LogOut className="h-4 w-4" />
-                   Log out
+                   <LogOut className="h-4 w-4" />
+                   {isLoggingOut ? "Signing out…" : "Log out"}
                 </Button>
               </div>
             ) : (

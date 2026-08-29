@@ -342,11 +342,16 @@ router.get("/session", async (req, res) => {
   return res.json({ authenticated: true, expiresAt: session.expiresAt });
 });
 
-router.post("/logout", (_req, res) => {
-  res.clearCookie("protraders_session", cookieOptions(0));
+function endSession(_req: Request, res: Response) {
+  const options = { ...cookieOptions(0), expires: new Date(0) };
+  res.setHeader("Cache-Control", "no-store");
+  res.clearCookie("protraders_session", options);
+  res.cookie("protraders_session", "", options);
   clearOAuthCookie(res);
   return res.status(204).end();
-});
+}
+router.post("/logout", endSession);
+router.get("/logout", endSession);
 
 router.post("/track", (req, res) => {
   const type = String(req.body?.type || "page_view").slice(0, 40);

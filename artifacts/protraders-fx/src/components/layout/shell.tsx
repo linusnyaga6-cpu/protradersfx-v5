@@ -1,9 +1,9 @@
-import { ReactNode } from "react"
+import { ReactNode, useState } from "react"
 import { Link, useLocation } from "wouter"
 import { Activity, BarChart3, Bot, Camera, ChevronRight, CircleAlert, LayoutDashboard, LogOut, Settings2 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useLogout } from "@workspace/api-client-react"
 import { Button } from "@/components/ui/button"
+import { endSession } from "@/lib/logout"
 
 const links = [
   ["/dashboard","Overview",LayoutDashboard],["/markets","Markets",BarChart3],["/bots","Bots",Bot],
@@ -11,8 +11,11 @@ const links = [
 ] as const
 export function Shell({ children }: { children: ReactNode }) {
   const [path] = useLocation()
-  const logout = useLogout()
-  const handleLogout = () => logout.mutate(undefined, { onSuccess: () => { window.location.href = "/" } })
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const handleLogout = async () => {
+    setIsLoggingOut(true)
+    await endSession()
+  }
   return <div className="min-h-[100dvh] bg-background text-foreground">
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col bg-sidebar text-sidebar-foreground md:flex">
       <Link href="/" className="flex h-20 items-center gap-3 border-b border-sidebar-border px-6" data-testid="link-brand">
@@ -24,8 +27,8 @@ export function Shell({ children }: { children: ReactNode }) {
        <div className="mt-auto border-t border-sidebar-border p-5">
          <div className="text-[10px] uppercase tracking-[.2em] text-sidebar-foreground/40">Execution mode</div>
          <div className="mt-2 flex items-center gap-2 text-sm"><span className="h-2 w-2 rounded-full bg-sidebar-primary" /> Controlled / review-first</div>
-         <Button variant="ghost" size="sm" className="mt-4 w-full justify-start gap-2 px-2 text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-foreground" onClick={handleLogout} disabled={logout.isPending} data-testid="button-sidebar-logout">
-           <LogOut className="h-4 w-4" /> {logout.isPending ? "Signing out…" : "Log out"}
+         <Button variant="ghost" size="sm" className="mt-4 w-full justify-start gap-2 px-2 text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-foreground" onClick={handleLogout} disabled={isLoggingOut} data-testid="button-sidebar-logout">
+           <LogOut className="h-4 w-4" /> {isLoggingOut ? "Signing out…" : "Log out"}
          </Button>
        </div>
     </aside>
