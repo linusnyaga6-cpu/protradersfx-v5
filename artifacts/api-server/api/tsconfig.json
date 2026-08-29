@@ -5,6 +5,7 @@
     "incremental": false,
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "noCheck": true,
     "noEmit": true,
     "rootDir": "..",
     "types": ["node"]
