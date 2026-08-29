@@ -131,8 +131,9 @@ export default function BulkTrade() {
 
        <div className="flex items-end justify-between gap-3">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-[.22em] text-primary">Trade</div>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Instant trader</h1>
+          <div className="text-xs font-semibold uppercase tracking-[.22em] text-primary">Bot builder</div>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Create Bot</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Configure a reusable, user-started bot session. For the two-input quick-run experience, open Bulk Trader.</p>
         </div>
       </div>
 

@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Link, useLocation } from "wouter"
 import { cn } from "@/lib/utils"
-import { Activity, Home, LayoutDashboard, LogOut, BarChart3, Bot, CircleAlert, UserRound, BookOpen, LineChart } from "lucide-react"
+import { Activity, Home, LayoutDashboard, LogOut, BarChart3, Bot, CircleAlert, UserRound, BookOpen, LineChart, Layers3 } from "lucide-react"
 import { useGetSessionStatus } from "@workspace/api-client-react"
 import { Button } from "@/components/ui/button"
 import { GlobalSearch } from "./global-search"
@@ -15,7 +15,8 @@ export function Navbar() {
   const navItems = [
     { path: "/", label: "Home", icon: Home, show: true },
     { path: "/dashboard", label: "Workspace", icon: LayoutDashboard, show: session?.authenticated },
-    { path: "/bulk-trade", label: "Trade", icon: BarChart3, show: session?.authenticated },
+    { path: "/bulk-trade", label: "Bulk Trader", icon: Layers3, show: session?.authenticated },
+    { path: "/create-bot", label: "Create Bot", icon: Bot, show: session?.authenticated },
     { path: "/activity", label: "Activity", icon: Activity, show: !!session?.authenticated },
     { path: "/about", label: "About", icon: UserRound, show: true },
     { path: "/course", label: "Course", icon: BookOpen, show: true },

@@ -69,8 +69,9 @@ export default function Dashboard() {
         </Card>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <ActionCard href="/bulk-trade" icon={<Layers3 className="h-4 w-4" />} title="Instant trade" featured />
+      <div className="grid gap-3 sm:grid-cols-4">
+        <ActionCard href="/bulk-trade" icon={<Layers3 className="h-4 w-4" />} title="Bulk Trader" featured />
+        <ActionCard href="/create-bot" icon={<Bot className="h-4 w-4" />} title="Create Bot" />
         <ActionCard href="/markets" icon={<Activity className="h-4 w-4" />} title="Scan market" />
         <ActionCard href="/bots" icon={<Bot className="h-4 w-4" />} title="Run bot" />
       </div>

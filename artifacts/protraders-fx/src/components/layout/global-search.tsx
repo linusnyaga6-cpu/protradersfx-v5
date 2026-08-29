@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { BarChart3, Bot, Search } from "lucide-react"
+import { BarChart3, Bot, Layers3, Search } from "lucide-react"
 import { useLocation } from "wouter"
 import { useDerivMarkets } from "@/hooks/use-deriv-markets"
 import {
@@ -18,7 +18,8 @@ const pages = [
   { label: "Analysis Tools", hint: "Live quotes and movement", href: "/analysis", icon: BarChart3 },
   { label: "Markets", hint: "Quotes, charts, and instruments", href: "/markets", icon: BarChart3 },
   { label: "Bots", hint: "Templates and visual builder", href: "/bots", icon: Bot },
-  { label: "Instant Trade", hint: "Review and place one market order", href: "/bulk-trade", icon: BarChart3 },
+  { label: "Bulk Trader", hint: "Scan markets and run a bounded plan", href: "/bulk-trade", icon: Layers3 },
+  { label: "Create Bot", hint: "Configure a reusable bot session", href: "/create-bot", icon: Bot },
 ]
 
 export function GlobalSearch() {

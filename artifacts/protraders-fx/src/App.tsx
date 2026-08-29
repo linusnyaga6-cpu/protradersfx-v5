@@ -14,6 +14,7 @@ import Markets from '@/pages/markets';
 import Bots from '@/pages/bots';
 import Recovery from '@/pages/recovery';
 import BulkTrade from '@/pages/bulk-trade';
+import BulkTrader from '@/pages/bulk-trader';
 import Initializing from '@/pages/initializing';
 import { FloatingScanner } from '@/components/trading/floating-scanner';
 import NotFound from '@/pages/not-found';
@@ -46,7 +47,8 @@ function Router() {
             <Route path="/markets" component={MarketsRoute} />
             <Route path="/bots" component={BotsRoute} />
             <Route path="/recovery" component={RecoveryRoute} />
-            <Route path="/bulk-trade" component={BulkTradeRoute} />
+            <Route path="/create-bot" component={CreateBotRoute} />
+            <Route path="/bulk-trade" component={BulkTraderRoute} />
             <Route component={NotFound} />
           </Switch>
         </RoutedErrorBoundary>
@@ -108,7 +110,8 @@ const DashboardRoute = () => <ProtectedPage page={Dashboard} />;
 const MarketsRoute = () => <ProtectedPage page={Markets} />;
 const BotsRoute = () => <ProtectedPage page={Bots} />;
 const RecoveryRoute = () => <ProtectedPage page={Recovery} />;
-const BulkTradeRoute = () => <ProtectedPage page={BulkTrade} />;
+const CreateBotRoute = () => <ProtectedPage page={BulkTrade} />;
+const BulkTraderRoute = () => <ProtectedPage page={BulkTrader} />;
 
 function RoutedErrorBoundary({ children }: { children: ReactNode }) {
   const [location] = useLocation();
