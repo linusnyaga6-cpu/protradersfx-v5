@@ -49,9 +49,9 @@ export default function Home() {
              Trade like a pro.
           </div>
           
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight text-foreground balance-text">
-            Trade with <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-white/40">clarity.</span>
-          </h1>
+           <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight text-foreground balance-text">
+             Trade <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-white/40">like a pro.</span>
+           </h1>
           
           <p className="max-w-2xl mx-auto text-lg md:text-xl text-muted-foreground font-light leading-relaxed">
             Live market context, bot templates, and visible risk boundaries. A focused environment built for discipline, devoid of noise.
