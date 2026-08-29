@@ -191,7 +191,7 @@ export default function Dashboard() {
 
   return (
     <div className="flex-1 p-4 md:p-8 bg-background max-w-6xl mx-auto w-full">
-      <div className="mb-8 flex flex-col gap-5 rounded-2xl border border-white/5 bg-card/50 p-5 shadow-xl md:flex-row md:items-center md:justify-between">
+      <div className="mb-8 flex flex-col gap-5 rounded-2xl border border-primary/20 bg-card/50 p-5 shadow-xl md:flex-row md:items-center md:justify-between">
         <div>
           <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.22em] text-success">
             <span className="h-2 w-2 rounded-full bg-success shadow-[0_0_14px_hsl(var(--success))]" />
@@ -202,20 +202,43 @@ export default function Dashboard() {
             <Lock className="h-4 w-4" /> Encrypted Deriv session
           </p>
         </div>
-        <div className="flex w-full flex-col gap-2 md:w-[250px]">
-          <Label htmlFor="active-account" className="text-[10px] uppercase tracking-[.2em] text-muted-foreground">Active account</Label>
-          <Select value={account?.accountType || "demo"} onValueChange={switchAccount}>
-            <SelectTrigger id="active-account" className="h-11 bg-background/70" data-testid="select-account-type">
-              <SelectValue placeholder="Choose account" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="demo">Demo account</SelectItem>
-              <SelectItem value="real">Real account</SelectItem>
-            </SelectContent>
-          </Select>
-          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-            <span className="font-mono">{account?.loginid || "SYNCING"}</span>
-            <span>Switch via Deriv</span>
+        <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end md:w-auto">
+          <div className="min-w-[210px] rounded-xl border border-primary/25 bg-primary/10 px-4 py-3" data-testid="top-account-balance">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[10px] font-semibold uppercase tracking-[.2em] text-primary">Available balance</span>
+              <Wallet className="h-4 w-4 text-primary" />
+            </div>
+            <div className="mt-1 text-2xl font-bold font-numeric tracking-tight" data-testid="top-balance">
+              {accountLoading ? (
+                <span className="text-muted-foreground">Syncing…</span>
+              ) : account?.balance != null ? (
+                <>
+                  <span className="mr-2 text-sm text-muted-foreground">{account.currency || ""}</span>
+                  {account.balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </>
+              ) : (
+                <span className="text-amber-400">Unavailable</span>
+              )}
+            </div>
+            <div className="mt-1 text-[11px] text-muted-foreground">
+              {account?.loginid || (accountError ? "Reconnect required" : "Loading account")}
+            </div>
+          </div>
+          <div className="flex w-full flex-col gap-2 sm:w-[210px]">
+            <Label htmlFor="active-account" className="text-[10px] uppercase tracking-[.2em] text-muted-foreground">Active account</Label>
+            <Select value={account?.accountType || "demo"} onValueChange={switchAccount}>
+              <SelectTrigger id="active-account" className="h-11 bg-background/70" data-testid="select-account-type">
+                <SelectValue placeholder="Choose account" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="demo">Demo account</SelectItem>
+                <SelectItem value="real">Real account</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+              <span className="font-mono">{account?.loginid || "SYNCING"}</span>
+              <span>Switch via Deriv</span>
+            </div>
           </div>
         </div>
       </div>
@@ -256,44 +279,6 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Account Overview Panel */}
         <div className="lg:col-span-1 space-y-6">
-          <Card className="overflow-hidden border-primary/20 shadow-xl">
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between gap-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Available Balance</CardTitle>
-                <Badge variant={account?.accountType === "real" ? "destructive" : "success"} className="uppercase">
-                  {account?.accountType || "syncing"}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold font-numeric tracking-tighter" data-testid="text-balance">
-                {account?.balance != null ? (
-                  <>
-                    <span className="text-muted-foreground text-lg mr-2">{account.currency || ''}</span>
-                    {account.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </>
-                ) : (
-                  '---'
-                )}
-              </div>
-              <div className="mt-4 flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Currency</span>
-                <span className="font-medium font-numeric">{account?.currency || '—'}</span>
-              </div>
-              <div className="mt-2 flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Open P&L</span>
-                <span className={`font-medium font-numeric ${
-                  account?.openPnl && account.openPnl > 0 ? 'text-success' : 
-                  account?.openPnl && account.openPnl < 0 ? 'text-destructive' : ''
-                }`} data-testid="text-pnl">
-                  {account?.openPnl != null ? (
-                    `${account.openPnl > 0 ? '+' : ''}${account.openPnl.toFixed(2)}`
-                  ) : 'Unavailable'}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-
           <Card className="bg-secondary/30">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground">Safety Controls</CardTitle>
