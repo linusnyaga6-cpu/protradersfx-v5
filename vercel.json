@@ -1,33 +1,37 @@
 {
-"version": 2,
-"builds": [
-{
-"src": "server.js",
-"use": "@vercel/node",
-"config": {
-"includeFiles": [
-"index.html",
-"style.css",
-"tracker.js",
-"workspace.html",
-"workspace.js",
-"signals.html",
-"marketplace.html",
-"builder.html",
-"course.html",
-"privacy.html",
-"terms.html",
-"favicon.svg",
-"logo.svg",
-"robots.txt"
-]
-}
-}
-],
-"routes": [
-{
-"src": "/(.*)",
-"dest": "server.js"
-}
-]
+  "version": 2,
+  "builds": [
+    {
+      "src": "artifacts/api-server/api/index.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "artifacts/protraders-fx/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist/public"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/health",
+      "dest": "artifacts/api-server/api/index.ts"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "artifacts/api-server/api/index.ts"
+    },
+    {
+      "src": "/oauth/(.*)",
+      "dest": "artifacts/api-server/api/index.ts"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
 }

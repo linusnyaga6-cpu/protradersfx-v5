@@ -1,1 +1,0 @@
-module.exports = async (req,res)=>res.status(501).json({error:'Account adapter not configured',message:'Account data is intentionally not fabricated. Configure the authenticated Deriv WebSocket/account adapter.'});

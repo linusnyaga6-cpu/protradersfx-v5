@@ -1,0 +1,649 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: protraders
+    description: ProTraders FX account and trading operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /config:
+    get:
+      operationId: getProtradersConfig
+      tags: [protraders]
+      summary: Read public Deriv configuration
+      responses:
+        "200":
+          description: Public configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProtradersConfig"
+  /preflight:
+    get:
+      operationId: getProtradersPreflight
+      tags: [protraders]
+      summary: Read deployment readiness
+      responses:
+        "200":
+          description: Readiness information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProtradersPreflight"
+  /deriv/login:
+    get:
+      operationId: startDerivLogin
+      tags: [protraders]
+      summary: Start Deriv login
+      responses:
+        "302":
+          description: Redirects to Deriv OAuth
+        "503":
+          description: OAuth is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /deriv/signup:
+    get:
+      operationId: startDerivSignup
+      tags: [protraders]
+      summary: Start Deriv signup
+      responses:
+        "302":
+          description: Redirects to Deriv OAuth registration
+        "503":
+          description: Signup is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /session:
+    get:
+      operationId: getSessionStatus
+      tags: [protraders]
+      summary: Read current authentication status
+      responses:
+        "200":
+          description: Session status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionStatus"
+  /logout:
+    post:
+      operationId: logout
+      tags: [protraders]
+      summary: End current session
+      responses:
+        "204":
+          description: Session ended
+  /track:
+    post:
+      operationId: trackEvent
+      tags: [protraders]
+      summary: Record an ephemeral product event
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrackEventInput"
+      responses:
+        "204":
+          description: Event recorded
+  /analytics:
+    get:
+      operationId: getAnalytics
+      tags: [protraders]
+      summary: Read ephemeral analytics
+      responses:
+        "200":
+          description: Ephemeral analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Analytics"
+  /account:
+    get:
+      operationId: getAccount
+      tags: [protraders]
+      summary: Read the authenticated Deriv account
+      parameters:
+        - name: account_type
+          in: query
+          required: false
+          description: Select the Deriv demo or real account to display and use.
+          schema:
+            type: string
+            enum: [demo, real]
+      responses:
+        "200":
+          description: Account data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Account"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /trades:
+    post:
+      operationId: createTrade
+      tags: [protraders]
+      summary: Open a controlled Deriv trade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TradeExecutionInput"
+      responses:
+        "200":
+          description: Trade opened
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TradeResult"
+        "400":
+          description: Invalid trade parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Demo account required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Trading disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /trades/preview:
+    post:
+      operationId: previewTrade
+      tags: [protraders]
+      summary: Preview a provider-backed Deriv proposal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TradePreviewInput"
+      responses:
+        "200": { description: Provider proposal, content: { application/json: { schema: { $ref: "#/components/schemas/TradePreview" } } } }
+        "400": { description: Invalid proposal, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "401": { description: Not authenticated, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+  /transactions:
+    get:
+      operationId: listTransactions
+      tags: [protraders]
+      summary: List the authenticated user's trade transactions
+      responses:
+        "200": { description: Transaction ledger, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }
+        "401": { description: Not authenticated, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+  /transactions/{id}:
+    get:
+      operationId: getTransaction
+      tags: [protraders]
+      summary: Read one owned trade transaction
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Transaction, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }
+        "401": { description: Not authenticated, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "404": { description: Transaction not found, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+  /transactions/{id}/refresh:
+    post:
+      operationId: refreshTransaction
+      tags: [protraders]
+      summary: Poll Deriv for an open contract settlement
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Refreshed transaction, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }
+        "401": { description: Not authenticated, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+  /market/symbols:
+    get:
+      operationId: listMarketSymbols
+      tags: [protraders]
+      summary: List active Deriv market symbols
+      responses:
+        "200": { description: Active symbols, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }
+  /market/contracts/{symbol}:
+    get:
+      operationId: getMarketContracts
+      tags: [protraders]
+      summary: List Deriv contract types available for a symbol
+      parameters:
+        - { name: symbol, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Available Deriv contract types, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }
+  /market/ticker/{symbol}:
+    get:
+      operationId: getMarketTicker
+      tags: [protraders]
+      summary: Read a live Deriv ticker
+      parameters: [{ name: symbol, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Ticker, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }
+  /market/candles/{symbol}:
+    get:
+      operationId: getMarketCandles
+      tags: [protraders]
+      summary: Read candles and deterministic indicators
+      parameters:
+        - { name: symbol, in: path, required: true, schema: { type: string } }
+        - { name: granularity, in: query, schema: { type: integer } }
+        - { name: count, in: query, schema: { type: integer } }
+      responses:
+        "200": { description: Candle data, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }
+  /market/analyze:
+    post:
+      operationId: analyzeMarket
+      tags: [protraders]
+      summary: Generate a bounded advisory market scan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MarketScanInput"
+      responses:
+        "200": { description: Advisory market analysis, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }
+        "401": { description: Not authenticated, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "503": { description: Scanner unavailable, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+  /market/scan-best:
+    post:
+      operationId: scanBestMarket
+      tags: [protraders]
+      summary: Rank fresh volatility markets for review
+      responses:
+        "200": { description: Ranked volatility markets, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }
+        "401": { description: Not authenticated, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "503": { description: Scan unavailable, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+  /templates:
+    get: { operationId: listBotTemplates, tags: [protraders], summary: List built-in and owned bot templates, responses: { "200": { description: Templates, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+    post: { operationId: createBotTemplate, tags: [protraders], summary: Create an owned bot template, requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }, responses: { "201": { description: Template created, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+  /templates/{id}:
+    patch: { operationId: updateBotTemplate, tags: [protraders], summary: Update an owned bot template, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }, responses: { "200": { description: Template updated, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+  /templates/{id}/archive:
+    post: { operationId: archiveBotTemplate, tags: [protraders], summary: Archive an owned bot template, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { "200": { description: Template archived, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+  /bots:
+    get: { operationId: listBots, tags: [protraders], summary: List owned bots, responses: { "200": { description: Bots, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+    post: { operationId: createBot, tags: [protraders], summary: Create a dry-run-only bot, requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/BotInput" } } } }, responses: { "201": { description: Bot created, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+  /bots/{id}:
+    patch: { operationId: updateBot, tags: [protraders], summary: Update a dry-run-only bot, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/BotPatchInput" } } } }, responses: { "200": { description: Bot updated, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+  /bots/{id}/runs:
+    get: { operationId: listBotRuns, tags: [protraders], summary: List persisted owner-scoped bot runs newest first, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { "200": { description: Bot runs and authoritative trading gate state, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }, "401": { description: Not authenticated, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }, "404": { description: Bot not found, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } } } }
+  /bots/{id}/{action}:
+    post: { operationId: changeBotLifecycle, tags: [protraders], summary: Start pause stop or archive a bot, parameters: [{ name: id, in: path, required: true, schema: { type: string } }, { name: action, in: path, required: true, schema: { type: string, enum: [start, pause, stop, archive] } }], responses: { "200": { description: Lifecycle state persisted, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+  /bots/{id}/run-once:
+    post: { operationId: runBotOnce, tags: [protraders], summary: Evaluate a bot once as a dry run, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { "200": { description: Evaluation, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+  /snapshots:
+    get: { operationId: listSnapshots, tags: [protraders], summary: List account snapshots, responses: { "200": { description: Snapshots, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+    post: { operationId: createSnapshot, tags: [protraders], summary: Create an account snapshot, requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }, responses: { "201": { description: Snapshot created, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+  /snapshots/{id}:
+    get: { operationId: getSnapshot, tags: [protraders], summary: Read an account snapshot, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { "200": { description: Snapshot, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+  /risk-acknowledgements/status:
+    get: { operationId: getRiskAcknowledgementStatus, tags: [protraders], summary: Read risk acknowledgement status, responses: { "200": { description: Status, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+  /risk-acknowledgements/accept:
+    post: { operationId: acceptRiskAcknowledgement, tags: [protraders], summary: Accept current risk disclosure, requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }, responses: { "201": { description: Acknowledged, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+  /recovery-incidents:
+    get: { operationId: listRecoveryIncidents, tags: [protraders], summary: List recovery incidents, responses: { "200": { description: Incidents, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+    post: { operationId: createRecoveryIncident, tags: [protraders], summary: Report a recoverable incident, requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }, responses: { "201": { description: Incident reported, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+  /recovery-incidents/{id}:
+    get: { operationId: getRecoveryIncident, tags: [protraders], summary: Read a recovery incident, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { "200": { description: Incident, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } } } }
+  /recovery-incidents/{id}/analyze:
+    post: { operationId: analyzeRecoveryIncident, tags: [protraders], summary: Get bounded advisory AI incident analysis, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { "200": { description: Advisory analysis, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }, "503": { description: AI unavailable, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } } } }
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required:
+        - error
+    WorkspaceData:
+      type: object
+      additionalProperties: true
+    DryRunStrategy:
+      type: object
+      additionalProperties: false
+      required: [indicator, direction, stake, duration, riskCap, execution]
+      properties:
+        indicator: { type: string, enum: [ema, rsi, macd] }
+        direction: { type: string, enum: [CALL, PUT, BOTH] }
+        mode: { type: string, enum: [market_observer, recovery_guard] }
+        contractType: { type: string, enum: [CALL, PUT, DIGITOVER, DIGITUNDER, DIGITEVEN, DIGITODD] }
+        barrier: { type: string, pattern: "^[0-9]$" }
+        stopLoss: { type: number, exclusiveMinimum: 0, maximum: 10000 }
+        runCount: { type: number, minimum: 1, maximum: 10, multipleOf: 1 }
+        takeProfit: { type: number, exclusiveMinimum: 0, maximum: 100000 }
+        stake: { type: number, exclusiveMinimum: 0 }
+        duration: { type: number, minimum: 1, maximum: 3600, multipleOf: 1 }
+        riskCap: { type: number, exclusiveMinimum: 0, maximum: 100000 }
+        notes: { type: string, maxLength: 1000 }
+        execution: { type: string, enum: [dry_run] }
+    MarketScanInput:
+      type: object
+      additionalProperties: false
+      required: [symbol]
+      properties:
+        symbol: { type: string, minLength: 1, maxLength: 30, pattern: "^[A-Z0-9_]+$" }
+    BotInput:
+      type: object
+      additionalProperties: false
+      required: [name, symbol, config]
+      properties:
+        name: { type: string, maxLength: 160 }
+        symbol: { type: string, maxLength: 30 }
+        templateId: { type: ["string", "null"] }
+        config: { $ref: "#/components/schemas/DryRunStrategy" }
+    BotPatchInput:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, maxLength: 160 }
+        symbol: { type: string, maxLength: 30 }
+        config: { $ref: "#/components/schemas/DryRunStrategy" }
+    ProtradersConfig:
+      type: object
+      properties:
+        configured:
+          type: boolean
+        loginConfigured:
+          type: boolean
+        signupConfigured:
+          type: boolean
+        publicAppId:
+          type: string
+        partnerParam:
+          type: string
+        campaign:
+          type: string
+      required:
+        - configured
+        - loginConfigured
+        - signupConfigured
+        - publicAppId
+        - partnerParam
+        - campaign
+    ProtradersPreflight:
+      type: object
+      properties:
+        productionBaseUrl:
+          type: string
+        redirectUri:
+          type: string
+        https:
+          type: boolean
+        oauthClientConfigured:
+          type: boolean
+        partnerTrackingConfigured:
+          type: boolean
+        sessionSecretConfigured:
+          type: boolean
+        publicAppConfigured:
+          type: boolean
+        frontendConfigured:
+          type: boolean
+        tradingEnabled:
+          type: boolean
+        liveTradingEnabled:
+          type: boolean
+        demoOnly:
+          type: boolean
+        maxDuration:
+          type: number
+        allowedSymbols:
+          type: array
+          items:
+            type: string
+        executionMode:
+          type: string
+          enum: [DISABLED, DEMO, BOTH, "LIVE LOCKED"]
+        readyForControlledLiveTest:
+          type: boolean
+        readyForRealTrading:
+          type: boolean
+      required:
+        - productionBaseUrl
+        - redirectUri
+        - https
+        - oauthClientConfigured
+        - partnerTrackingConfigured
+        - sessionSecretConfigured
+        - publicAppConfigured
+        - frontendConfigured
+        - tradingEnabled
+        - liveTradingEnabled
+        - demoOnly
+        - maxDuration
+        - allowedSymbols
+        - executionMode
+        - readyForControlledLiveTest
+        - readyForRealTrading
+    SessionStatus:
+      type: object
+      properties:
+        authenticated:
+          type: boolean
+        expiresAt:
+          type: ["number", "null"]
+      required:
+        - authenticated
+    TrackEventInput:
+      type: object
+      properties:
+        type:
+          type: string
+        path:
+          type: string
+    Analytics:
+      type: object
+      properties:
+        visitors:
+          type: number
+        registrations:
+          type: number
+        oauthSuccesses:
+          type: number
+        fundedAccounts:
+          type: ["number", "null"]
+        note:
+          type: string
+        ephemeral:
+          type: boolean
+      required:
+        - visitors
+        - registrations
+        - oauthSuccesses
+        - fundedAccounts
+        - note
+        - ephemeral
+    Account:
+      type: object
+      properties:
+        authenticated:
+          type: boolean
+        balance:
+          type: ["number", "null"]
+        currency:
+          type: ["string", "null"]
+        loginid:
+          type: ["string", "null"]
+        accountType:
+          type: string
+          enum: [demo, real]
+        openPnl:
+          type: ["number", "null"]
+      required:
+        - authenticated
+        - balance
+        - currency
+        - loginid
+        - accountType
+        - openPnl
+    TradePreviewInput:
+      type: object
+      properties:
+        symbol:
+          type: string
+        contract_type:
+          type: string
+          enum: [CALL, PUT, DIGITOVER, DIGITUNDER, DIGITEVEN, DIGITODD]
+        barrier:
+          type: string
+          pattern: "^[0-9]$"
+          description: Required for digit over and digit under contracts.
+        stop_loss:
+          type: number
+          exclusiveMinimum: 0
+        stake:
+          type: number
+          exclusiveMinimum: 0
+        duration:
+          type: number
+          minimum: 1
+        source:
+          type: string
+          enum: [manual, bulk, ai_assisted, bot_assisted]
+        request_label:
+          type: string
+          maxLength: 120
+        session_id:
+          type: string
+          maxLength: 80
+        live_confirmation:
+          type: string
+          enum: [CONFIRM_LIVE_TRADE]
+          description: Required only for real-money accounts; ignored for demo accounts.
+        proposal_token:
+          type: string
+          description: Signed short-lived token returned by the proposal preview.
+      required:
+        - symbol
+        - contract_type
+        - stake
+        - duration
+    TradeExecutionInput:
+      type: object
+      properties:
+        symbol: { type: string }
+        contract_type:
+          type: string
+          enum: [CALL, PUT, DIGITOVER, DIGITUNDER, DIGITEVEN, DIGITODD]
+        barrier:
+          type: string
+          pattern: "^[0-9]$"
+        stop_loss:
+          type: number
+          exclusiveMinimum: 0
+        stake:
+          type: number
+          exclusiveMinimum: 0
+        duration:
+          type: number
+          minimum: 1
+        source:
+          type: string
+          enum: [manual, bulk, ai_assisted, bot_assisted]
+        request_label:
+          type: string
+          maxLength: 120
+        session_id:
+          type: string
+          maxLength: 80
+        live_confirmation:
+          type: string
+          enum: [CONFIRM_LIVE_TRADE]
+        proposal_token:
+          type: string
+          description: Required signed single-use token returned by proposal preview.
+      required: [symbol, contract_type, stake, duration, proposal_token]
+    TradePreview:
+      type: object
+      properties:
+        proposalToken: { type: string }
+        symbol: { type: string }
+        contractType: { type: string }
+        stake: { type: number }
+        duration: { type: number }
+        barrier: { type: ["string", "null"] }
+        askPrice: { type: ["number", "null"] }
+        payout: { type: ["number", "null"] }
+        longcode: { type: ["string", "null"] }
+        expiresAt: { type: string, format: date-time }
+        stopLossNote: { type: string }
+      required: [proposalToken, symbol, contractType, stake, duration, barrier, askPrice, payout, longcode, expiresAt, stopLossNote]
+    TradeResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        message:
+          type: string
+        contractId:
+          type: ["string", "null"]
+        transactionId:
+          type: ["string", "null"]
+        status:
+          type: string
+        netProfit:
+          type: ["number", "null"]
+        stopLossApplied:
+          type: ["boolean", "null"]
+        stopLossMessage:
+          type: ["string", "null"]
+      required:
+        - ok
+        - message
+        - contractId
+        - transactionId
+        - status
+        - netProfit
+        - stopLossApplied
+        - stopLossMessage
+

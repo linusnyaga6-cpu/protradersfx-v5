@@ -11,6 +11,17 @@ out-tsc
 # dependencies
 node_modules
 
+# environment and secret material
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*.json
+secrets*.json
+
 # IDEs and editors
 /.idea
 .project

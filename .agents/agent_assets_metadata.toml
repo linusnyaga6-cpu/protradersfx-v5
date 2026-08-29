@@ -1,0 +1,30 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "S2TZPoXgLbqyzQOF0HdQ_"
+uri = "file://exports/protradersfx-v5-source.tar.gz"
+type = "unspecified"
+title = "ProTraders FX Source Archive"
+description = "Verified source archive for the secure Deriv demo-and-real trading workspace. Workspace-internal metadata and secrets are excluded."
+logical_id = "6933278e-37c7-4434-94ac-872d9469ab4b"
+content_hash = "sha256:4611dac5469612b08a26cb777dd3700c1c56a7c5355f14b2cfc6bef8d0572028"
+size = 165946
+mtime_ms = 1787941671957
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:d2226b06-4baa-4e65-a60d-b57c47a30dec/6933278e-37c7-4434-94ac-872d9469ab4b/64668ff9-c17f-4da3-a9da-505db0a5baba"
+storage_version_token = "1787941678045182"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "crb4QvbxfP7JCOjV3Lzxy"
+uri = "file://protraders-fx-project.zip"
+type = "unspecified"
+title = "Download ProTraders FX ZIP"
+description = "Complete updated ProTraders FX source package."
+logical_id = "019d8777-f415-4942-ad2f-27c6f90dad5f"
+content_hash = "sha256:3aede975343953b0451fddc4d0edded2d1f12161868932d88ddb1c6f14d79b6d"
+size = 341245
+mtime_ms = 1787990493382
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:d2226b06-4baa-4e65-a60d-b57c47a30dec/019d8777-f415-4942-ad2f-27c6f90dad5f/2758f4ac-3c4d-4b55-a4a4-6c6bcfb71365"
+storage_version_token = "1787990574343085"
+content_type = "application/octet-stream"
