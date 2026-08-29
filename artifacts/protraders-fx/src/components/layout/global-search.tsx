@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button"
 const markets = ["R_100", "R_75", "R_50", "R_25", "1HZ100V", "BOOM_500"]
 
 const pages = [
+  { label: "Analysis Tools", hint: "Live quotes and movement", href: "/analysis", icon: BarChart3 },
   { label: "Markets", hint: "Quotes, charts, and instruments", href: "/markets", icon: BarChart3 },
   { label: "Bots", hint: "Templates and visual builder", href: "/bots", icon: Bot },
   { label: "Bulk Trade", hint: "Review a multi-market batch", href: "/bulk-trade", icon: BarChart3 },

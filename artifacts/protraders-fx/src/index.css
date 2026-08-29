@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Syne:wght@600;700;800&display=swap');
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @plugin "@tailwindcss/typography";
@@ -64,51 +64,52 @@
 }
 
 :root {
-  --app-font-sans: 'Plus Jakarta Sans', sans-serif;
+  --app-font-sans: 'DM Sans', sans-serif;
   --app-font-mono: 'Space Mono', monospace;
+  --app-font-display: 'Syne', sans-serif;
 
-  /* Atmospheric dark terminal palette as default */
-  --background: 225 30% 6%;
-  --foreground: 214 32% 91%;
-  --border: 220 20% 14%;
+  /* Night-chart palette: graphite ink, oxidized lime, and warm signal amber */
+  --background: 220 22% 8%;
+  --foreground: 44 30% 93%;
+  --border: 220 16% 18%;
   
-  --card: 225 30% 7%;
-  --card-foreground: 214 32% 91%;
-  --card-border: 220 20% 14%;
+  --card: 220 20% 11%;
+  --card-foreground: 44 30% 93%;
+  --card-border: 220 16% 18%;
 
-  --popover: 225 30% 7%;
-  --popover-foreground: 214 32% 91%;
-  --popover-border: 220 20% 14%;
+  --popover: 220 20% 11%;
+  --popover-foreground: 44 30% 93%;
+  --popover-border: 220 16% 18%;
 
-  --primary: 210 100% 55%;
-  --primary-foreground: 0 0% 100%;
+  --primary: 72 78% 57%;
+  --primary-foreground: 220 22% 8%;
   
-  --secondary: 220 20% 14%;
-  --secondary-foreground: 214 32% 91%;
+  --secondary: 220 17% 15%;
+  --secondary-foreground: 44 30% 93%;
 
-  --muted: 220 20% 14%;
-  --muted-foreground: 215 20% 65%;
+  --muted: 220 17% 15%;
+  --muted-foreground: 218 12% 63%;
 
-  --accent: 210 100% 55%;
-  --accent-foreground: 0 0% 100%;
+  --accent: 34 92% 62%;
+  --accent-foreground: 220 22% 8%;
 
-  --destructive: 350 80% 60%;
-  --destructive-foreground: 0 0% 100%;
+  --destructive: 4 74% 62%;
+  --destructive-foreground: 44 30% 93%;
   
-  --success: 150 80% 45%;
-  --success-foreground: 0 0% 100%;
+  --success: 142 56% 53%;
+  --success-foreground: 220 22% 8%;
 
-  --input: 220 20% 14%;
-  --ring: 210 100% 55%;
+  --input: 220 16% 19%;
+  --ring: 72 78% 57%;
 
-  --sidebar: 225 30% 5%;
-  --sidebar-foreground: 214 32% 91%;
-  --sidebar-border: 220 20% 14%;
-  --sidebar-primary: 210 100% 55%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 220 20% 14%;
-  --sidebar-accent-foreground: 214 32% 91%;
-  --sidebar-ring: 210 100% 55%;
+  --sidebar: 220 23% 6%;
+  --sidebar-foreground: 44 30% 93%;
+  --sidebar-border: 220 16% 15%;
+  --sidebar-primary: 72 78% 57%;
+  --sidebar-primary-foreground: 220 22% 8%;
+  --sidebar-accent: 220 17% 13%;
+  --sidebar-accent-foreground: 44 30% 93%;
+  --sidebar-ring: 72 78% 57%;
 
   --radius: 0.5rem;
 
@@ -128,7 +129,7 @@
 }
 
 .dark {
-  /* Inherits from :root since we default to dark theme */
+  /* The workspace and public shell intentionally share the same night-chart contrast. */
 }
 
 @layer base {
@@ -138,6 +139,10 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+  }
+
+  h1, h2, h3 {
+    font-family: var(--app-font-display);
   }
 }
 
@@ -157,5 +162,23 @@
   
   .glass-panel {
     @apply bg-background/60 backdrop-blur-md border border-white/10 shadow-sm;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .noise-layer::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 60;
+    opacity: .025;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.65'/%3E%3C/svg%3E");
+  }
+
+  .font-display {
+    font-family: var(--app-font-display);
   }
 }

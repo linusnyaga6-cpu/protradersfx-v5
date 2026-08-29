@@ -1,11 +1,14 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { BarChart3, RefreshCw, Radio, Search, WifiOff } from "lucide-react"
-import { useGetMarketCandles, getGetMarketCandlesQueryKey, useGetMarketTicker, getGetMarketTickerQueryKey, useListMarketSymbols, getListMarketSymbolsQueryKey } from "@workspace/api-client-react"
+import { useGetMarketCandles, getGetMarketCandlesQueryKey, useGetMarketTicker, getGetMarketTickerQueryKey, useListMarketSymbols, getListMarketSymbolsQueryKey, useGetAccount, getGetAccountQueryKey, useListBots, getListBotsQueryKey, useListBotRuns, getListBotRunsQueryKey } from "@workspace/api-client-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { AccountStrip } from "@/components/trading/account-strip"
+import { BotRunSummary } from "@/components/trading/bot-run-summary"
 import { formatVolatility } from "@/lib/format"
 
 const fallback = ["R_10","R_25","R_50","R_75","R_100","1HZ10V","1HZ25V","1HZ50V","1HZ75V","1HZ100V","1HZ150V","1HZ250V","frxAUDUSD","frxEURUSD","frxGBPUSD","frxUSDJPY"]
@@ -15,6 +18,15 @@ export default function Markets() {
   const symbols = useListMarketSymbols({query:{queryKey:getListMarketSymbolsQueryKey(),staleTime:30000}})
   const ticker = useGetMarketTicker(symbol,{query:{queryKey:getGetMarketTickerQueryKey(symbol),refetchInterval:3000}})
   const candles = useGetMarketCandles(symbol,{count:60,granularity:60},{query:{queryKey:getGetMarketCandlesQueryKey(symbol,{count:60,granularity:60}),staleTime:30000}})
+  const account = useGetAccount({query:{queryKey:getGetAccountQueryKey(),refetchInterval:5000}})
+  const bots = useListBots({query:{queryKey:getListBotsQueryKey(),refetchInterval:10000}})
+  const botList = Array.isArray((bots.data as any)?.bots) ? (bots.data as any).bots : []
+  const [selectedBotId,setSelectedBotId] = useState("")
+  useEffect(() => {
+    if (!selectedBotId && botList[0]?.id) setSelectedBotId(String(botList[0].id))
+  }, [selectedBotId, botList])
+  const botRuns = useListBotRuns(selectedBotId,{query:{queryKey:getListBotRunsQueryKey(selectedBotId),enabled:Boolean(selectedBotId),refetchInterval:5000}})
+  const botRunRows = Array.isArray((botRuns.data as any)?.runs) ? (botRuns.data as any).runs : []
   const providerSymbols = Array.isArray((symbols.data as any)?.symbols) ? (symbols.data as any).symbols : []
   const list = providerSymbols.length ? providerSymbols : fallback
   const visibleSymbols = list.filter((item:any) => {
@@ -23,7 +35,8 @@ export default function Markets() {
   })
   const tick = ticker.data as any; const candle = candles.data as any
   const tickerOffline = ticker.isError || tick?.available === false
-  return <Workspace title="Markets" eyebrow="Market observatory" description="Transparent Deriv data with freshness visible at every layer.">
+  return <Workspace title="Markets" eyebrow="TradeView · Market observatory" description="Transparent Deriv data with freshness visible at every layer.">
+     <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} />
     <div className="grid gap-5 lg:grid-cols-[250px_1fr]">
        <Card><CardHeader><CardTitle className="text-sm uppercase tracking-widest text-muted-foreground">Instruments</CardTitle></CardHeader><CardContent className="space-y-2">
          <div className="relative mb-3"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground"/><Input aria-label="Search symbols" data-testid="input-symbol-search" className="pl-9" placeholder="Filter symbols" value={marketSearch} onChange={event => setMarketSearch(event.target.value)}/></div>
@@ -34,6 +47,18 @@ export default function Markets() {
          <div className="grid gap-5 md:grid-cols-4"><DataCard label="Bid / ask" value={tick?.bid && tick?.ask ? `${tick.bid} / ${tick.ask}` : "Unavailable"} /><DataCard label="Freshness" value={ticker.isFetching?"Syncing":"Auto-refresh 3s"} /><DataCard label="Volatility" value={candle?.indicators ? formatVolatility(candle.indicators.volatilityLevel, candle.indicators.volatilityPct) : "Not available"} /><DataCard label="Analysis" value={candle?.indicators ? "Deterministic indicators" : "Not available"} /></div>
       </div>
     </div>
+     {botList.length ? (
+       <Card>
+         <CardHeader className="flex flex-col gap-3 border-b bg-secondary/10 sm:flex-row sm:items-center sm:justify-between">
+           <div><CardTitle className="text-lg">Bot results in TradeView</CardTitle><p className="mt-1 text-xs text-muted-foreground">Review recorded runs alongside the live market context.</p></div>
+           <Select value={selectedBotId} onValueChange={setSelectedBotId}>
+             <SelectTrigger className="w-full bg-background sm:w-[240px]" data-testid="select-tradeview-bot"><SelectValue placeholder="Choose a bot" /></SelectTrigger>
+             <SelectContent>{botList.map((bot:any) => <SelectItem key={bot.id} value={String(bot.id)}>{bot.name ?? bot.symbol ?? "Unnamed bot"}</SelectItem>)}</SelectContent>
+           </Select>
+         </CardHeader>
+         <CardContent className="pt-5"><BotRunSummary runs={botRunRows} accountCurrency={account.data?.currency ?? undefined} /></CardContent>
+       </Card>
+     ) : null}
   </Workspace>
 }
 function ChartGrid({data}:{data:any}) { const points=Array.isArray(data?.candles)?data.candles:[]; const closes=points.map((p:any)=>Number(p.close)).filter(Number.isFinite); const min=Math.min(...closes),max=Math.max(...closes),range=max-min||1; return <div className="relative h-full w-full">{[25,50,75].map(y=><div key={y} className="absolute left-0 right-0 border-t border-dashed border-border/70" style={{top:`${y}%`}}/>)}{points.length>1?<><svg viewBox="0 0 600 200" preserveAspectRatio="none" className="h-full w-full"><polyline fill="none" stroke="hsl(var(--primary))" strokeWidth="2" points={points.map((p:any,i:number)=>`${i/(points.length-1)*600},${185-((Number(p.close)-min)/range)*165}`).join(" ")}/></svg><div className="absolute left-1 top-1 text-[10px] text-muted-foreground">{max.toFixed(4)}</div><div className="absolute bottom-1 left-1 text-[10px] text-muted-foreground">{min.toFixed(4)}</div></>:<div className="grid h-full place-items-center text-sm text-muted-foreground"><WifiOff className="mr-2 inline h-4 w-4"/>No candle history returned</div>}</div> }

@@ -9,9 +9,12 @@ import {
   useListBotTemplates, getListBotTemplatesQueryKey,
   useCreateBot, useUpdateBot, useChangeBotLifecycle, useRunBotOnce,
   useListBotRuns, getListBotRunsQueryKey,
-  useCreateBotTemplate, useUpdateBotTemplate, useArchiveBotTemplate
+  useCreateBotTemplate, useUpdateBotTemplate, useArchiveBotTemplate,
+  useGetAccount, getGetAccountQueryKey
 } from "@workspace/api-client-react"
 import { Workspace } from "./markets"
+import { AccountStrip } from "@/components/trading/account-strip"
+import { BotRunSummary } from "@/components/trading/bot-run-summary"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -25,6 +28,7 @@ export default function Bots() {
   const client = useQueryClient();
   const bots = useListBots({ query: { queryKey: getListBotsQueryKey(), refetchInterval: 10000 } });
   const templates = useListBotTemplates({ query: { queryKey: getListBotTemplatesQueryKey() } });
+  const account = useGetAccount({ query: { queryKey: getGetAccountQueryKey(), refetchInterval: 5000 } });
 
   const create = useCreateBot();
   const life = useChangeBotLifecycle();
@@ -77,6 +81,7 @@ export default function Bots() {
 
   return (
     <Workspace title="Bots" eyebrow="Controlled automation" description="Validate first. Every new bot begins in observation mode and stays behind lifecycle controls.">
+      <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} />
       <div className="flex items-center justify-between">
         <Badge variant="outline" className="bg-background"><ShieldCheck className="mr-1 h-3 w-3" />Dry-run default</Badge>
         <Button onClick={() => add({name:"Blank observation",id:"blank",strategy:{}})} data-testid="button-create-bot">
@@ -129,7 +134,7 @@ export default function Bots() {
                     </div>
                   </div>
                   <div className="flex w-full gap-2 mt-1">
-                    <Button size="sm" variant="outline" className="flex-1 bg-background" onClick={(e) => { e.stopPropagation(); run.mutate({id:String(bot.id)}, {onSuccess:r=>setNotice(`Dry-run complete: ${String((r as any)?.result?.recommendation?.action ?? "result available")}`),onError:e=>setNotice(`Run failed: ${e.message}`)})}} disabled={run.isPending} data-testid={`button-run-bot-${bot.id}`}>
+                     <Button size="sm" variant="outline" className="flex-1 bg-background" onClick={(e) => { e.stopPropagation(); run.mutate({id:String(bot.id)}, {onSuccess:r=>{client.invalidateQueries({queryKey:getListBotRunsQueryKey(String(bot.id))});setNotice(`Dry-run complete: ${String((r as any)?.result?.recommendation?.action ?? (r as any)?.result?.action ?? "result available")}`)},onError:e=>setNotice(`Run failed: ${e.message}`)})}} disabled={run.isPending} data-testid={`button-run-bot-${bot.id}`}>
                       <RotateCcw className="mr-2 h-3 w-3"/>Run once
                     </Button>
                     <Button size="sm" variant={bot.status === "observing" ? "secondary" : "default"} className="flex-1" onClick={(e) => { e.stopPropagation(); life.mutate({id:String(bot.id),action:bot.status==="observing"?"pause":"start"},{onSuccess:()=>{client.invalidateQueries({queryKey:getListBotsQueryKey()});setNotice("Lifecycle state updated.")},onError:e=>setNotice(`Lifecycle failed: ${e.message}`)})}} disabled={bot.status === 'archived'} data-testid={`button-toggle-bot-${bot.id}`}>
@@ -179,7 +184,7 @@ export default function Bots() {
 
         <div className="h-full">
           {selectedBot ? (
-            <BotBuilder bot={selectedBot} onUpdate={() => client.invalidateQueries({queryKey:getListBotsQueryKey()})} />
+            <BotBuilder bot={selectedBot} accountCurrency={account.data?.currency ?? undefined} onUpdate={() => client.invalidateQueries({queryKey:getListBotsQueryKey()})} />
           ) : (
             <Card className="h-full border-dashed bg-secondary/10 flex items-center justify-center min-h-[500px]">
               <div className="text-center p-8 max-w-sm">
@@ -199,7 +204,7 @@ export default function Bots() {
   )
 }
 
-function BotBuilder({ bot, onUpdate }: { bot: any, onUpdate: () => void }) {
+function BotBuilder({ bot, accountCurrency, onUpdate }: { bot: any, accountCurrency?: string, onUpdate: () => void }) {
   const update = useUpdateBot();
   const createTpl = useCreateBotTemplate();
   const client = useQueryClient();
@@ -403,74 +408,78 @@ function BotBuilder({ bot, onUpdate }: { bot: any, onUpdate: () => void }) {
         </CardContent>
       </Card>
 
-      <BotRunHistory botId={String(bot.id)} />
+      <BotRunHistory botId={String(bot.id)} accountCurrency={accountCurrency} />
     </div>
   );
 }
 
-function BotRunHistory({ botId }: { botId: string }) {
+function BotRunHistory({ botId, accountCurrency }: { botId: string; accountCurrency?: string }) {
   const runs = useListBotRuns(botId, { query: { queryKey: getListBotRunsQueryKey(botId), refetchInterval: 5000 } });
+  const runRows = Array.isArray((runs.data as any)?.runs) ? (runs.data as any).runs : [];
 
   return (
-    <Card className="shadow-sm">
-      <CardHeader className="bg-secondary/10 border-b pb-4">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Activity className="h-5 w-5 text-primary" />
-          Recent Dry-Runs
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="p-0">
-        {runs.isLoading ? (
-          <div className="p-10 text-center text-muted-foreground text-sm flex flex-col items-center justify-center">
-             <Loader2 className="mb-3 h-6 w-6 animate-spin text-primary"/> Loading history...
-          </div>
-        ) : runs.isError ? (
-          <div className="p-8 text-center text-destructive text-sm flex flex-col items-center justify-center">
-             <AlertCircle className="mb-2 h-6 w-6"/> Failed to load history
-          </div>
-        ) : (runs.data as any)?.runs?.length ? (
-          <div className="divide-y max-h-[300px] overflow-y-auto">
-            {((runs.data as any).runs).map((run: any) => (
-              <div key={run.id} className="p-4 flex items-center justify-between hover:bg-secondary/10 transition-colors">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm capitalize">{run.status}</span>
-                    <Badge variant="outline" className="text-[10px] uppercase tracking-widest">{run.mode}</Badge>
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1 font-mono">
-                    {new Date(run.startedAt || run.started_at || Date.now()).toLocaleString()}
-                  </div>
-                </div>
-                <div className="text-right max-w-[50%]">
-                  {run.result ? (
-                    <div className="text-xs bg-secondary/30 p-2 rounded border font-mono break-words" title={JSON.stringify(run.result, null, 2)}>
-                      <div className="font-semibold text-foreground">{run.result.action || run.result.error || "Completed"}</div>
-                      {run.result.exactInputs && (
-                        <div className="mt-1 text-[10px] text-muted-foreground">
-                           Considered: {run.result.exactInputs.indicator?.toUpperCase()} ({run.result.exactInputs.direction})
-                        </div>
-                      )}
-                      {run.result.dryRun && (
-                        <div className="mt-1 text-[10px] text-amber-600/80 font-sans font-medium bg-amber-500/10 px-1 py-0.5 rounded inline-block">
-                          DRY-RUN ONLY
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-xs text-muted-foreground italic">No result</span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="p-10 text-center text-sm text-muted-foreground">
-            <Clock className="h-8 w-8 mx-auto mb-3 text-muted-foreground/40" />
-            No dry-runs recorded yet. Click 'Run once' to test the configuration.
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    <div className="space-y-5">
+      <BotRunSummary runs={runRows} accountCurrency={accountCurrency} />
+      <Card className="shadow-sm">
+        <CardHeader className="bg-secondary/10 border-b pb-4">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Activity className="h-5 w-5 text-primary" />
+            Recent Dry-Runs
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {runs.isLoading ? (
+            <div className="p-10 text-center text-muted-foreground text-sm flex flex-col items-center justify-center">
+               <Loader2 className="mb-3 h-6 w-6 animate-spin text-primary"/> Loading history...
+            </div>
+          ) : runs.isError ? (
+            <div className="p-8 text-center text-destructive text-sm flex flex-col items-center justify-center">
+               <AlertCircle className="mb-2 h-6 w-6"/> Failed to load history
+            </div>
+          ) : runRows.length ? (
+             <div className="divide-y max-h-[300px] overflow-y-auto">
+               {runRows.map((run: any) => (
+                 <div key={run.id} className="p-4 flex items-center justify-between hover:bg-secondary/10 transition-colors">
+                   <div>
+                     <div className="flex items-center gap-2">
+                       <span className="font-semibold text-sm capitalize">{run.status}</span>
+                       <Badge variant="outline" className="text-[10px] uppercase tracking-widest">{run.mode}</Badge>
+                     </div>
+                     <div className="text-xs text-muted-foreground mt-1 font-mono">
+                       {new Date(run.startedAt || run.started_at || Date.now()).toLocaleString()}
+                     </div>
+                   </div>
+                   <div className="text-right max-w-[50%]">
+                     {run.result ? (
+                       <div className="text-xs bg-secondary/30 p-2 rounded border font-mono break-words" title={JSON.stringify(run.result, null, 2)}>
+                         <div className="font-semibold text-foreground">{run.result.action || run.result.error || "Completed"}</div>
+                         {run.result.exactInputs && (
+                           <div className="mt-1 text-[10px] text-muted-foreground">
+                              Considered: {run.result.exactInputs.indicator?.toUpperCase()} ({run.result.exactInputs.direction})
+                           </div>
+                         )}
+                         {run.result.dryRun && (
+                           <div className="mt-1 text-[10px] text-amber-600/80 font-sans font-medium bg-amber-500/10 px-1 py-0.5 rounded inline-block">
+                             DRY-RUN ONLY
+                           </div>
+                         )}
+                       </div>
+                     ) : (
+                       <span className="text-xs text-muted-foreground italic">No result</span>
+                     )}
+                   </div>
+                 </div>
+               ))}
+             </div>
+          ) : (
+            <div className="p-10 text-center text-sm text-muted-foreground">
+              <Clock className="h-8 w-8 mx-auto mb-3 text-muted-foreground/40" />
+              No dry-runs recorded yet. Click 'Run once' to test the configuration.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 

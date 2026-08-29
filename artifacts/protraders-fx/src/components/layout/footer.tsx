@@ -1,5 +1,5 @@
 import { Link } from "wouter"
-import { ArrowUpRight, HeartPulse, ShieldCheck } from "lucide-react"
+import { ArrowUpRight, HeartPulse, ShieldCheck, BookOpen } from "lucide-react"
 
 export function Footer() {
   return (
@@ -20,8 +20,11 @@ export function Footer() {
           <div className="text-xs font-mono font-semibold uppercase tracking-widest text-muted-foreground/60">Explore</div>
           <div className="mt-5 flex flex-col items-start gap-3 text-sm text-muted-foreground">
             <Link href="/about" className="transition-colors hover:text-foreground">About the author</Link>
-            <a href="https://www.traderscheme.com/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground">
-              Public reference <ArrowUpRight className="h-3.5 w-3.5 opacity-70" />
+            <Link href="/course" className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground" data-testid="link-footer-course">
+              Explore the course <BookOpen className="h-3.5 w-3.5 opacity-70" />
+            </Link>
+            <a href="/api/deriv/signup" className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground" data-testid="link-footer-signup">
+              Create free account <ArrowUpRight className="h-3.5 w-3.5 opacity-70" />
             </a>
           </div>
         </div>

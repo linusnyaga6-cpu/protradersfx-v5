@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Link, useLocation } from "wouter"
 import { cn } from "@/lib/utils"
-import { Activity, Home, LayoutDashboard, LogOut, BarChart3, Bot, CircleAlert, UserRound } from "lucide-react"
+import { Activity, Home, LayoutDashboard, LogOut, BarChart3, Bot, CircleAlert, UserRound, BookOpen, LineChart } from "lucide-react"
 import { useGetSessionStatus } from "@workspace/api-client-react"
 import { Button } from "@/components/ui/button"
 import { GlobalSearch } from "./global-search"
@@ -17,6 +17,8 @@ export function Navbar() {
     { path: "/dashboard", label: "Workspace", icon: LayoutDashboard, show: session?.authenticated },
     { path: "/activity", label: "Activity", icon: Activity, show: !!session?.authenticated },
     { path: "/about", label: "About", icon: UserRound, show: true },
+    { path: "/course", label: "Course", icon: BookOpen, show: true },
+    { path: "/analysis", label: "Analysis Tools", icon: LineChart, show: true },
     { path: "/markets", label: "Markets", icon: BarChart3, show: session?.authenticated },
     { path: "/bots", label: "Bots", icon: Bot, show: session?.authenticated },
     { path: "/recovery", label: "Recovery", icon: CircleAlert, show: session?.authenticated },
@@ -81,14 +83,14 @@ export function Navbar() {
                 <Button asChild size="sm" variant="ghost" className="text-muted-foreground hover:bg-white/5 hover:text-foreground" data-testid="link-login">
                   <a href="/api/deriv/login">Log In</a>
                 </Button>
-                <Button asChild size="sm" className="font-semibold shadow-md bg-primary text-primary-foreground hover:bg-primary/90" data-testid="link-signup">
-                  <a href="/api/deriv/signup">Create Account</a>
+                 <Button asChild size="sm" className="font-semibold shadow-md bg-primary text-primary-foreground hover:bg-primary/90" data-testid="link-signup">
+                   <a href="/api/deriv/signup">Get Started</a>
                 </Button>
               </div>
             )}
           </div>
         </div>
-        {session?.authenticated && <div className="-mx-4 flex gap-1 overflow-x-auto border-t border-white/5 px-4 py-2 md:hidden">
+        {<div className="-mx-4 flex gap-1 overflow-x-auto border-t border-white/5 px-4 py-2 md:hidden">
           {navItems.filter(item => item.show).map((item) => {
             const Icon = item.icon
             const active = location === item.path

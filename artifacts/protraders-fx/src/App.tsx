@@ -17,6 +17,8 @@ import BulkTrade from '@/pages/bulk-trade';
 import Initializing from '@/pages/initializing';
 import { FloatingScanner } from '@/components/trading/floating-scanner';
 import NotFound from '@/pages/not-found';
+import Course from '@/pages/course';
+import Analysis from '@/pages/analysis';
 import {
   Route,
   Switch,
@@ -37,6 +39,8 @@ function Router() {
             <Route path="/oauth/callback" component={OAuthCallbackBridge} />
             <Route path="/initializing" component={Initializing} />
             <Route path="/about" component={About} />
+            <Route path="/course" component={Course} />
+            <Route path="/analysis" component={Analysis} />
             <Route path="/dashboard" component={DashboardRoute} />
             <Route path="/activity" component={Activity} />
             <Route path="/markets" component={MarketsRoute} />
