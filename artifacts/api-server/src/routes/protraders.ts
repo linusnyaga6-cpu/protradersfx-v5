@@ -565,7 +565,8 @@ async function derivRequestOnce(wsUrl: string, payload: Record<string, unknown>)
         return;
       }
       if (data.error) {
-        finish(reject, new Error(data.error.message || "Deriv API error"));
+        const code = typeof data.error.code === "string" ? data.error.code : "DerivError";
+        finish(reject, new Error(`[${code}] ${data.error.message || "Deriv API error"}`));
       } else if (data.msg_type) {
         finish(resolve, data);
       }
@@ -659,7 +660,7 @@ router.post("/trades/preview", async (req, res) => {
     if (!offered.has(requestedContractType)) return errorResponse(res, 400, "Contract unavailable", `${requestedContractType} is not offered by Deriv for ${symbol}.`);
     const response = await derivRequest(session.accessToken, {
       proposal: 1, amount: stake, basis: "stake", contract_type: requestedContractType,
-      currency: account.currency, duration, duration_unit: "t", symbol,
+      currency: account.currency, duration, duration_unit: "t", underlying_symbol: symbol,
       ...(barrierContractTypes.has(requestedContractType) ? { barrier } : {}),
     }, session.accountId);
     const proposal = response.proposal;
