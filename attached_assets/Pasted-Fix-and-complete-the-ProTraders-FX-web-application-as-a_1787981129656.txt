@@ -1,0 +1,165 @@
+Fix and complete the ProTraders FX web application as a fully functioning trading platform.
+
+IMPORTANT: Treat the existing Replit project as the source of truth for the original design and functionality. Do NOT replace the existing frontend with a simplified or generic page. Preserve the current ProTraders FX appearance, layout, styling, branding, charts, buttons, navigation and trading interface.
+
+GOAL:
+Make ProTraders FX fully functional from frontend to backend and ready for deployment.
+
+1. FRONTEND
+
+* Restore the original ProTraders FX appearance and functionality from the existing project.
+* Keep the professional trading-terminal style.
+* Ensure all pages load correctly.
+* Ensure CSS, JavaScript, SVG/logo, favicon and all assets load correctly.
+* Do not remove existing trading features just to make the application deploy.
+
+2. DERIV CONNECTION
+   Integrate the application correctly with Deriv's current API/WebSocket authentication flow.
+
+* Login must work.
+* Create Account must work where configured.
+* OAuth callback must work.
+* Authenticated sessions must persist correctly.
+* Logout must work.
+* Never expose private Deriv tokens, secrets or credentials in frontend code.
+* Use environment variables for secrets and credentials.
+
+3. LIVE MARKET DATA
+   After the application loads:
+
+* Connect to Deriv WebSocket.
+* Display real-time prices.
+* Allow the user to select the available markets/symbols.
+* Update prices without refreshing the page.
+* Display price movement and market status.
+* Make the charts update from real market data.
+* Handle WebSocket disconnects and reconnect automatically.
+
+4. TRADING
+   Implement REAL Deriv trading functionality for authenticated users.
+   The trading interface must support the trading types already intended by the existing ProTraders FX frontend.
+
+At minimum, correctly support the contract types that are actually available for the selected Deriv market, rather than pretending every contract works on every market.
+
+Trading must:
+
+* Validate symbol.
+* Validate contract type.
+* Validate stake.
+* Validate duration.
+* Send the correct proposal/order request to Deriv.
+* Confirm the order result.
+* Display errors returned by Deriv.
+* Display contract/order ID when successful.
+* Never simulate successful trades.
+* Never fabricate balances, prices, orders or account data.
+
+5. ACCOUNT
+   For an authenticated Deriv user:
+
+* Display account/login ID.
+* Display balance.
+* Display currency.
+* Display account status.
+* Display relevant open-position/P&L information where supported by Deriv.
+* Refresh account information after trades.
+
+6. BOT
+   Keep the existing ProTraders FX bot interface.
+   Do not claim a bot is running when it is not actually running.
+   If the existing bot strategy is present, connect it to real market data and authenticated Deriv trading only after proper validation.
+   Provide Start and Stop controls.
+   Show the actual bot state.
+   Include safety validation so the bot cannot accidentally submit uncontrolled trades.
+
+7. API ROUTES
+   Audit the entire frontend and backend and make sure every route called by the frontend actually exists and returns the expected response.
+
+At minimum inspect and correctly implement:
+
+* /health
+* /api/config
+* /api/session
+* /api/account
+* /api/deriv/login
+* /api/deriv/signup
+* /oauth/callback
+* /api/logout
+* /api/track
+* /api/analytics
+* /api/trades
+* /api/bot
+
+Do NOT create dummy routes that simply return:
+"Not configured"
+"501"
+"authenticated:false"
+or fake trading results.
+
+If a route is not needed, update the frontend to stop calling it. Otherwise implement it correctly.
+
+8. SERVER
+   Audit server.js completely.
+   Remove all syntax errors.
+   Remove malformed strings, unmatched brackets, duplicated routes and invalid middleware.
+   Do not use filesystem writes to locations that are read-only on Vercel/serverless.
+   Use /tmp only when temporary serverless storage is genuinely required.
+   Do not introduce TypeError: "" is not a function errors.
+   Ensure the server starts successfully with Node.js.
+
+9. VERCEL COMPATIBILITY
+   The application must work as a Vercel deployment.
+   Check:
+
+* package.json
+* vercel.json
+* server.js
+* API routes
+* static file serving
+* environment variables
+* serverless compatibility
+* routing
+* OAuth callback URL
+
+The root URL, /health, /privacy.html, /terms.html, favicon and frontend assets must all load without HTTP 500 errors.
+
+10. SECURITY
+    Do not put Deriv private API tokens, OAuth secrets, SESSION_SECRET or other credentials into frontend JavaScript.
+    Use environment variables.
+    Do not fabricate account data or trade results.
+    Validate all user input on the server before sending trading requests.
+
+11. DEBUGGING
+    Before declaring the task complete:
+
+* Run the application.
+* Test the root page.
+* Test /health.
+* Test every API route used by the frontend.
+* Test Deriv authentication flow where credentials are available.
+* Test live market WebSocket data.
+* Test proposal/order handling in Deriv's supported environment.
+* Check browser console errors.
+* Check server logs.
+* Fix all errors you find.
+
+12. DO NOT DESTROY THE EXISTING PROJECT
+    Do not rewrite the project into a basic example.
+    Do not remove the existing trading UI.
+    Do not replace the design with a new generic interface.
+    Do not remove existing files unless they are proven obsolete.
+    First inspect the existing project and understand how the frontend, backend, Deriv connection and trading components currently work.
+
+FINAL REQUIREMENT:
+When finished, give me:
+
+1. A summary of exactly what you changed.
+2. The URL of the working Replit application.
+3. The exact environment variables I must configure, WITHOUT revealing any secret values.
+4. Confirmation that /health works.
+5. Confirmation that /api/deriv/login exists.
+6. Confirmation that live Deriv prices work.
+7. Confirmation of which Deriv trading contract types are actually supported.
+8. Any remaining configuration required before live trading.
+
+Do not tell me the application is complete if trading is only simulated or if the login/API routes are placeholders.
