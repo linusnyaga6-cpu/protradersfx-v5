@@ -51,7 +51,6 @@ const tradingEnabled = process.env.TRADING_ENABLED === "true" || (!isProduction 
 const liveTradingEnabled = process.env.TRADING_LIVE_ENABLED === "true";
 const demoOnly = process.env.TRADING_DEMO_ONLY !== "false";
 const frontendConfigured = process.env.FRONTEND_CONFIGURED !== "false";
-const maxStake = positiveNumber(process.env.TRADING_MAX_STAKE, 10);
 const maxDuration = positiveInteger(process.env.TRADING_MAX_DURATION, 3600);
 const riskAcknowledgementVersion = "2025-01";
 const liveConfirmationToken = "CONFIRM_LIVE_TRADE";
@@ -84,11 +83,6 @@ const analytics = {
   registrations: 0,
   events: [] as Array<{ type: string; at: string; path?: string }>,
 };
-
-function positiveNumber(value: string | undefined, fallback: number) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
 
 function positiveInteger(value: string | undefined, fallback: number) {
   const parsed = Number(value);
@@ -367,7 +361,6 @@ router.get("/preflight", (_req, res) => {
     tradingEnabled,
     liveTradingEnabled,
     demoOnly,
-    maxStake,
     maxDuration,
     allowedSymbols: Array.from(allowedSymbols),
     executionMode: !tradingEnabled
@@ -644,7 +637,6 @@ router.post("/trades/preview", async (req, res) => {
     !contractType ? "Choose a supported Deriv contract type." : "",
     !/^[A-Z0-9_]+$/.test(symbol) ? "Choose a valid market symbol." : "",
     !Number.isFinite(stake) || stake <= 0 ? "Enter a valid stake amount." : "",
-    stake > maxStake ? `Stake cannot exceed ${maxStake}.` : "",
     !Number.isInteger(duration) || duration < 1 ? "Duration must be at least 1 tick." : "",
     duration > maxDuration ? `Duration cannot exceed ${maxDuration} ticks.` : "",
     stopLoss !== null && (!Number.isFinite(stopLoss) || stopLoss <= 0) ? "Stop loss must be greater than 0." : "",
@@ -658,6 +650,13 @@ router.post("/trades/preview", async (req, res) => {
     const accounts = await listDerivAccounts(session.accessToken);
     const account = chooseAccount(accounts, undefined, session.accountId);
     if (!account?.account_id || !account.currency) return errorResponse(res, 502, "Account identity unavailable");
+    const availableBalance = Number(account.balance);
+    if (!Number.isFinite(availableBalance) || availableBalance <= 0) {
+      return errorResponse(res, 502, "Account balance unavailable", "Reconnect or refresh the selected Deriv account.");
+    }
+    if (stake >= availableBalance) {
+      return errorResponse(res, 400, "Stake exceeds available balance", "Enter a stake below the selected account balance.");
+    }
     const availability = await derivRequest(session.accessToken, { contracts_for: symbol }, session.accountId);
     const offered = new Set((availability.contracts_for?.available || []).map((item: any) => String(item.contract_type)));
     if (!offered.has(requestedContractType)) return errorResponse(res, 400, "Contract unavailable", `${requestedContractType} is not offered by Deriv for ${symbol}.`);
@@ -728,7 +727,6 @@ router.post("/trades", async (req, res) => {
     !contractType ? "Choose a supported Deriv contract type." : "",
     !/^([A-Z0-9_]+)$/.test(symbol) ? "Choose a valid symbol." : "",
     !Number.isFinite(stake) || stake <= 0 ? "Enter a valid stake amount." : "",
-    stake > maxStake ? `Stake cannot exceed ${maxStake}.` : "",
     !Number.isInteger(duration) || duration < 1 ? "Duration must be at least 1 tick." : "",
     duration > maxDuration ? `Duration cannot exceed ${maxDuration} ticks.` : "",
     contractType && barrierContractTypes.has(contractType) && !/^[0-9]$/.test(barrier || "") ? "Choose a digit barrier from 0 to 9." : "",
@@ -745,6 +743,13 @@ router.post("/trades", async (req, res) => {
     const loginId = String(account?.account_id || "");
     const isDemoAccount = account?.account_type === "demo";
     if (!loginId || !account) return errorResponse(res, 502, "Account identity unavailable");
+    const availableBalance = Number(account.balance);
+    if (!Number.isFinite(availableBalance) || availableBalance <= 0) {
+      return errorResponse(res, 502, "Account balance unavailable", "Reconnect or refresh the selected Deriv account.");
+    }
+    if (stake >= availableBalance) {
+      return errorResponse(res, 400, "Stake exceeds available balance", "Enter a stake below the selected account balance.");
+    }
     if (demoOnly && !isDemoAccount) {
       return errorResponse(
         res,

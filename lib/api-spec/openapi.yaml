@@ -353,7 +353,7 @@ components:
         stopLoss: { type: number, exclusiveMinimum: 0, maximum: 10000 }
         runCount: { type: number, minimum: 1, maximum: 10, multipleOf: 1 }
         takeProfit: { type: number, exclusiveMinimum: 0, maximum: 100000 }
-        stake: { type: number, exclusiveMinimum: 0, maximum: 10000 }
+        stake: { type: number, exclusiveMinimum: 0 }
         duration: { type: number, minimum: 1, maximum: 3600, multipleOf: 1 }
         riskCap: { type: number, exclusiveMinimum: 0, maximum: 100000 }
         notes: { type: string, maxLength: 1000 }
@@ -427,8 +427,6 @@ components:
           type: boolean
         demoOnly:
           type: boolean
-        maxStake:
-          type: number
         maxDuration:
           type: number
         allowedSymbols:
@@ -454,7 +452,6 @@ components:
         - tradingEnabled
         - liveTradingEnabled
         - demoOnly
-        - maxStake
         - maxDuration
         - allowedSymbols
         - executionMode

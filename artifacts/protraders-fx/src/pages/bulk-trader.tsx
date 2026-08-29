@@ -22,7 +22,6 @@ import { AccountStrip } from "@/components/trading/account-strip"
 import { RunSessionSummary } from "@/components/trading/run-session-summary"
 import { useTradingRunSession } from "@/hooks/use-trading-run-session"
 import { DEFAULT_MARKET_SYMBOL, CONTRACT_LABELS, marketLabel } from "@/lib/markets"
-import { formatMoney } from "@/lib/format"
 import { useDerivMarkets } from "@/hooks/use-deriv-markets"
 import { Workspace } from "./markets"
 
@@ -56,11 +55,12 @@ export default function BulkTrader() {
     ? (contracts.data as any).availableContractTypes.filter((item: string) => CONTRACT_LABELS[item])
     : []
   const selectedContract = availableTypes.includes("CALL") ? "CALL" : availableTypes[0] || "CALL"
-  const maxStake = Number(preflight.data?.maxStake || 10)
+  const availableBalance = Number(account.data?.balance)
   const totalRuns = Number(runCount)
   const stakeValue = Number(stake)
   const validSetup = Number.isInteger(totalRuns) && totalRuns >= 1 && totalRuns <= 100
-    && Number.isFinite(stakeValue) && stakeValue > 0 && stakeValue <= maxStake
+    && Number.isFinite(availableBalance) && availableBalance > 0
+    && Number.isFinite(stakeValue) && stakeValue > 0 && stakeValue < availableBalance
   const canRun = Boolean(
     account.data?.accountType === "demo"
     && preflight.data?.tradingEnabled
@@ -199,8 +199,8 @@ export default function BulkTrader() {
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label htmlFor="quick-bulk-stake">Stake ({account.data?.currency || "account currency"})</Label>
-              <Input id="quick-bulk-stake" type="number" min="0.01" max={maxStake} step="0.01" value={stake} onChange={event => setStake(event.target.value)} autoFocus data-testid="input-bulk-stake" />
-              <p className="text-xs text-muted-foreground">Maximum controlled stake: {formatMoney(maxStake, account.data?.currency || "USD")}.</p>
+              <Input id="quick-bulk-stake" type="number" min="0.01" step="0.01" value={stake} onChange={event => setStake(event.target.value)} autoFocus data-testid="input-bulk-stake" />
+              <p className="text-xs text-muted-foreground">Enter any trader-selected amount below the available account balance.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="quick-bulk-runs">Number of runs</Label>
@@ -208,7 +208,7 @@ export default function BulkTrader() {
               <p className="text-xs text-muted-foreground">Runs are sequential and stop at the count entered here.</p>
             </div>
             {account.data?.accountType !== "demo" && <p className="text-xs text-destructive">Bulk Trader requires the protected Deriv demo account.</p>}
-            {!validSetup && <p className="text-xs text-destructive">Enter a valid stake amount within the controlled limit and a whole-number run count from 1 to 100.</p>}
+            {!validSetup && <p className="text-xs text-destructive">Enter a stake below the available account balance and a whole-number run count from 1 to 100.</p>}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setSetupOpen(false)}>Cancel</Button>

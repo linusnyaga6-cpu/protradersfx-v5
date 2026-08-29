@@ -83,10 +83,7 @@ export interface DryRunStrategy {
      * @exclusiveMinimum 0
      */
   takeProfit?: number;
-  /**
-     * @maximum 10000
-     * @exclusiveMinimum 0
-     */
+  /** @exclusiveMinimum 0 */
   stake: number;
   /**
      * @minimum 1
@@ -161,7 +158,6 @@ export interface ProtradersPreflight {
   tradingEnabled: boolean;
   liveTradingEnabled: boolean;
   demoOnly: boolean;
-  maxStake: number;
   maxDuration: number;
   allowedSymbols: string[];
   executionMode: ProtradersPreflightExecutionMode;

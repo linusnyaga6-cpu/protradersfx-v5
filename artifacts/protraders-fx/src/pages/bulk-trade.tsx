@@ -63,6 +63,7 @@ export default function BulkTrade() {
     },
   })
   const accountCurrency = account.data?.currency || "USD"
+  const availableBalance = Number(account.data?.balance)
   const canRun = Boolean(session?.authenticated && account.data?.accountType === "demo" && preflight.data?.tradingEnabled && preflight.data?.demoOnly)
   const tradeSource = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("source") === "ai_assisted"
     ? "ai_assisted" as const
@@ -111,8 +112,10 @@ export default function BulkTrade() {
     && totalRuns <= 100
     && Number.isFinite(targetProfit)
     && targetProfit > 0
+    && Number.isFinite(availableBalance)
+    && availableBalance > 0
     && Number(stake) > 0
-    && Number(stake) <= Number(preflight.data?.maxStake || 10)
+    && Number(stake) < availableBalance
     && Number(stopLoss) > 0
     && Number(duration) > 0
     && Number(duration) <= Number(preflight.data?.maxDuration || 3600)
@@ -195,8 +198,8 @@ export default function BulkTrade() {
             )}
             <div className="space-y-2">
               <Label htmlFor="bulk-stake">Stake ({accountCurrency})</Label>
-              <Input id="bulk-stake" type="number" min="0.01" max={Number(preflight.data?.maxStake || 10)} step="0.01" value={stake} onChange={event => setStake(event.target.value)} />
-              <p className="text-xs text-muted-foreground">Trader-entered amount, independent of the selected market and contract type. Maximum controlled stake: {formatMoney(Number(preflight.data?.maxStake || 10), accountCurrency)}.</p>
+              <Input id="bulk-stake" type="number" min="0.01" step="0.01" value={stake} onChange={event => setStake(event.target.value)} />
+              <p className="text-xs text-muted-foreground">Trader-entered amount, independent of the selected market and contract type. It must remain below the available account balance.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="bulk-stop-loss">Stop loss ({accountCurrency})</Label>

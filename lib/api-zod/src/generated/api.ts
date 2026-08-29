@@ -45,7 +45,6 @@ export const GetProtradersPreflightResponse = zod.object({
   "tradingEnabled": zod.boolean(),
   "liveTradingEnabled": zod.boolean(),
   "demoOnly": zod.boolean(),
-  "maxStake": zod.number(),
   "maxDuration": zod.number(),
   "allowedSymbols": zod.array(zod.string()),
   "executionMode": zod.enum(['DISABLED', 'DEMO', 'BOTH', 'LIVE LOCKED']),
@@ -352,7 +351,6 @@ export const createBotBodyConfigTakeProfitExclusiveMin = 0;
 export const createBotBodyConfigTakeProfitMax = 100000;
 
 export const createBotBodyConfigStakeExclusiveMin = 0;
-export const createBotBodyConfigStakeMax = 10000;
 
 export const createBotBodyConfigDurationMax = 3600;
 export const createBotBodyConfigDurationMultipleOf = 1;
@@ -377,7 +375,7 @@ export const CreateBotBody = zod.object({
   "stopLoss": zod.number().gt(createBotBodyConfigStopLossExclusiveMin).max(createBotBodyConfigStopLossMax).optional(),
   "runCount": zod.number().min(1).max(createBotBodyConfigRunCountMax).multipleOf(createBotBodyConfigRunCountMultipleOf).optional(),
   "takeProfit": zod.number().gt(createBotBodyConfigTakeProfitExclusiveMin).max(createBotBodyConfigTakeProfitMax).optional(),
-  "stake": zod.number().gt(createBotBodyConfigStakeExclusiveMin).max(createBotBodyConfigStakeMax),
+  "stake": zod.number().gt(createBotBodyConfigStakeExclusiveMin),
   "duration": zod.number().min(1).max(createBotBodyConfigDurationMax).multipleOf(createBotBodyConfigDurationMultipleOf),
   "riskCap": zod.number().gt(createBotBodyConfigRiskCapExclusiveMin).max(createBotBodyConfigRiskCapMax),
   "notes": zod.string().max(createBotBodyConfigNotesMax).optional(),
@@ -410,7 +408,6 @@ export const updateBotBodyConfigTakeProfitExclusiveMin = 0;
 export const updateBotBodyConfigTakeProfitMax = 100000;
 
 export const updateBotBodyConfigStakeExclusiveMin = 0;
-export const updateBotBodyConfigStakeMax = 10000;
 
 export const updateBotBodyConfigDurationMax = 3600;
 export const updateBotBodyConfigDurationMultipleOf = 1;
@@ -434,7 +431,7 @@ export const UpdateBotBody = zod.object({
   "stopLoss": zod.number().gt(updateBotBodyConfigStopLossExclusiveMin).max(updateBotBodyConfigStopLossMax).optional(),
   "runCount": zod.number().min(1).max(updateBotBodyConfigRunCountMax).multipleOf(updateBotBodyConfigRunCountMultipleOf).optional(),
   "takeProfit": zod.number().gt(updateBotBodyConfigTakeProfitExclusiveMin).max(updateBotBodyConfigTakeProfitMax).optional(),
-  "stake": zod.number().gt(updateBotBodyConfigStakeExclusiveMin).max(updateBotBodyConfigStakeMax),
+  "stake": zod.number().gt(updateBotBodyConfigStakeExclusiveMin),
   "duration": zod.number().min(1).max(updateBotBodyConfigDurationMax).multipleOf(updateBotBodyConfigDurationMultipleOf),
   "riskCap": zod.number().gt(updateBotBodyConfigRiskCapExclusiveMin).max(updateBotBodyConfigRiskCapMax),
   "notes": zod.string().max(updateBotBodyConfigNotesMax).optional(),

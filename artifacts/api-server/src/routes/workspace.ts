@@ -35,7 +35,7 @@ const dryRunStrategySchema = z.object({
   stopLoss: z.number().gt(0).max(10_000).optional(),
   runCount: z.number().int().min(1).max(10).optional(),
   takeProfit: z.number().gt(0).max(100_000).optional(),
-  stake: z.number().gt(0).max(10_000),
+  stake: z.number().gt(0),
   duration: z.number().int().gt(0).max(3_600),
   riskCap: z.number().gt(0).max(100_000),
   notes: z.string().max(1_000).optional(),

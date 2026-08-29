@@ -19,7 +19,6 @@ export interface ProtradersPreflight {
   tradingEnabled: boolean;
   liveTradingEnabled: boolean;
   demoOnly: boolean;
-  maxStake: number;
   maxDuration: number;
   allowedSymbols: string[];
   executionMode: ProtradersPreflightExecutionMode;

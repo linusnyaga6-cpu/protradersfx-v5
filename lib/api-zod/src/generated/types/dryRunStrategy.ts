@@ -33,10 +33,7 @@ export interface DryRunStrategy {
      * @exclusiveMinimum 0
      */
   takeProfit?: number;
-  /**
-     * @maximum 10000
-     * @exclusiveMinimum 0
-     */
+  /** @exclusiveMinimum 0 */
   stake: number;
   /**
      * @minimum 1

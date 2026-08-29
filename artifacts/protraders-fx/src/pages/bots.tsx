@@ -244,7 +244,7 @@ export default function Bots() {
 
         <div className="h-full">
           {selectedBot ? (
-            <BotBuilder bot={selectedBot} accountCurrency={account.data?.currency ?? undefined} onUpdate={() => client.invalidateQueries({queryKey:getListBotsQueryKey()})} />
+            <BotBuilder bot={selectedBot} accountCurrency={account.data?.currency ?? undefined} accountBalance={account.data?.balance ?? null} onUpdate={() => client.invalidateQueries({queryKey:getListBotsQueryKey()})} />
           ) : (
             <Card className="h-full border-dashed bg-secondary/10 flex items-center justify-center min-h-[500px]">
               <div className="text-center p-8 max-w-sm">
@@ -264,7 +264,7 @@ export default function Bots() {
   )
 }
 
-function BotBuilder({ bot, accountCurrency, onUpdate }: { bot: any, accountCurrency?: string, onUpdate: () => void }) {
+function BotBuilder({ bot, accountCurrency, accountBalance, onUpdate }: { bot: any, accountCurrency?: string, accountBalance?: number | null, onUpdate: () => void }) {
   const update = useUpdateBot();
   const createTpl = useCreateBotTemplate();
   const client = useQueryClient();
@@ -342,7 +342,10 @@ function BotBuilder({ bot, accountCurrency, onUpdate }: { bot: any, accountCurre
     if (!symbol.trim() || !/^[A-Z0-9_]+$/.test(symbol)) errs.symbol = "Choose a valid Deriv symbol";
     if (!availableTypes.includes(contractType)) errs.contractType = "This contract is not currently offered for the selected symbol";
     const stakeNum = Number(stake);
+     const balanceNum = Number(accountBalance);
      if (isNaN(stakeNum) || stakeNum <= 0) errs.stake = "Stake must be a valid amount";
+     else if (!Number.isFinite(balanceNum) || balanceNum <= 0) errs.stake = "Available account balance could not be verified";
+     else if (stakeNum >= balanceNum) errs.stake = "Stake must be below the available account balance";
      const durationNum = Number(duration);
      if (isNaN(durationNum) || durationNum < 1 || !Number.isInteger(durationNum)) errs.duration = "Duration must be a valid whole number";
     const runCountNum = Number(runCount);
@@ -501,6 +504,7 @@ function BotBuilder({ bot, accountCurrency, onUpdate }: { bot: any, accountCurre
             <div className="space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Stake ({accountCurrency || "account currency"})</Label>
               <Input type="number" step="1" value={stake} onChange={e => setStake(e.target.value)} className="bg-background shadow-sm font-numeric" />
+              <p className="text-xs text-muted-foreground">Enter any trader-selected amount below the available account balance.</p>
               {errors.stake && <p className="text-xs text-destructive">{errors.stake}</p>}
             </div>
             <div className="space-y-2">
