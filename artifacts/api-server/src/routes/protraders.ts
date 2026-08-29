@@ -34,7 +34,7 @@ const isProduction = process.env.NODE_ENV === "production";
 const baseUrl = (
   process.env.BASE_URL ||
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:5000")
-).replace(/\/$/, "");
+).replace(/\/+$/, "");
 const redirectUri = `${baseUrl}/oauth/callback`;
 const cookieSecure = isProduction ? true : baseUrl.startsWith("https://");
 const sessionSecret = process.env.SESSION_SECRET || (
