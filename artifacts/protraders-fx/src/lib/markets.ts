@@ -1,4 +1,4 @@
-export const DEFAULT_MARKET_SYMBOL = "1HZ50V"
+export const DEFAULT_MARKET_SYMBOL = "R_100"
 
 export type DerivMarket = {
   symbol: string

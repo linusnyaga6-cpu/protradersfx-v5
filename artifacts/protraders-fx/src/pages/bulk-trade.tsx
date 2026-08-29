@@ -36,6 +36,7 @@ export default function BulkTrade() {
   const [stopLoss, setStopLoss] = useState("1")
   const [stake, setStake] = useState("1")
   const [stakeAuthorized, setStakeAuthorized] = useState(false)
+  const [availabilityNotice, setAvailabilityNotice] = useState("")
   const [duration, setDuration] = useState("1")
   const [results, setResults] = useState<any[]>([])
   const [isRunning, setIsRunning] = useState(false)
@@ -84,6 +85,19 @@ export default function BulkTrade() {
     ? (contracts.data as any).availableContractTypes.filter((item: string) => CONTRACT_LABELS[item])
     : []
   useEffect(() => {
+    if (
+      contracts.data
+      && !contracts.isLoading
+      && !contracts.isError
+      && availableTypes.length === 0
+      && selectedMarket !== DEFAULT_MARKET_SYMBOL
+      && marketQuery.markets.some(item => item.symbol === DEFAULT_MARKET_SYMBOL)
+    ) {
+      setAvailabilityNotice(`${selectedMarket} currently has no supported Deriv contracts. Switched to ${DEFAULT_MARKET_SYMBOL}.`)
+      setSelectedMarket(DEFAULT_MARKET_SYMBOL)
+    }
+  }, [contracts.data, contracts.isLoading, contracts.isError, availableTypes.length, selectedMarket, marketQuery.markets])
+  useEffect(() => {
     if (availableTypes.length && !availableTypes.includes(contractType)) setContractType(availableTypes[0])
   }, [availableTypes.join("|"), contractType])
   const needsBarrier = Boolean(CONTRACT_LABELS[contractType]?.needsBarrier)
@@ -95,14 +109,14 @@ export default function BulkTrade() {
     ? "ai_assisted" as const
     : "manual" as const
 
-  const validOrder = Number(stake) > 0
+  const validInputs = Number(stake) > 0
     && Number(stake) <= Number(preflight.data?.maxStake || 10)
     && Number(stopLoss) > 0
     && Number(duration) > 0
     && Number(duration) <= Number(preflight.data?.maxDuration || 3600)
     && Number.isInteger(Number(duration))
-    && availableTypes.includes(contractType)
     && (!needsBarrier || /^[0-9]$/.test(barrier))
+  const validOrder = validInputs && availableTypes.includes(contractType)
   const orderData = {
     symbol: selectedMarket, contract_type: contractType,
     ...(needsBarrier ? { barrier } : {}), stop_loss: Number(stopLoss),
@@ -181,6 +195,7 @@ export default function BulkTrade() {
                  </select>
                   {marketQuery.isLoading && <p className="text-xs text-muted-foreground">Loading active markets from Deriv…</p>}
                   {marketQuery.isError && <p className="text-xs text-destructive">Deriv market discovery is unavailable.</p>}
+                   {availabilityNotice && <p className="text-xs text-amber-600">{availabilityNotice}</p>}
                </div>
                <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4">
                  <div><div className="text-[10px] uppercase tracking-[.2em] text-muted-foreground">Live market to review</div><div className="mt-1 text-xl font-semibold">{marketLabel(marketQuery.markets.find(item => item.symbol === selectedMarket), selectedMarket)}</div></div>
@@ -253,7 +268,12 @@ export default function BulkTrade() {
                <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Potential payout</span><span>{proposal.payout == null ? "Unavailable" : formatMoney(proposal.payout, accountCurrency)}</span></div>
                <p className="mt-2 text-xs text-muted-foreground">{proposal.longcode || "Provider proposal received."} Valid for 30 seconds; refresh it if you need more time.</p>
              </div>}
-               {!validOrder && <p className="text-xs text-destructive">Choose an available Deriv contract and enter valid stake, stop loss, and duration.</p>}
+               {!contracts.isLoading && !contracts.isError && !availableTypes.length && (
+                 <p className="text-xs text-destructive">Deriv currently offers no supported contracts for {selectedMarket}. Choose another market.</p>
+               )}
+               {availableTypes.length > 0 && !validInputs && (
+                 <p className="text-xs text-destructive">Enter a stake within the displayed limit, a positive stop loss, a whole-number tick duration, and any required digit barrier.</p>
+               )}
                {!proposal ? <Button className="w-full" onClick={reviewOrder} disabled={!canRun || !validOrder || !stakeAuthorized || previewTrade.isPending || marketOffline} data-testid="button-review-order">
                  {previewTrade.isPending ? "Requesting Deriv proposal..." : "Review Deriv proposal"}
                </Button> : <Button className="w-full" onClick={executeOrder} disabled={!canRun || !validOrder || !stakeAuthorized || isRunning || marketOffline} data-testid="button-execute-order">
