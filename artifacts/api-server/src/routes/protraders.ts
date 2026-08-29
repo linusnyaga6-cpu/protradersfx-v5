@@ -9,6 +9,15 @@ type SessionValue = {
   accessToken: string;
   refreshToken: string | null;
   expiresAt: number;
+  accountId?: string;
+};
+
+type DerivOptionsAccount = {
+  account_id?: string;
+  balance?: number;
+  currency?: string;
+  account_type?: "demo" | "real";
+  status?: "active" | "inactive";
 };
 
 type OAuthState = {
@@ -32,6 +41,7 @@ const sessionSecret = process.env.SESSION_SECRET || (
 );
 const clientId = process.env.DERIV_CLIENT_ID || "";
 const publicAppId = process.env.DERIV_PUBLIC_APP_ID || "";
+const derivApiBaseUrl = "https://api.derivws.com";
 const affiliateParam = process.env.DERIV_AFFILIATE_PARAM || "t";
 const affiliateToken = process.env.DERIV_AFFILIATE_TOKEN || "";
 const affiliateId = process.env.DERIV_AFFILIATE_ID || "";
@@ -212,12 +222,48 @@ export async function getSession(req: Request, res: Response) {
       accessToken: token.access_token,
       refreshToken: token.refresh_token || current.refreshToken,
       expiresAt: Date.now() + Number(token.expires_in || 3600) * 1000,
+      accountId: current.accountId,
     };
     setSessionCookie(res, refreshed);
     return refreshed;
   } catch {
     return null;
   }
+}
+
+async function derivRestRequest<T>(accessToken: string, path: string): Promise<T> {
+  if (!clientId) throw new Error("DERIV_CLIENT_ID is not configured");
+  const response = await fetch(`${derivApiBaseUrl}${path}`, {
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
+      "Deriv-App-ID": clientId,
+    },
+  });
+  const body = await response.json().catch(() => ({})) as any;
+  if (!response.ok) {
+    const providerMessage = body?.errors?.[0]?.message || body?.message;
+    throw new Error(`Deriv account API returned ${response.status}${providerMessage ? `: ${providerMessage}` : ""}`);
+  }
+  return body as T;
+}
+
+export async function listDerivAccounts(accessToken: string) {
+  const body = await derivRestRequest<{ data?: DerivOptionsAccount[] }>(
+    accessToken,
+    "/trading/v1/options/accounts",
+  );
+  return Array.isArray(body.data)
+    ? body.data.filter((account) => account.account_id && account.account_type && Number.isFinite(Number(account.balance)))
+    : [];
+}
+
+function chooseAccount(accounts: DerivOptionsAccount[], target?: "demo" | "real", accountId?: string) {
+  return accounts.find((account) => account.account_id === accountId) ||
+    (target ? accounts.find((account) => account.account_type === target) : undefined) ||
+    accounts.find((account) => account.account_type === "demo") ||
+    accounts.find((account) => account.status === "active") ||
+    accounts[0];
 }
 
 function oauthRequest(mode: "login" | "signup", targetAccount?: "demo" | "real") {
@@ -546,24 +592,23 @@ router.get("/account", async (req, res) => {
   if (!session) return errorResponse(res, 401, "Not authenticated");
 
   try {
-    let data: any;
-    try {
-      data = await derivRequest(session.accessToken, { balance: 1 });
-    } catch {
-      data = await derivRequest(session.accessToken, { balance: 1 });
+    const accounts = await listDerivAccounts(session.accessToken);
+    const account = chooseAccount(accounts, undefined, session.accountId);
+    if (!account?.account_id) throw new Error("No Deriv options account was returned");
+    if (account.account_id !== session.accountId) {
+      setSessionCookie(res, { ...session, accountId: account.account_id });
     }
-    const account = data.balance || {};
     return res.json({
       authenticated: true,
       balance: account.balance ?? null,
       currency: account.currency ?? null,
-      loginid: account.loginid ?? null,
-      accountType: /^VRTC/i.test(String(account.loginid || "")) ? "demo" : "real",
+      loginid: account.account_id ?? null,
+      accountType: account.account_type ?? "demo",
       openPnl: null,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : undefined;
-    if (message && /(invalid|expired).*(token|authoriz)|token.*(invalid|expired)|not authorized/i.test(message)) {
+    if (message && /(invalid|expired|unauthorized|not authorized).*(token|authoriz)|token.*(invalid|expired)/i.test(message)) {
       res.clearCookie("protraders_session", cookieOptions(0));
       return errorResponse(res, 401, "Session expired", "Reconnect your Deriv account to refresh authorization.");
     }
@@ -766,20 +811,21 @@ export async function handleOAuthCallback(req: Request, res: Response) {
     };
     if (!token.access_token) throw new Error("No access token returned");
 
-    const nextSession: SessionValue = {
+    let nextSession: SessionValue = {
       accessToken: token.access_token,
       refreshToken: token.refresh_token || null,
       expiresAt: Date.now() + Number(token.expires_in || 3600) * 1000,
     };
-    if (state.targetAccount) {
-      const accountData = await derivRequest(nextSession.accessToken, { balance: 1 });
-      const loginId = String(accountData.balance?.loginid || "");
-      const actualAccount = /^VRTC/i.test(loginId) ? "demo" : "real";
-      if (!loginId || actualAccount !== state.targetAccount) {
+    const accounts = await listDerivAccounts(nextSession.accessToken);
+    const selectedAccount = chooseAccount(accounts, state.targetAccount);
+    if (!selectedAccount?.account_id) {
+      throw new Error("No Deriv options account was returned");
+    }
+    if (state.targetAccount && selectedAccount.account_type !== state.targetAccount) {
         clearOAuthCookie(res);
         return res.redirect(`/initializing?account_switch=mismatch&expected=${state.targetAccount}`);
-      }
     }
+    nextSession = { ...nextSession, accountId: selectedAccount.account_id };
     setSessionCookie(res, nextSession);
     clearOAuthCookie(res);
     analytics.events.push({
