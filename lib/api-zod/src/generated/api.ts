@@ -134,13 +134,14 @@ export const createTradeBodyRequestLabelMax = 120;
 export const CreateTradeBody = zod.object({
   "symbol": zod.string(),
   "contract_type": zod.enum(['CALL', 'PUT', 'DIGITOVER', 'DIGITUNDER', 'DIGITEVEN', 'DIGITODD']),
-  "barrier": zod.string().regex(createTradeBodyBarrierRegExp).optional().describe('Required for digit over and digit under contracts.'),
+  "barrier": zod.string().regex(createTradeBodyBarrierRegExp).optional(),
   "stop_loss": zod.number().gt(createTradeBodyStopLossExclusiveMin).optional(),
   "stake": zod.number().gt(createTradeBodyStakeExclusiveMin),
   "duration": zod.number().min(1),
   "source": zod.enum(['manual', 'bulk', 'ai_assisted', 'bot_assisted']).optional(),
   "request_label": zod.string().max(createTradeBodyRequestLabelMax).optional(),
-  "live_confirmation": zod.enum(['CONFIRM_LIVE_TRADE']).optional().describe('Required only for real-money accounts; ignored for demo accounts.')
+  "live_confirmation": zod.enum(['CONFIRM_LIVE_TRADE']).optional(),
+  "proposal_token": zod.string().describe('Required signed single-use token returned by proposal preview.')
 })
 
 export const CreateTradeResponse = zod.object({
@@ -152,6 +153,47 @@ export const CreateTradeResponse = zod.object({
   "netProfit": zod.number().nullable(),
   "stopLossApplied": zod.boolean().nullable(),
   "stopLossMessage": zod.string().nullable()
+})
+
+
+/**
+ * @summary Preview a provider-backed Deriv proposal
+ */
+export const previewTradeBodyBarrierRegExp = new RegExp('^[0-9]$');
+export const previewTradeBodyStopLossExclusiveMin = 0;
+
+export const previewTradeBodyStakeExclusiveMin = 0;
+
+
+export const previewTradeBodyRequestLabelMax = 120;
+
+
+
+export const PreviewTradeBody = zod.object({
+  "symbol": zod.string(),
+  "contract_type": zod.enum(['CALL', 'PUT', 'DIGITOVER', 'DIGITUNDER', 'DIGITEVEN', 'DIGITODD']),
+  "barrier": zod.string().regex(previewTradeBodyBarrierRegExp).optional().describe('Required for digit over and digit under contracts.'),
+  "stop_loss": zod.number().gt(previewTradeBodyStopLossExclusiveMin).optional(),
+  "stake": zod.number().gt(previewTradeBodyStakeExclusiveMin),
+  "duration": zod.number().min(1),
+  "source": zod.enum(['manual', 'bulk', 'ai_assisted', 'bot_assisted']).optional(),
+  "request_label": zod.string().max(previewTradeBodyRequestLabelMax).optional(),
+  "live_confirmation": zod.enum(['CONFIRM_LIVE_TRADE']).optional().describe('Required only for real-money accounts; ignored for demo accounts.'),
+  "proposal_token": zod.string().optional().describe('Signed short-lived token returned by the proposal preview.')
+})
+
+export const PreviewTradeResponse = zod.object({
+  "proposalToken": zod.string(),
+  "symbol": zod.string(),
+  "contractType": zod.string(),
+  "stake": zod.number(),
+  "duration": zod.number(),
+  "barrier": zod.string().nullable(),
+  "askPrice": zod.number().nullable(),
+  "payout": zod.number().nullable(),
+  "longcode": zod.string().nullable(),
+  "expiresAt": zod.coerce.date(),
+  "stopLossNote": zod.string()
 })
 
 

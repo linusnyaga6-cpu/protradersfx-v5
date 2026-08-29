@@ -152,7 +152,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TradeInput"
+              $ref: "#/components/schemas/TradeExecutionInput"
       responses:
         "200":
           description: Trade opened
@@ -184,6 +184,21 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /trades/preview:
+    post:
+      operationId: previewTrade
+      tags: [protraders]
+      summary: Preview a provider-backed Deriv proposal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TradePreviewInput"
+      responses:
+        "200": { description: Provider proposal, content: { application/json: { schema: { $ref: "#/components/schemas/TradePreview" } } } }
+        "400": { description: Invalid proposal, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "401": { description: Not authenticated, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
   /transactions:
     get:
       operationId: listTransactions
@@ -505,7 +520,7 @@ components:
         - loginid
         - accountType
         - openPnl
-    TradeInput:
+    TradePreviewInput:
       type: object
       properties:
         symbol:
@@ -536,11 +551,61 @@ components:
           type: string
           enum: [CONFIRM_LIVE_TRADE]
           description: Required only for real-money accounts; ignored for demo accounts.
+        proposal_token:
+          type: string
+          description: Signed short-lived token returned by the proposal preview.
       required:
         - symbol
         - contract_type
         - stake
         - duration
+    TradeExecutionInput:
+      type: object
+      properties:
+        symbol: { type: string }
+        contract_type:
+          type: string
+          enum: [CALL, PUT, DIGITOVER, DIGITUNDER, DIGITEVEN, DIGITODD]
+        barrier:
+          type: string
+          pattern: "^[0-9]$"
+        stop_loss:
+          type: number
+          exclusiveMinimum: 0
+        stake:
+          type: number
+          exclusiveMinimum: 0
+        duration:
+          type: number
+          minimum: 1
+        source:
+          type: string
+          enum: [manual, bulk, ai_assisted, bot_assisted]
+        request_label:
+          type: string
+          maxLength: 120
+        live_confirmation:
+          type: string
+          enum: [CONFIRM_LIVE_TRADE]
+        proposal_token:
+          type: string
+          description: Required signed single-use token returned by proposal preview.
+      required: [symbol, contract_type, stake, duration, proposal_token]
+    TradePreview:
+      type: object
+      properties:
+        proposalToken: { type: string }
+        symbol: { type: string }
+        contractType: { type: string }
+        stake: { type: number }
+        duration: { type: number }
+        barrier: { type: ["string", "null"] }
+        askPrice: { type: ["number", "null"] }
+        payout: { type: ["number", "null"] }
+        longcode: { type: ["string", "null"] }
+        expiresAt: { type: string, format: date-time }
+        stopLossNote: { type: string }
+      required: [proposalToken, symbol, contractType, stake, duration, barrier, askPrice, payout, longcode, expiresAt, stopLossNote]
     TradeResult:
       type: object
       properties:

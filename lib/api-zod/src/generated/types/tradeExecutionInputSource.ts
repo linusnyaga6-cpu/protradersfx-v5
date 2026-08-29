@@ -6,10 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type TradeInputSource = typeof TradeInputSource[keyof typeof TradeInputSource];
+export type TradeExecutionInputSource = typeof TradeExecutionInputSource[keyof typeof TradeExecutionInputSource];
 
 
-export const TradeInputSource = {
+export const TradeExecutionInputSource = {
   manual: 'manual',
   bulk: 'bulk',
   ai_assisted: 'ai_assisted',

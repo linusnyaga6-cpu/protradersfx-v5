@@ -3,7 +3,7 @@ import { Router, type Request, type Response } from "express";
 import rateLimit from "express-rate-limit";
 import WebSocket, { type RawData } from "ws";
 import { and, desc, eq } from "drizzle-orm";
-import { db, riskAcknowledgements, transactions } from "@workspace/db";
+import { consumedTradeProposals, db, riskAcknowledgements, transactions } from "@workspace/db";
 
 type SessionValue = {
   accessToken: string;
@@ -627,6 +627,46 @@ router.get("/account", async (req, res) => {
   }
 });
 
+router.post("/trades/preview", async (req, res) => {
+  const session = await getSession(req, res);
+  if (!session) return errorResponse(res, 401, "Not authenticated");
+  const symbol = String(req.body?.symbol || "");
+  const contractType = supportedContractTypes.has(String(req.body?.contract_type)) ? String(req.body.contract_type) : null;
+  const stake = Number(req.body?.stake);
+  const duration = Number(req.body?.duration);
+  const stopLoss = req.body?.stop_loss === undefined ? null : Number(req.body.stop_loss);
+  const barrier = req.body?.barrier === undefined ? undefined : String(req.body.barrier);
+  if (!contractType || !/^[A-Z0-9_]+$/.test(symbol) || !Number.isFinite(stake) || stake <= 0 || stake > maxStake || !Number.isInteger(duration) || duration < 1 || duration > maxDuration || (stopLoss !== null && (!Number.isFinite(stopLoss) || stopLoss <= 0)) || (barrierContractTypes.has(contractType) && !/^[0-9]$/.test(barrier || ""))) {
+    return errorResponse(res, 400, "Invalid proposal parameters");
+  }
+  try {
+    const accounts = await listDerivAccounts(session.accessToken);
+    const account = chooseAccount(accounts, undefined, session.accountId);
+    if (!account?.account_id || !account.currency) return errorResponse(res, 502, "Account identity unavailable");
+    const availability = await derivRequest(session.accessToken, { contracts_for: symbol }, session.accountId);
+    const offered = new Set((availability.contracts_for?.available || []).map((item: any) => String(item.contract_type)));
+    if (!offered.has(contractType)) return errorResponse(res, 400, "Contract unavailable", `${contractType} is not offered by Deriv for ${symbol}.`);
+    const response = await derivRequest(session.accessToken, {
+      proposal: 1, amount: stake, basis: "stake", contract_type: contractType,
+      currency: account.currency, duration, duration_unit: "t", symbol,
+      ...(barrierContractTypes.has(contractType) ? { barrier } : {}),
+    }, session.accountId);
+    const proposal = response.proposal;
+    if (!proposal?.id) return errorResponse(res, 502, "Deriv did not return a proposal");
+    return res.json({
+      proposalToken: seal({ id: proposal.id, nonce: crypto.randomUUID(), accountId: account.account_id, symbol, contractType, stake, duration, barrier: barrier || null, stopLoss, expiresAt: Date.now() + 30_000 }),
+      symbol, contractType, stake, duration, barrier: barrier || null,
+      askPrice: Number.isFinite(Number(proposal.ask_price)) ? Number(proposal.ask_price) : null,
+      payout: Number.isFinite(Number(proposal.payout)) ? Number(proposal.payout) : null,
+      longcode: proposal.longcode || null,
+      expiresAt: new Date(Date.now() + 30_000).toISOString(),
+      stopLossNote: "Stop loss is requested after Deriv accepts the contract; any rejection is reported explicitly.",
+    });
+  } catch (error) {
+    return errorResponse(res, 502, "Proposal unavailable", error instanceof Error ? error.message : undefined);
+  }
+});
+
 router.post("/trades", async (req, res) => {
   if (!tradingEnabled) {
     return errorResponse(
@@ -733,17 +773,19 @@ router.post("/trades", async (req, res) => {
       return errorResponse(res, 400, "Contract unavailable", `${validatedContractType} is not offered by Deriv for ${symbol}.`);
     }
 
-    const proposal = await derivRequest(session.accessToken, {
-      proposal: 1,
-      amount: stake,
-      basis: "stake",
-      contract_type: validatedContractType,
-      currency,
-      duration,
-      duration_unit: "t",
-      symbol,
-      ...(barrierContractTypes.has(validatedContractType) ? { barrier } : {}),
-    }, session.accountId);
+    if (!req.body?.proposal_token) return errorResponse(res, 409, "Proposal review required", "Review a provider-backed proposal before execution.");
+    const reviewed = unseal(req.body.proposal_token);
+    const matches = reviewed?.accountId === loginId && reviewed?.symbol === symbol && reviewed?.contractType === validatedContractType
+      && reviewed?.stake === stake && reviewed?.duration === duration && reviewed?.barrier === (barrier || null)
+      && reviewed?.stopLoss === (stopLoss ?? null) && reviewed?.expiresAt > Date.now();
+    if (!matches || !reviewed?.id || !reviewed?.nonce) return errorResponse(res, 409, "Proposal expired or changed", "Review the current order again before execution.");
+    const consumed = await db.insert(consumedTradeProposals).values({
+      nonce: reviewed.nonce,
+      ownerKey: ownerKeyFor(account.account_id || loginId),
+      proposalId: reviewed.id,
+    }).onConflictDoNothing().returning({ nonce: consumedTradeProposals.nonce });
+    if (!consumed.length) return errorResponse(res, 409, "Proposal already used", "This proposal has already been submitted. Review a fresh proposal before another order.");
+    const proposal: any = { proposal: { id: reviewed.id } };
     if (!proposal.proposal?.id) {
       return errorResponse(res, 502, "Deriv did not return a proposal");
     }

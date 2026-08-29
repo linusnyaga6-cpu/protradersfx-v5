@@ -232,9 +232,12 @@ export function FloatingScanner() {
                <span className="text-[10px] text-muted-foreground">{(scanBestMarket.data as any)?.availableCount || 0} available</span>
              </div>
              {(scanBestMarket.data as any).markets.slice(0, 5).map((market: any, index: number) => (
-               <button key={market.symbol} type="button" className="flex w-full items-center justify-between rounded-lg border border-white/10 bg-background/50 px-3 py-2 text-left hover:border-primary/40" onClick={() => { setSymbol(market.symbol); setResult(null) }}>
-                 <span><span className="mr-2 font-mono text-xs text-primary">#{index + 1}</span><span className="text-xs">{market.displayName}</span><span className="ml-2 font-mono text-[10px] text-muted-foreground">{market.symbol}</span></span>
-                 <span className="font-mono text-xs">{market.score}</span>
+               <button key={market.symbol} type="button" className="flex w-full items-center justify-between rounded-lg border border-white/10 bg-background/50 px-3 py-2 text-left hover:border-primary/40" onClick={() => {
+                 const direction = market.bias === "bearish" ? "PUT" : "CALL"
+                 window.location.href = `/bulk-trade?symbol=${encodeURIComponent(market.symbol)}&contract=${direction}&source=ai_assisted`
+               }}>
+                 <span><span className="mr-2 font-mono text-xs text-primary">#{index + 1}</span><span className="text-xs">{market.displayName}</span><span className="ml-2 font-mono text-[10px] text-muted-foreground">{market.symbol}</span><span className="ml-2 text-[10px] uppercase text-muted-foreground">{market.bias} · {market.freshnessSeconds}s old</span></span>
+                 <span className="font-mono text-xs">Score {market.score}</span>
                </button>
              ))}
              <p className="text-[10px] leading-4 text-muted-foreground">{(scanBestMarket.data as any).disclaimer}</p>

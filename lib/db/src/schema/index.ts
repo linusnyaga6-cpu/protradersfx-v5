@@ -19,3 +19,4 @@
 
 export * from "./protraders";
 export * from "./transactions";
+export * from "./trade-proposals";

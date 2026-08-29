@@ -9,9 +9,9 @@
 /**
  * Required only for real-money accounts; ignored for demo accounts.
  */
-export type TradeInputLiveConfirmation = typeof TradeInputLiveConfirmation[keyof typeof TradeInputLiveConfirmation];
+export type TradePreviewInputLiveConfirmation = typeof TradePreviewInputLiveConfirmation[keyof typeof TradePreviewInputLiveConfirmation];
 
 
-export const TradeInputLiveConfirmation = {
+export const TradePreviewInputLiveConfirmation = {
   CONFIRM_LIVE_TRADE: 'CONFIRM_LIVE_TRADE',
 } as const;

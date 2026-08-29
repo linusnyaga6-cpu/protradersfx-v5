@@ -206,10 +206,10 @@ export interface Account {
   openPnl: number | null;
 }
 
-export type TradeInputContractType = typeof TradeInputContractType[keyof typeof TradeInputContractType];
+export type TradePreviewInputContractType = typeof TradePreviewInputContractType[keyof typeof TradePreviewInputContractType];
 
 
-export const TradeInputContractType = {
+export const TradePreviewInputContractType = {
   CALL: 'CALL',
   PUT: 'PUT',
   DIGITOVER: 'DIGITOVER',
@@ -218,10 +218,10 @@ export const TradeInputContractType = {
   DIGITODD: 'DIGITODD',
 } as const;
 
-export type TradeInputSource = typeof TradeInputSource[keyof typeof TradeInputSource];
+export type TradePreviewInputSource = typeof TradePreviewInputSource[keyof typeof TradePreviewInputSource];
 
 
-export const TradeInputSource = {
+export const TradePreviewInputSource = {
   manual: 'manual',
   bulk: 'bulk',
   ai_assisted: 'ai_assisted',
@@ -231,16 +231,16 @@ export const TradeInputSource = {
 /**
  * Required only for real-money accounts; ignored for demo accounts.
  */
-export type TradeInputLiveConfirmation = typeof TradeInputLiveConfirmation[keyof typeof TradeInputLiveConfirmation];
+export type TradePreviewInputLiveConfirmation = typeof TradePreviewInputLiveConfirmation[keyof typeof TradePreviewInputLiveConfirmation];
 
 
-export const TradeInputLiveConfirmation = {
+export const TradePreviewInputLiveConfirmation = {
   CONFIRM_LIVE_TRADE: 'CONFIRM_LIVE_TRADE',
 } as const;
 
-export interface TradeInput {
+export interface TradePreviewInput {
   symbol: string;
-  contract_type: TradeInputContractType;
+  contract_type: TradePreviewInputContractType;
   /**
      * Required for digit over and digit under contracts.
      * @pattern ^[0-9]$
@@ -252,11 +252,79 @@ export interface TradeInput {
   stake: number;
   /** @minimum 1 */
   duration: number;
-  source?: TradeInputSource;
+  source?: TradePreviewInputSource;
   /** @maxLength 120 */
   request_label?: string;
   /** Required only for real-money accounts; ignored for demo accounts. */
-  live_confirmation?: TradeInputLiveConfirmation;
+  live_confirmation?: TradePreviewInputLiveConfirmation;
+  /** Signed short-lived token returned by the proposal preview. */
+  proposal_token?: string;
+}
+
+export type TradeExecutionInputContractType = typeof TradeExecutionInputContractType[keyof typeof TradeExecutionInputContractType];
+
+
+export const TradeExecutionInputContractType = {
+  CALL: 'CALL',
+  PUT: 'PUT',
+  DIGITOVER: 'DIGITOVER',
+  DIGITUNDER: 'DIGITUNDER',
+  DIGITEVEN: 'DIGITEVEN',
+  DIGITODD: 'DIGITODD',
+} as const;
+
+export type TradeExecutionInputSource = typeof TradeExecutionInputSource[keyof typeof TradeExecutionInputSource];
+
+
+export const TradeExecutionInputSource = {
+  manual: 'manual',
+  bulk: 'bulk',
+  ai_assisted: 'ai_assisted',
+  bot_assisted: 'bot_assisted',
+} as const;
+
+export type TradeExecutionInputLiveConfirmation = typeof TradeExecutionInputLiveConfirmation[keyof typeof TradeExecutionInputLiveConfirmation];
+
+
+export const TradeExecutionInputLiveConfirmation = {
+  CONFIRM_LIVE_TRADE: 'CONFIRM_LIVE_TRADE',
+} as const;
+
+export interface TradeExecutionInput {
+  symbol: string;
+  contract_type: TradeExecutionInputContractType;
+  /** @pattern ^[0-9]$ */
+  barrier?: string;
+  /** @exclusiveMinimum 0 */
+  stop_loss?: number;
+  /** @exclusiveMinimum 0 */
+  stake: number;
+  /** @minimum 1 */
+  duration: number;
+  source?: TradeExecutionInputSource;
+  /** @maxLength 120 */
+  request_label?: string;
+  live_confirmation?: TradeExecutionInputLiveConfirmation;
+  /** Required signed single-use token returned by proposal preview. */
+  proposal_token: string;
+}
+
+export interface TradePreview {
+  proposalToken: string;
+  symbol: string;
+  contractType: string;
+  stake: number;
+  duration: number;
+  /** @nullable */
+  barrier: string | null;
+  /** @nullable */
+  askPrice: number | null;
+  /** @nullable */
+  payout: number | null;
+  /** @nullable */
+  longcode: string | null;
+  expiresAt: string;
+  stopLossNote: string;
 }
 
 export interface TradeResult {

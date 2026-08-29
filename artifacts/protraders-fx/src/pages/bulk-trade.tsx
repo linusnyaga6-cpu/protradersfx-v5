@@ -9,6 +9,7 @@ import {
   getGetProtradersPreflightQueryKey,
   getGetSessionStatusQueryKey,
   useCreateTrade,
+  usePreviewTrade,
   useGetAccount,
   useGetMarketCandles,
   useGetMarketTicker,
@@ -37,6 +38,8 @@ export default function BulkTrade() {
   const [results, setResults] = useState<any[]>([])
   const [isRunning, setIsRunning] = useState(false)
   const createTrade = useCreateTrade()
+  const previewTrade = usePreviewTrade()
+  const [proposal, setProposal] = useState<any>(null)
   const queryClient = useQueryClient()
   const marketQuery = useDerivMarkets()
   const marketGroups = useMemo(() => {
@@ -82,10 +85,26 @@ export default function BulkTrade() {
     if (availableTypes.length && !availableTypes.includes(contractType)) setContractType(availableTypes[0])
   }, [availableTypes.join("|"), contractType])
   const needsBarrier = Boolean(CONTRACT_LABELS[contractType]?.needsBarrier)
+  useEffect(() => setProposal(null), [selectedMarket, contractType, barrier, stopLoss, stake, duration])
+  const tradeSource = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("source") === "ai_assisted"
+    ? "ai_assisted" as const
+    : "manual" as const
 
   const validOrder = Number(stake) > 0 && Number(stopLoss) > 0 && Number(duration) > 0 && Number.isInteger(Number(duration)) && availableTypes.includes(contractType) && (!needsBarrier || /^[0-9]$/.test(barrier))
+  const orderData = {
+    symbol: selectedMarket, contract_type: contractType,
+    ...(needsBarrier ? { barrier } : {}), stop_loss: Number(stopLoss),
+    stake: Number(stake), duration: Number(duration), source: tradeSource,
+    request_label: `${selectedMarket} ${tradeSource === "ai_assisted" ? "scanner-assisted" : "manual"} order`,
+  }
+  const reviewOrder = async () => {
+    if (!canRun || !validOrder || previewTrade.isPending) return
+    setProposal(null)
+    try { setProposal(await previewTrade.mutateAsync({ data: orderData as any })) }
+    catch (error) { setResults([{ id: 0, symbol: selectedMarket, ok: false, status: "rejected", message: error instanceof Error ? error.message : "Proposal unavailable" }]) }
+  }
   const executeOrder = async () => {
-    if (!canRun || !validOrder || isRunning) return
+    if (!canRun || !validOrder || isRunning || !proposal?.proposalToken) return
     setIsRunning(true)
     setResults([{
       id: 0,
@@ -98,16 +117,7 @@ export default function BulkTrade() {
     try {
         // This action always submits exactly one contract through the protected trade path.
         const result = await createTrade.mutateAsync({
-          data: {
-            symbol: selectedMarket,
-            contract_type: contractType,
-            ...(needsBarrier ? { barrier } : {}),
-            stop_loss: Number(stopLoss),
-            stake: Number(stake),
-            duration: Number(duration),
-            source: "manual",
-              request_label: `${selectedMarket} manual order`,
-          } as any,
+          data: { ...orderData, proposal_token: proposal.proposalToken } as any,
         })
           setResults(current => current.map(item => item.id === 0 ? {
           ...item,
@@ -116,6 +126,7 @@ export default function BulkTrade() {
           message: result.message || (result.ok && result.contractId ? `Deriv accepted contract ${result.contractId}` : "Order rejected"),
         } : item))
     } catch (error) {
+        setProposal(null)
         setResults(current => current.map(item => item.id === 0 ? {
           ...item,
           ok: false,
@@ -219,11 +230,19 @@ export default function BulkTrade() {
                  <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Stop loss</span><span>{formatMoney(Number(stopLoss || 0), accountCurrency)}</span></div>
                  <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Stake</span><span>{formatMoney(Number(stake || 0), accountCurrency)}</span></div>
             </div>
+             {proposal && <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+               <div className="flex items-center justify-between gap-3"><div className="font-medium">Deriv proposal ready</div><Button type="button" size="sm" variant="ghost" onClick={reviewOrder} disabled={previewTrade.isPending}>Refresh proposal</Button></div>
+               <div className="mt-2 flex justify-between"><span className="text-muted-foreground">Ask price</span><span>{proposal.askPrice == null ? "Unavailable" : formatMoney(proposal.askPrice, accountCurrency)}</span></div>
+               <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Potential payout</span><span>{proposal.payout == null ? "Unavailable" : formatMoney(proposal.payout, accountCurrency)}</span></div>
+               <p className="mt-2 text-xs text-muted-foreground">{proposal.longcode || "Provider proposal received."} Valid for 30 seconds; refresh it if you need more time.</p>
+             </div>}
                {!validOrder && <p className="text-xs text-destructive">Choose an available Deriv contract and enter valid stake, stop loss, and duration.</p>}
-               <Button className="w-full" onClick={executeOrder} disabled={!canRun || !validOrder || isRunning || marketOffline} data-testid="button-execute-order">
+               {!proposal ? <Button className="w-full" onClick={reviewOrder} disabled={!canRun || !validOrder || previewTrade.isPending || marketOffline} data-testid="button-review-order">
+                 {previewTrade.isPending ? "Requesting Deriv proposal..." : "Review Deriv proposal"}
+               </Button> : <Button className="w-full" onClick={executeOrder} disabled={!canRun || !validOrder || isRunning || marketOffline} data-testid="button-execute-order">
                {isRunning && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                  {isRunning ? "Submitting one order..." : "Review and place one order"}
-            </Button>
+             </Button>}
                <p className="text-[11px] leading-5 text-muted-foreground">One click submits one contract through the protected trade flow. It is marked accepted only after Deriv confirms the request; settlement values appear only when Deriv reports them.</p>
           </CardContent>
         </Card>

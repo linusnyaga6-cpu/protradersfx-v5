@@ -6,10 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type TradeInputContractType = typeof TradeInputContractType[keyof typeof TradeInputContractType];
+export type TradePreviewInputContractType = typeof TradePreviewInputContractType[keyof typeof TradePreviewInputContractType];
 
 
-export const TradeInputContractType = {
+export const TradePreviewInputContractType = {
   CALL: 'CALL',
   PUT: 'PUT',
   DIGITOVER: 'DIGITOVER',

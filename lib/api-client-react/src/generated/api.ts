@@ -32,7 +32,9 @@ import type {
   ProtradersPreflight,
   SessionStatus,
   TrackEventInput,
-  TradeInput,
+  TradeExecutionInput,
+  TradePreview,
+  TradePreviewInput,
   TradeResult,
   WorkspaceData
 } from './api.schemas';
@@ -834,14 +836,14 @@ export const getCreateTradeUrl = () => {
 /**
  * @summary Open a controlled Deriv trade
  */
-export const createTrade = async (tradeInput: TradeInput, options?: Parameters<typeof customFetch>[1]): Promise<TradeResult> => {
+export const createTrade = async (tradeExecutionInput: TradeExecutionInput, options?: Parameters<typeof customFetch>[1]): Promise<TradeResult> => {
 
   return customFetch<TradeResult>(getCreateTradeUrl(),
   {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(tradeInput)
+    body: JSON.stringify(tradeExecutionInput)
   }
 );}
 
@@ -850,8 +852,8 @@ export const createTrade = async (tradeInput: TradeInput, options?: Parameters<t
 
 
 export const getCreateTradeMutationOptions = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTrade>>, TError,{data: BodyType<TradeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof createTrade>>, TError,{data: BodyType<TradeInput>}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTrade>>, TError,{data: BodyType<TradeExecutionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createTrade>>, TError,{data: BodyType<TradeExecutionInput>}, TContext> => {
 
 const mutationKey = ['createTrade'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -863,7 +865,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createTrade>>, {data: BodyType<TradeInput>}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createTrade>>, {data: BodyType<TradeExecutionInput>}> = (props) => {
           const {data} = props ?? {};
 
           return  createTrade(data,requestOptions)
@@ -877,21 +879,92 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type CreateTradeMutationResult = NonNullable<Awaited<ReturnType<typeof createTrade>>>
-    export type CreateTradeMutationBody = BodyType<TradeInput>
+    export type CreateTradeMutationBody = BodyType<TradeExecutionInput>
     export type CreateTradeMutationError = ErrorType<ErrorResponse>
 
     /**
  * @summary Open a controlled Deriv trade
  */
 export const useCreateTrade = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTrade>>, TError,{data: BodyType<TradeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTrade>>, TError,{data: BodyType<TradeExecutionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createTrade>>,
         TError,
-        {data: BodyType<TradeInput>},
+        {data: BodyType<TradeExecutionInput>},
         TContext
       > => {
       return useMutation(getCreateTradeMutationOptions(options));
+    }
+
+export const getPreviewTradeUrl = () => {
+
+
+
+
+  return `/api/trades/preview`
+}
+
+/**
+ * @summary Preview a provider-backed Deriv proposal
+ */
+export const previewTrade = async (tradePreviewInput: TradePreviewInput, options?: Parameters<typeof customFetch>[1]): Promise<TradePreview> => {
+
+  return customFetch<TradePreview>(getPreviewTradeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(tradePreviewInput)
+  }
+);}
+
+
+
+
+
+export const getPreviewTradeMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewTrade>>, TError,{data: BodyType<TradePreviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewTrade>>, TError,{data: BodyType<TradePreviewInput>}, TContext> => {
+
+const mutationKey = ['previewTrade'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewTrade>>, {data: BodyType<TradePreviewInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  previewTrade(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewTradeMutationResult = NonNullable<Awaited<ReturnType<typeof previewTrade>>>
+    export type PreviewTradeMutationBody = BodyType<TradePreviewInput>
+    export type PreviewTradeMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Preview a provider-backed Deriv proposal
+ */
+export const usePreviewTrade = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewTrade>>, TError,{data: BodyType<TradePreviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof previewTrade>>,
+        TError,
+        {data: BodyType<TradePreviewInput>},
+        TContext
+      > => {
+      return useMutation(getPreviewTradeMutationOptions(options));
     }
 
 export const getListTransactionsUrl = () => {

@@ -7,7 +7,7 @@ import {
 import {
   useListBots, getListBotsQueryKey,
   useListBotTemplates, getListBotTemplatesQueryKey,
-  useCreateBot, useUpdateBot, useChangeBotLifecycle, useRunBotOnce, useCreateTrade,
+  useCreateBot, useUpdateBot, useChangeBotLifecycle, useRunBotOnce, useCreateTrade, usePreviewTrade,
   useListBotRuns, getListBotRunsQueryKey,
   useCreateBotTemplate, useUpdateBotTemplate, useArchiveBotTemplate,
   useGetAccount, getGetAccountQueryKey, useGetProtradersPreflight, getGetProtradersPreflightQueryKey,
@@ -37,6 +37,7 @@ export default function Bots() {
   const life = useChangeBotLifecycle();
   const run = useRunBotOnce();
   const trade = useCreateTrade();
+  const previewTrade = usePreviewTrade();
   const archiveTpl = useArchiveBotTemplate();
   const preflight = useGetProtradersPreflight({ query: { queryKey: getGetProtradersPreflightQueryKey() } });
 
@@ -95,7 +96,6 @@ export default function Bots() {
       setNotice("Bot execution requires the protected Deriv demo mode.");
       return;
     }
-    if (!window.confirm(`Place one demo order for ${bot.name}? The selected market, contract type, stake, and stop loss will be submitted for review.`)) return;
     stopRequested.current = false;
     setExecutingBotId(String(bot.id));
     let accepted = 0;
@@ -106,8 +106,7 @@ export default function Bots() {
         setNotice("Bot paused: no entry condition was present.");
       } else if (!stopRequested.current) {
         const contractType = String(bot.config?.contractType || (action === "review-put" ? "PUT" : "CALL"));
-        await trade.mutateAsync({
-          data: {
+        const orderData = {
             symbol: String(bot.symbol),
             contract_type: contractType as any,
             ...(CONTRACT_LABELS[contractType]?.needsBarrier ? { barrier: String(bot.config?.barrier || "5") } : {}),
@@ -116,7 +115,22 @@ export default function Bots() {
             stop_loss: Number(bot.config?.stopLoss || 1),
             source: "bot_assisted",
             request_label: `${bot.name} reviewed demo order`,
-          },
+        };
+        const proposal = await previewTrade.mutateAsync({ data: orderData as any }) as any;
+        const confirmed = window.confirm([
+          `Run ${bot.name} with this Deriv proposal?`,
+          `${String(bot.symbol)} · ${CONTRACT_LABELS[contractType]?.action || contractType} · ${Number(bot.config?.duration || 1)} tick(s)`,
+          `Ask price: ${proposal.askPrice ?? "unavailable"} ${account.data?.currency || ""}`,
+          `Potential payout: ${proposal.payout ?? "unavailable"} ${account.data?.currency || ""}`,
+          proposal.longcode || "",
+          "This places exactly one demo contract.",
+        ].filter(Boolean).join("\n"));
+        if (!confirmed) {
+          setNotice("Bot proposal reviewed. No order was placed.");
+          return;
+        }
+        await trade.mutateAsync({
+          data: { ...orderData, proposal_token: proposal.proposalToken } as any,
         })
         accepted = 1;
         await client.invalidateQueries({ queryKey: getGetAccountQueryKey() });
@@ -132,7 +146,7 @@ export default function Bots() {
   };
 
   return (
-    <Workspace title="Bots" eyebrow="Controlled automation" description="Validate first. Every new bot begins in observation mode and stays behind lifecycle controls.">
+    <Workspace title="Bots" eyebrow="Controlled automation" description="Choose the volatility market, contract type, tick speed, and risk limits before running one user-confirmed bot order.">
       <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} />
       <div className="flex items-center justify-between">
         <Badge variant="outline" className="bg-background"><ShieldCheck className="mr-1 h-3 w-3" />Dry-run default</Badge>
@@ -443,11 +457,14 @@ function BotBuilder({ bot, accountCurrency, onUpdate }: { bot: any, accountCurre
             </div>
 
                <div className="space-y-2">
-               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Instrument Symbol</Label>
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Volatility market</Label>
                <Select value={symbol} onValueChange={setSymbol}>
                  <SelectTrigger className="bg-background shadow-sm font-mono"><SelectValue /></SelectTrigger>
                  <SelectContent>{marketQuery.markets.map(item => <SelectItem key={item.symbol} value={item.symbol}><span>{item.displayName}</span><span className="ml-2 font-mono text-xs text-muted-foreground">{item.symbol}</span></SelectItem>)}</SelectContent>
                </Select>
+                <p className="text-xs leading-5 text-muted-foreground">
+                  Change the volatility family here. Both standard and 1-second indices are loaded from the Deriv market catalog.
+                </p>
               {errors.symbol && <p className="text-xs text-destructive">{errors.symbol}</p>}
             </div>
 
@@ -463,10 +480,16 @@ function BotBuilder({ bot, accountCurrency, onUpdate }: { bot: any, accountCurre
               </Select>
             </div>
             <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Execution type</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {Object.entries(CONTRACT_LABELS).map(([value, item]) => <Button key={value} type="button" size="sm" variant={contractType === value ? "default" : "outline"} onClick={() => setContractType(value)} disabled={!availableTypes.includes(value)}>{item.action}</Button>)}
-              </div>
+               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Market type</Label>
+              {["Rise / Fall", "Over / Under", "Odd / Even"].map(family => {
+                const options = Object.entries(CONTRACT_LABELS).filter(([, item]) => item.family === family)
+                return <div key={family} className="space-y-2">
+                  <div className="text-xs font-medium text-muted-foreground">{family}</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {options.map(([value, item]) => <Button key={value} type="button" size="sm" variant={contractType === value ? "default" : "outline"} onClick={() => setContractType(value)} disabled={!availableTypes.includes(value)}>{item.action}</Button>)}
+                  </div>
+                </div>
+              })}
               {contracts.isLoading && <p className="text-xs text-muted-foreground">Checking Deriv contracts for this volatility…</p>}
               {!contracts.isLoading && !availableTypes.length && <p className="text-xs text-destructive">No supported trading type is currently available from Deriv for this symbol.</p>}
               {errors.contractType && <p className="text-xs text-destructive">{errors.contractType}</p>}
