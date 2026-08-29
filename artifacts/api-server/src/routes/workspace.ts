@@ -8,7 +8,7 @@ import {
   analyses, botEvents, botRuns, bots, botTemplates, db, recoveryIncidents,
   riskAcknowledgements, snapshots,
 } from "@workspace/db";
-import { derivRequest, getSession } from "./protraders";
+import { getSession, listDerivAccounts } from "./protraders";
 
 const router = Router();
 const RISK_VERSION = "2025-01";
@@ -40,6 +40,8 @@ const builtIns = [
   { id: "trend-following", name: "Trend following", description: "Uses transparent moving-average direction for controlled account-connected review; it makes no performance claim.", strategy: { indicator: "ema", direction: "BOTH", stake: 1, duration: 5, riskCap: 10, notes: "Review EMA direction using current market candles.", execution: "dry_run" } },
   { id: "rsi-observer", name: "RSI observer", description: "Flags RSI extremes for review; it does not predict prices or promise returns.", strategy: { indicator: "rsi", direction: "BOTH", stake: 1, duration: 5, riskCap: 10, notes: "Review RSI extremes without placing an order.", execution: "dry_run" } },
   { id: "recovery-guard", name: "Recovery Guard", description: "Checks current account and market freshness plus recent failed dry-runs, then returns a bounded monitor-or-pause review state.", strategy: { indicator: "rsi", direction: "BOTH", mode: "recovery_guard", stake: 1, duration: 5, riskCap: 5, notes: "If account or market data is stale, or a prior dry-run failed, pause and review logs. Never increase stake or retry an order.", execution: "dry_run" } },
+  { id: "protrader-free-bot-a", name: "Protrader Free Bot A", description: "An original recovery-monitoring bot that checks account verification, market freshness, and recent dry-run issues before returning monitor-or-pause guidance.", strategy: { indicator: "rsi", direction: "BOTH", mode: "recovery_guard", stake: 1, duration: 5, riskCap: 5, notes: "Recovery monitoring only. Never increase stake, retry an order, or place a trade.", execution: "dry_run" } },
+  { id: "protrader-free-bot-b", name: "Protrader Free Bot B", description: "An original Vertex-style trend observer that evaluates EMA direction from current candles and returns a review signal without placing an order.", strategy: { indicator: "ema", direction: "BOTH", mode: "market_observer", stake: 1, duration: 5, riskCap: 10, notes: "Trend observation only. Review the signal; do not treat it as a prediction or performance claim.", execution: "dry_run" } },
 ];
 
 function fail(res: Response, status: number, error: string, message?: string) {
@@ -60,8 +62,12 @@ function string(value: unknown, maximum = 160) {
 async function owner(req: Request, res: Response) {
   const session = await getSession(req, res);
   if (!session) return null;
-  const account = await derivRequest(session.accessToken, { balance: 1 });
-  const loginId = String(account.balance?.loginid || "");
+  const accounts = await listDerivAccounts(session.accessToken);
+  const account = accounts.find((item) => item.account_id === session.accountId) ||
+    accounts.find((item) => item.account_type === "demo") ||
+    accounts.find((item) => item.status === "active") ||
+    accounts[0];
+  const loginId = String(account?.account_id || "");
   if (!loginId) throw new Error("Authenticated Deriv login ID unavailable");
   return { session, key: crypto.createHash("sha256").update(`protraders-owner:${loginId}`).digest("hex") };
 }
@@ -259,16 +265,19 @@ router.post("/bots/:id/run-once", async (req, res) => {
 
   try {
     if (strategy.data.mode === "recovery_guard") {
-      const [accountData, marketData, priorRuns] = await Promise.all([
-        derivRequest(auth.session.accessToken, { balance: 1 }),
+      const [accounts, marketData, priorRuns] = await Promise.all([
+        listDerivAccounts(auth.session.accessToken),
         publicDeriv({ ticks_history: bot.symbol, style: "candles", granularity: 60, count: 60, end: "latest" }),
         db.select({ status: botRuns.status, result: botRuns.result }).from(botRuns)
           .where(and(eq(botRuns.botId, bot.id), eq(botRuns.ownerKey, auth.key)))
           .orderBy(desc(botRuns.startedAt))
           .limit(6),
       ]);
-      const account = accountData.balance;
-      if (!account?.loginid || !Number.isFinite(Number(account.balance))) throw new Error("Authoritative account data unavailable");
+      const account = accounts.find((item) => item.account_id === auth.session.accountId) ||
+        accounts.find((item) => item.account_type === "demo") ||
+        accounts.find((item) => item.status === "active") ||
+        accounts[0];
+      if (!account?.account_id || !Number.isFinite(Number(account.balance))) throw new Error("Authoritative account data unavailable");
       const candles = Array.isArray(marketData.candles)
         ? marketData.candles.map((c: any) => ({ epoch: Number(c.epoch), close: Number(c.close) })).filter((c: any) => Number.isFinite(c.epoch) && Number.isFinite(c.close))
         : [];
@@ -319,7 +328,7 @@ router.post("/bots/:id/run-once", async (req, res) => {
 });
 
 router.get("/snapshots", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; return res.json({ snapshots: await db.select().from(snapshots).where(eq(snapshots.ownerKey, auth.key)).orderBy(desc(snapshots.createdAt)) }); });
-router.post("/snapshots", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const label = string(req.body?.label); if (!label) return fail(res, 400, "Invalid snapshot"); try { const balance = await derivRequest(auth.session.accessToken, { balance: 1 }); const account = balance.balance; if (!account?.loginid || !Number.isFinite(Number(account.balance))) return fail(res, 502, "Account snapshot unavailable"); const clientContext = req.body?.clientContext; if (clientContext !== undefined && (typeof clientContext !== "object" || Array.isArray(clientContext))) return fail(res, 400, "Invalid non-authoritative client context"); const data = { authoritativeAccount: { loginid: String(account.loginid), balance: Number(account.balance), currency: account.currency ?? null, capturedAt: new Date().toISOString() }, ...(clientContext ? { nonAuthoritativeClientContext: clientContext } : {}) }; const [item] = await db.insert(snapshots).values({ ownerKey: auth.key, label, data }).returning(); return res.status(201).json(item); } catch (e) { return fail(res, 502, "Account snapshot unavailable", e instanceof Error ? e.message : undefined); } });
+router.post("/snapshots", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const label = string(req.body?.label); if (!label) return fail(res, 400, "Invalid snapshot"); try { const accounts = await listDerivAccounts(auth.session.accessToken); const account = accounts.find((item) => item.account_id === auth.session.accountId) || accounts.find((item) => item.account_type === "demo") || accounts.find((item) => item.status === "active") || accounts[0]; if (!account?.account_id || !Number.isFinite(Number(account.balance))) return fail(res, 502, "Account snapshot unavailable"); const clientContext = req.body?.clientContext; if (clientContext !== undefined && (typeof clientContext !== "object" || Array.isArray(clientContext))) return fail(res, 400, "Invalid non-authoritative client context"); const data = { authoritativeAccount: { loginid: String(account.account_id), balance: Number(account.balance), currency: account.currency ?? null, capturedAt: new Date().toISOString() }, ...(clientContext ? { nonAuthoritativeClientContext: clientContext } : {}) }; const [item] = await db.insert(snapshots).values({ ownerKey: auth.key, label, data }).returning(); return res.status(201).json(item); } catch (e) { return fail(res, 502, "Account snapshot unavailable", e instanceof Error ? e.message : undefined); } });
 router.get("/snapshots/:id", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const [item] = await db.select().from(snapshots).where(and(eq(snapshots.id, req.params.id), eq(snapshots.ownerKey, auth.key))); return item ? res.json(item) : fail(res, 404, "Snapshot not found"); });
 router.get("/risk-acknowledgements/status", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const [item] = await db.select().from(riskAcknowledgements).where(and(eq(riskAcknowledgements.ownerKey, auth.key), eq(riskAcknowledgements.version, RISK_VERSION))).orderBy(desc(riskAcknowledgements.acceptedAt)); return res.json({ version: RISK_VERSION, accepted: Boolean(item), acceptedAt: item?.acceptedAt ?? null }); });
 router.post("/risk-acknowledgements/accept", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const version = string(req.body?.version, 40); if (version !== RISK_VERSION) return fail(res, 400, "Unsupported risk acknowledgement version"); const [item] = await db.insert(riskAcknowledgements).values({ ownerKey: auth.key, version }).returning(); return res.status(201).json(item); });

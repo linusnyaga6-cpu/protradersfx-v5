@@ -231,13 +231,20 @@ export async function getSession(req: Request, res: Response) {
   }
 }
 
-async function derivRestRequest<T>(accessToken: string, path: string): Promise<T> {
+async function derivRestRequest<T>(
+  accessToken: string,
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
   if (!clientId) throw new Error("DERIV_CLIENT_ID is not configured");
   const response = await fetch(`${derivApiBaseUrl}${path}`, {
+    ...init,
     headers: {
       Accept: "application/json",
+      "Content-Type": "application/json",
       Authorization: `Bearer ${accessToken}`,
       "Deriv-App-ID": clientId,
+      ...(init.headers || {}),
     },
   });
   const body = await response.json().catch(() => ({})) as any;
@@ -432,8 +439,9 @@ router.get("/transactions", async (req, res) => {
   if (!session) return errorResponse(res, 401, "Not authenticated");
 
   try {
-    const accountData = await derivRequest(session.accessToken, { balance: 1 });
-    const loginId = String(accountData.balance?.loginid || "");
+    const accounts = await listDerivAccounts(session.accessToken);
+    const account = chooseAccount(accounts, undefined, session.accountId);
+    const loginId = String(account?.account_id || "");
     if (!loginId) return errorResponse(res, 502, "Account identity unavailable");
     const ownerKey = ownerKeyFor(loginId);
     const rows = await db.select().from(transactions)
@@ -459,8 +467,9 @@ router.get("/transactions/:id", async (req, res) => {
   if (!session) return errorResponse(res, 401, "Not authenticated");
 
   try {
-    const accountData = await derivRequest(session.accessToken, { balance: 1 });
-    const loginId = String(accountData.balance?.loginid || "");
+    const accounts = await listDerivAccounts(session.accessToken);
+    const account = chooseAccount(accounts, undefined, session.accountId);
+    const loginId = String(account?.account_id || "");
     if (!loginId) return errorResponse(res, 502, "Account identity unavailable");
     const [row] = await db.select().from(transactions).where(and(
       eq(transactions.id, String(req.params.id)),
@@ -486,8 +495,9 @@ router.post("/transactions/:id/refresh", async (req, res) => {
   if (!session) return errorResponse(res, 401, "Not authenticated");
 
   try {
-    const accountData = await derivRequest(session.accessToken, { balance: 1 });
-    const loginId = String(accountData.balance?.loginid || "");
+    const accounts = await listDerivAccounts(session.accessToken);
+    const account = chooseAccount(accounts, undefined, session.accountId);
+    const loginId = String(account?.account_id || "");
     if (!loginId) return errorResponse(res, 502, "Account identity unavailable");
     const ownerKey = ownerKeyFor(loginId);
     const [row] = await db.select().from(transactions).where(and(
@@ -502,7 +512,7 @@ router.post("/transactions/:id/refresh", async (req, res) => {
     const contract = await derivRequest(session.accessToken, {
       proposal_open_contract: 1,
       contract_id: Number(row.contractId),
-    });
+    }, session.accountId);
     const openContract = contract.proposal_open_contract || {};
     const isSettled = Boolean(openContract.is_sold || ["won", "lost", "sold", "expired"].includes(String(openContract.status || "").toLowerCase()));
     if (!isSettled) return res.json({ transaction: row, refreshed: false });
@@ -523,11 +533,9 @@ router.post("/transactions/:id/refresh", async (req, res) => {
   }
 });
 
-async function derivRequestOnce(accessToken: string, payload: Record<string, unknown>, appId: string) {
+async function derivRequestOnce(wsUrl: string, payload: Record<string, unknown>) {
   return new Promise<any>((resolve, reject) => {
-    const socket = new WebSocket(
-      `wss://ws.derivws.com/websockets/v3?app_id=${encodeURIComponent(appId)}`,
-    );
+    const socket = new WebSocket(wsUrl);
     let settled = false;
     const timer = setTimeout(() => {
       try {
@@ -546,7 +554,7 @@ async function derivRequestOnce(accessToken: string, payload: Record<string, unk
       callback(value);
     };
 
-    socket.on("open", () => socket.send(JSON.stringify({ authorize: accessToken })));
+    socket.on("open", () => socket.send(JSON.stringify(payload)));
     socket.on("message", (raw: RawData) => {
       let data: any;
       try {
@@ -556,8 +564,6 @@ async function derivRequestOnce(accessToken: string, payload: Record<string, unk
       }
       if (data.error) {
         finish(reject, new Error(data.error.message || "Deriv API error"));
-      } else if (data.msg_type === "authorize") {
-        socket.send(JSON.stringify(payload));
       } else if (data.msg_type) {
         finish(resolve, data);
       }
@@ -567,24 +573,22 @@ async function derivRequestOnce(accessToken: string, payload: Record<string, unk
   });
 }
 
-export async function derivRequest(accessToken: string, payload: Record<string, unknown>) {
-  const appIds = [...new Set([
-    process.env.DERIV_WS_APP_ID,
-    publicAppId,
-    "1089",
-  ].filter((value): value is string => Boolean(value)))];
-  let lastError: unknown;
-  for (const appId of appIds) {
-    try {
-      return await derivRequestOnce(accessToken, payload, appId);
-    } catch (error) {
-      lastError = error;
-      if (!/(401|invalid.?app.?id|unexpected server response)/i.test(error instanceof Error ? error.message : String(error))) {
-        throw error;
-      }
-    }
-  }
-  throw lastError instanceof Error ? lastError : new Error("Deriv WebSocket app ID rejected");
+export async function derivRequest(
+  accessToken: string,
+  payload: Record<string, unknown>,
+  accountId?: string,
+) {
+  const accounts = await listDerivAccounts(accessToken);
+  const account = chooseAccount(accounts, undefined, accountId);
+  if (!account?.account_id) throw new Error("No Deriv options account was returned");
+  const otp = await derivRestRequest<{ data?: { url?: string } }>(
+    accessToken,
+    `/trading/v1/options/accounts/${encodeURIComponent(account.account_id)}/otp`,
+    { method: "POST", body: "{}" },
+  );
+  const wsUrl = otp.data?.url;
+  if (!wsUrl) throw new Error("Deriv did not return an authenticated WebSocket URL");
+  return derivRequestOnce(wsUrl, payload);
 }
 
 router.get("/account", async (req, res) => {
@@ -671,9 +675,11 @@ router.post("/trades", async (req, res) => {
   }
 
   try {
-    const account = await derivRequest(session.accessToken, { balance: 1 });
-    const loginId = String(account.balance?.loginid || "");
-    const isDemoAccount = /^VRTC/i.test(loginId);
+    const accounts = await listDerivAccounts(session.accessToken);
+    const account = chooseAccount(accounts, undefined, session.accountId);
+    const loginId = String(account?.account_id || "");
+    const isDemoAccount = account?.account_type === "demo";
+    if (!loginId || !account) return errorResponse(res, 502, "Account identity unavailable");
     if (demoOnly && !isDemoAccount) {
       return errorResponse(
         res,
@@ -709,7 +715,7 @@ router.post("/trades", async (req, res) => {
         );
       }
     }
-    const currency = account.balance?.currency;
+    const currency = account.currency;
     if (!currency) return errorResponse(res, 502, "Account currency unavailable");
 
     const proposal = await derivRequest(session.accessToken, {
@@ -721,14 +727,14 @@ router.post("/trades", async (req, res) => {
       duration,
       duration_unit: "t",
       symbol,
-    });
+    }, session.accountId);
     if (!proposal.proposal?.id) {
       return errorResponse(res, 502, "Deriv did not return a proposal");
     }
     const buy = await derivRequest(session.accessToken, {
       buy: proposal.proposal.id,
       price: stake,
-    });
+    }, session.accountId);
     if (buy.error) return errorResponse(res, 502, "Trade request failed", buy.error.message);
     const transaction = await db.insert(transactions).values({
       ownerKey: ownerKeyFor(loginId),
