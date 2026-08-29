@@ -232,9 +232,6 @@ export default function BulkTrade() {
                {!contracts.isLoading && !contracts.isError && !availableTypes.length && (
                  <p className="text-xs text-destructive">Deriv currently offers no supported contracts for {selectedMarket}. Choose another market.</p>
                )}
-               {availableTypes.length > 0 && !validInputs && (
-                 <p className="text-xs text-destructive">Enter a stake within the displayed limit, a positive stop loss, a whole-number tick duration, and any required digit barrier.</p>
-               )}
                 <RunSessionSummary
                   state={runSession.state}
                   currency={accountCurrency}
