@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "installCommand": "corepack pnpm@10.26.1 install --frozen-lockfile",
   "builds": [
     {
       "src": "artifacts/api-server/api/index.ts",
