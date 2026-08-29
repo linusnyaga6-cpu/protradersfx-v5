@@ -9,12 +9,11 @@ export function useDerivMarkets() {
       refetchInterval: 5 * 60_000,
     },
   })
-  const markets = marketsFromResponse(query.data)
-  const volatilityMarkets = markets.filter(isVolatilityMarket)
+  const markets = marketsFromResponse(query.data).filter(isVolatilityMarket)
   return {
     ...query,
     markets,
-    volatilityMarkets,
+    volatilityMarkets: markets,
     discoveryAvailable: (query.data as any)?.discoveryAvailable !== false,
     defaultSymbol: markets.find(item => item.symbol === DEFAULT_MARKET_SYMBOL)?.symbol
       || markets[0]?.symbol

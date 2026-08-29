@@ -22,14 +22,17 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { AccountStrip } from "@/components/trading/account-strip"
 import { formatMoney, formatVolatility } from "@/lib/format"
-import { CONTRACT_LABELS, DEFAULT_MARKET_SYMBOL, marketLabel } from "@/lib/markets"
+import { CONTRACT_LABELS, DEFAULT_MARKET_SYMBOL, SUPPORTED_VOLATILITY_SYMBOLS, marketLabel } from "@/lib/markets"
 import { useDerivMarkets } from "@/hooks/use-deriv-markets"
 import { useTradingRunSession } from "@/hooks/use-trading-run-session"
 import { RunSessionSummary } from "@/components/trading/run-session-summary"
 
 export default function BulkTrade() {
   const requested = typeof window === "undefined" ? null : new URLSearchParams(window.location.search)
-  const [selectedMarket, setSelectedMarket] = useState(requested?.get("symbol") || DEFAULT_MARKET_SYMBOL)
+  const requestedSymbol = requested?.get("symbol") || DEFAULT_MARKET_SYMBOL
+  const [selectedMarket, setSelectedMarket] = useState(
+    SUPPORTED_VOLATILITY_SYMBOLS.has(requestedSymbol) ? requestedSymbol : DEFAULT_MARKET_SYMBOL,
+  )
   const [contractType, setContractType] = useState(requested?.get("contract") || "DIGITOVER")
   const [barrier, setBarrier] = useState("5")
   const [stopLoss, setStopLoss] = useState("1")
@@ -165,7 +168,7 @@ export default function BulkTrade() {
                <MarketMetric label="Quote" value={marketQuote == null ? "Unavailable" : String(marketQuote)} />
                <MarketMetric label="Volatility" value={marketData?.indicators ? formatVolatility(marketData.indicators.volatilityLevel, marketData.indicators.volatilityPct) : "Unavailable"} />
              </div>
-               <p className="text-xs leading-5 text-muted-foreground">All standard and 1-second volatility families are listed. Quotes, candles, contract types, and every order are validated live by Deriv for the selected symbol.</p>
+               <p className="text-xs leading-5 text-muted-foreground">Focused market universe: standard and 1-second Volatility 10, 25, 50, 75, and 100. Quotes, candles, contract types, and every order are validated live by Deriv.</p>
           </CardContent>
         </Card>
 

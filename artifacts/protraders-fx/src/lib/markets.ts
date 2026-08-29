@@ -1,4 +1,16 @@
 export const DEFAULT_MARKET_SYMBOL = "R_100"
+export const SUPPORTED_VOLATILITY_SYMBOLS = new Set([
+  "R_10",
+  "R_25",
+  "R_50",
+  "R_75",
+  "R_100",
+  "1HZ10V",
+  "1HZ25V",
+  "1HZ50V",
+  "1HZ75V",
+  "1HZ100V",
+])
 
 export type DerivMarket = {
   symbol: string
@@ -37,9 +49,7 @@ export function marketsFromResponse(data: unknown): DerivMarket[] {
 }
 
 export function isVolatilityMarket(market: DerivMarket) {
-  return /^R_(10|15|25|30|50|75|90|100)$/.test(market.symbol)
-    || /^1HZ(10|15|25|30|50|75|90|100|150|250)V$/.test(market.symbol)
-    || /volatility/i.test(market.displayName || "")
+  return SUPPORTED_VOLATILITY_SYMBOLS.has(market.symbol)
 }
 
 export function marketLabel(market: DerivMarket | undefined, symbol: string) {

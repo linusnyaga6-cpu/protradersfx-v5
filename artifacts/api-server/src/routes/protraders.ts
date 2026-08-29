@@ -56,6 +56,10 @@ const riskAcknowledgementVersion = "2025-01";
 const liveConfirmationToken = "CONFIRM_LIVE_TRADE";
 const supportedContractTypes = new Set(["CALL", "PUT", "DIGITOVER", "DIGITUNDER", "DIGITEVEN", "DIGITODD"]);
 const barrierContractTypes = new Set(["DIGITOVER", "DIGITUNDER"]);
+const supportedVolatilitySymbols = new Set([
+  "R_10", "R_25", "R_50", "R_75", "R_100",
+  "1HZ10V", "1HZ25V", "1HZ50V", "1HZ75V", "1HZ100V",
+]);
 const allowedSymbols = new Set(
   String(process.env.TRADING_ALLOWED_SYMBOLS || "")
     .split(",")
@@ -635,7 +639,7 @@ router.post("/trades/preview", async (req, res) => {
     : null;
   const previewErrors = [
     !contractType ? "Choose a supported Deriv contract type." : "",
-    !/^[A-Z0-9_]+$/.test(symbol) ? "Choose a valid market symbol." : "",
+    !supportedVolatilitySymbols.has(symbol) ? "Choose a supported Volatility 10–100 market." : "",
     !Number.isFinite(stake) || stake <= 0 ? "Enter a valid stake amount." : "",
     !Number.isInteger(duration) || duration < 1 ? "Duration must be at least 1 tick." : "",
     duration > maxDuration ? `Duration cannot exceed ${maxDuration} ticks.` : "",
@@ -725,7 +729,7 @@ router.post("/trades", async (req, res) => {
     : null;
   const validationErrors = [
     !contractType ? "Choose a supported Deriv contract type." : "",
-    !/^([A-Z0-9_]+)$/.test(symbol) ? "Choose a valid symbol." : "",
+    !supportedVolatilitySymbols.has(symbol) ? "Choose a supported Volatility 10–100 market." : "",
     !Number.isFinite(stake) || stake <= 0 ? "Enter a valid stake amount." : "",
     !Number.isInteger(duration) || duration < 1 ? "Duration must be at least 1 tick." : "",
     duration > maxDuration ? `Duration cannot exceed ${maxDuration} ticks.` : "",

@@ -49,8 +49,8 @@ const builtIns = [
   { id: "recovery-guard", name: "Recovery Guard", description: "Checks current account and market freshness plus recent failed dry-runs, then returns a bounded monitor-or-pause review state.", strategy: { indicator: "rsi", direction: "BOTH", mode: "recovery_guard", stake: 1, duration: 5, riskCap: 5, notes: "If account or market data is stale, or a prior dry-run failed, pause and review logs. Never increase stake or retry an order.", execution: "dry_run" } },
 ];
 
-const standardVolatilityLevels = [10, 15, 25, 30, 50, 75, 90, 100];
-const oneSecondVolatilityLevels = [...standardVolatilityLevels, 150, 250];
+const standardVolatilityLevels = [10, 25, 50, 75, 100];
+const oneSecondVolatilityLevels = standardVolatilityLevels;
 const configuredVolatilitySymbols = [
   ...standardVolatilityLevels.map((level) => ({
     symbol: `R_${level}`,
@@ -183,8 +183,8 @@ function metrics(candles: Array<{ epoch: number; close: number }>) {
 }
 
 function isVolatilitySymbol(symbol: string) {
-  return /^R_(10|15|25|30|50|75|90|100)$/.test(symbol)
-    || /^1HZ(10|15|25|30|50|75|90|100|150|250)V$/.test(symbol);
+  return /^R_(10|25|50|75|100)$/.test(symbol)
+    || /^1HZ(10|25|50|75|100)V$/.test(symbol);
 }
 
 async function scanVolatilityMarket(symbol: string) {
@@ -260,7 +260,7 @@ router.get("/market/symbols", async (_req, res) => {
         exchangeIsOpen: s.exchange_is_open !== 0,
         pip: s.pip,
         discovered: true,
-      })).filter((item: any) => typeof item.symbol === "string" && item.symbol.length > 0);
+      })).filter((item: any) => typeof item.symbol === "string" && isVolatilitySymbol(item.symbol));
       if (!providerSymbols.length) {
         return {
           symbols: configuredVolatilitySymbols,
@@ -278,7 +278,7 @@ router.get("/market/symbols", async (_req, res) => {
 });
 router.get("/market/contracts/:symbol", async (req, res) => {
   const symbol = string(req.params.symbol, 30);
-  if (!symbol || !/^[A-Za-z0-9_]+$/.test(symbol)) return fail(res, 400, "Invalid symbol");
+  if (!symbol || !isVolatilitySymbol(symbol)) return fail(res, 400, "Choose a supported Volatility 10–100 market");
   try {
     const body = await cachedMarket(`contracts:${symbol}`, async () => {
       const session = await getSession(req, res);
@@ -311,7 +311,7 @@ router.get("/market/contracts/:symbol", async (req, res) => {
   }
 });
 router.get("/market/ticker/:symbol", async (req, res) => {
-  const symbol = string(req.params.symbol, 30); if (!symbol || !/^[A-Za-z0-9_]+$/.test(symbol)) return fail(res, 400, "Invalid symbol");
+  const symbol = string(req.params.symbol, 30); if (!symbol || !isVolatilitySymbol(symbol)) return fail(res, 400, "Choose a supported Volatility 10–100 market");
   try { const body = await cachedMarket(`ticker:${symbol}`, async () => {
     const data = await publicDeriv({ ticks_history: symbol, style: "ticks", count: 1, end: "latest" });
     const quote = Number(data.history?.prices?.at?.(-1));
@@ -325,7 +325,7 @@ router.get("/market/ticker/:symbol", async (req, res) => {
 });
 router.get("/market/candles/:symbol", async (req, res) => {
   const symbol = string(req.params.symbol, 30), granularity = Number(req.query.granularity || 300), count = Number(req.query.count || 100);
-  if (!symbol || !/^[A-Za-z0-9_]+$/.test(symbol) || ![60, 120, 300, 600, 900, 1800, 3600, 7200, 14400, 28800, 86400].includes(granularity) || !Number.isInteger(count) || count < 30 || count > 500) return fail(res, 400, "Invalid candle parameters");
+  if (!symbol || !isVolatilitySymbol(symbol) || ![60, 120, 300, 600, 900, 1800, 3600, 7200, 14400, 28800, 86400].includes(granularity) || !Number.isInteger(count) || count < 30 || count > 500) return fail(res, 400, "Invalid candle parameters");
   try { return res.json(await cachedMarket(`candles:${symbol}:${granularity}:${count}`, async () => {
     const data = await publicDeriv({ ticks_history: symbol, style: "candles", granularity, count, end: "latest" });
     const rows = Array.isArray(data.candles) ? data.candles.map((c: any) => ({ epoch: Number(c.epoch), open: Number(c.open), high: Number(c.high), low: Number(c.low), close: Number(c.close) })).filter((c: any) => Object.values(c).every(Number.isFinite)) : [];
@@ -340,7 +340,7 @@ router.post("/market/analyze", async (req, res) => {
   const auth = await authenticated(req, res);
   if (!auth) return;
   const symbol = string(req.body?.symbol, 30);
-  if (!symbol || !/^[A-Za-z0-9_]+$/.test(symbol)) return fail(res, 400, "Invalid symbol");
+  if (!symbol || !isVolatilitySymbol(symbol)) return fail(res, 400, "Choose a supported Volatility 10–100 market");
   try {
     const data = await publicDeriv({ ticks_history: symbol, style: "candles", granularity: 60, count: 60, end: "latest" });
     const candles = Array.isArray(data.candles)
@@ -413,7 +413,7 @@ router.post("/market/scan-best", async (req, res) => {
         exchangeIsOpen: s.exchange_is_open !== 0,
         pip: s.pip,
         discovered: true,
-      })).filter((item: any) => typeof item.symbol === "string" && item.symbol.length > 0);
+      })).filter((item: any) => typeof item.symbol === "string" && isVolatilitySymbol(item.symbol));
       return providerSymbols.length
         ? { symbols: providerSymbols, source: "deriv-active-symbols", discoveryAvailable: true }
         : { symbols: configuredVolatilitySymbols, source: "configured-volatility-catalog", discoveryAvailable: false };
@@ -449,8 +449,8 @@ router.patch("/templates/:id", async (req, res) => { const auth = await authenti
 router.post("/templates/:id/archive", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const [item] = await db.update(botTemplates).set({ archivedAt: new Date(), updatedAt: new Date() }).where(and(eq(botTemplates.id, req.params.id), eq(botTemplates.ownerKey, auth.key))).returning(); return item ? res.json(item) : fail(res, 404, "Template not found"); });
 
 router.get("/bots", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; return res.json({ bots: await db.select().from(bots).where(and(eq(bots.ownerKey, auth.key), isNull(bots.archivedAt))).orderBy(desc(bots.createdAt)) }); });
-router.post("/bots", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const name = string(req.body?.name), symbol = string(req.body?.symbol, 30); const parsed = dryRunStrategySchema.safeParse(req.body?.config); if (!name || !symbol || !/^[A-Za-z0-9_]+$/.test(symbol) || !parsed.success) return fail(res, 400, "Invalid bot dry-run strategy"); let templateId: string | null = null; if (req.body?.templateId !== undefined && req.body.templateId !== null && req.body.templateId !== "") { if (!uuidSchema.safeParse(req.body.templateId).success) return fail(res, 400, "Invalid template ID"); const [template] = await db.select({ id: botTemplates.id }).from(botTemplates).where(and(eq(botTemplates.id, req.body.templateId), eq(botTemplates.ownerKey, auth.key), isNull(botTemplates.archivedAt))).limit(1); if (!template) return fail(res, 404, "Template not found"); templateId = template.id; } const [bot] = await db.insert(bots).values({ ownerKey: auth.key, name, symbol, config: parsed.data, templateId }).returning(); return res.status(201).json(bot); });
-router.patch("/bots/:id", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const name = req.body?.name === undefined ? undefined : string(req.body.name); const symbol = req.body?.symbol === undefined ? undefined : string(req.body.symbol, 30); const config = req.body?.config === undefined ? undefined : dryRunStrategySchema.safeParse(req.body.config); if ((req.body?.name !== undefined && !name) || (req.body?.symbol !== undefined && (!symbol || !/^[A-Za-z0-9_]+$/.test(symbol))) || (config && !config.success)) return fail(res, 400, "Invalid bot update"); const [bot] = await db.update(bots).set({ ...(name ? { name } : {}), ...(symbol ? { symbol } : {}), ...(config?.success ? { config: config.data } : {}), updatedAt: new Date() }).where(and(eq(bots.id, req.params.id), eq(bots.ownerKey, auth.key))).returning(); return bot ? res.json(bot) : fail(res, 404, "Bot not found"); });
+router.post("/bots", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const name = string(req.body?.name), symbol = string(req.body?.symbol, 30); const parsed = dryRunStrategySchema.safeParse(req.body?.config); if (!name || !symbol || !isVolatilitySymbol(symbol) || !parsed.success) return fail(res, 400, "Invalid bot dry-run strategy"); let templateId: string | null = null; if (req.body?.templateId !== undefined && req.body.templateId !== null && req.body.templateId !== "") { if (!uuidSchema.safeParse(req.body.templateId).success) return fail(res, 400, "Invalid template ID"); const [template] = await db.select({ id: botTemplates.id }).from(botTemplates).where(and(eq(botTemplates.id, req.body.templateId), eq(botTemplates.ownerKey, auth.key), isNull(botTemplates.archivedAt))).limit(1); if (!template) return fail(res, 404, "Template not found"); templateId = template.id; } const [bot] = await db.insert(bots).values({ ownerKey: auth.key, name, symbol, config: parsed.data, templateId }).returning(); return res.status(201).json(bot); });
+router.patch("/bots/:id", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const name = req.body?.name === undefined ? undefined : string(req.body.name); const symbol = req.body?.symbol === undefined ? undefined : string(req.body.symbol, 30); const config = req.body?.config === undefined ? undefined : dryRunStrategySchema.safeParse(req.body.config); if ((req.body?.name !== undefined && !name) || (req.body?.symbol !== undefined && (!symbol || !isVolatilitySymbol(symbol))) || (config && !config.success)) return fail(res, 400, "Invalid bot update"); const [bot] = await db.update(bots).set({ ...(name ? { name } : {}), ...(symbol ? { symbol } : {}), ...(config?.success ? { config: config.data } : {}), updatedAt: new Date() }).where(and(eq(bots.id, req.params.id), eq(bots.ownerKey, auth.key))).returning(); return bot ? res.json(bot) : fail(res, 404, "Bot not found"); });
 router.get("/bots/:id/runs", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const botId = String(req.params.id); const [bot] = await db.select({ id: bots.id }).from(bots).where(and(eq(bots.id, botId), eq(bots.ownerKey, auth.key))).limit(1); if (!bot) return fail(res, 404, "Bot not found"); const runs = await db.select().from(botRuns).where(and(eq(botRuns.botId, bot.id), eq(botRuns.ownerKey, auth.key))).orderBy(desc(botRuns.startedAt)); return res.json({ botId: bot.id, runs, trading: { enabled: process.env.TRADING_ENABLED === "true", liveEnabled: process.env.TRADING_LIVE_ENABLED === "true", demoOnly: process.env.TRADING_DEMO_ONLY !== "false" } }); });
 router.post(["/bots/:id/start", "/bots/:id/pause", "/bots/:id/stop", "/bots/:id/archive"], async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const action = req.path.split("/").at(-1)!; const [current] = await db.select().from(bots).where(and(eq(bots.id, String(req.params.id)), eq(bots.ownerKey, auth.key))).limit(1); if (!current) return fail(res, 404, "Bot not found"); const transitions: Record<string, string[]> = { start: ["draft", "paused", "stopped"], pause: ["observing"], stop: ["draft", "observing", "paused"], archive: ["draft", "observing", "paused", "stopped"] }; if (!transitions[action]?.includes(current.status)) return fail(res, 409, "Invalid bot lifecycle transition", `Cannot ${action} a ${current.status} bot.`); const status = action === "start" ? "observing" : action === "pause" ? "paused" : action === "stop" ? "stopped" : "archived"; const [bot] = await db.update(bots).set({ status, ...(action === "archive" ? { archivedAt: new Date() } : {}), updatedAt: new Date() }).where(and(eq(bots.id, current.id), eq(bots.ownerKey, auth.key))).returning(); await db.insert(botEvents).values({ ownerKey: auth.key, botId: bot.id, type: `lifecycle.${action}`, payload: { status } }); return res.json({ bot, capability: action === "start" ? "observation_only" : "state_persisted", note: action === "start" ? "This deployment has no long-running autonomous worker. Use run-once for a persisted dry-run evaluation." : "Vercel does not provide a long-running bot worker." }); });
 router.post("/bots/:id/run-once", async (req, res) => {
@@ -459,6 +459,7 @@ router.post("/bots/:id/run-once", async (req, res) => {
   const [bot] = await db.select().from(bots).where(and(eq(bots.id, req.params.id), eq(bots.ownerKey, auth.key)));
   if (!bot) return fail(res, 404, "Bot not found");
   if (bot.status === "archived") return fail(res, 409, "Archived bot cannot run");
+  if (!isVolatilitySymbol(bot.symbol)) return fail(res, 409, "Update this bot to a supported Volatility 10–100 market before running it");
   const strategy = dryRunStrategySchema.safeParse(bot.config);
   if (!strategy.success) return fail(res, 409, "Bot strategy is invalid");
   const [run] = await db.insert(botRuns).values({ ownerKey: auth.key, botId: bot.id, mode: "dry_run", status: "running" }).returning();

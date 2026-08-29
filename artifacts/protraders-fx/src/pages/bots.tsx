@@ -24,7 +24,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { DEFAULT_MARKET_SYMBOL, CONTRACT_LABELS } from "@/lib/markets"
+import { DEFAULT_MARKET_SYMBOL, CONTRACT_LABELS, SUPPORTED_VOLATILITY_SYMBOLS } from "@/lib/markets"
 import { useDerivMarkets } from "@/hooks/use-deriv-markets"
 import { useTradingRunSession } from "@/hooks/use-trading-run-session"
 import { RunSessionSummary } from "@/components/trading/run-session-summary"
@@ -44,7 +44,8 @@ export default function Bots() {
   const [selectedBotId, setSelectedBotId] = useState<string | null>(null);
   const [templateSearch, setTemplateSearch] = useState("");
   const [executingBotId, setExecutingBotId] = useState<string | null>(null);
-  const requestedSymbol = typeof window === "undefined" ? DEFAULT_MARKET_SYMBOL : new URLSearchParams(window.location.search).get("symbol") || DEFAULT_MARKET_SYMBOL;
+  const requestedMarket = typeof window === "undefined" ? DEFAULT_MARKET_SYMBOL : new URLSearchParams(window.location.search).get("symbol") || DEFAULT_MARKET_SYMBOL;
+  const requestedSymbol = SUPPORTED_VOLATILITY_SYMBOLS.has(requestedMarket) ? requestedMarket : DEFAULT_MARKET_SYMBOL;
   const runSession = useTradingRunSession("protraders-run-session:bot", () => {
     client.invalidateQueries({ queryKey: getGetAccountQueryKey() });
     if (executingBotId) client.invalidateQueries({ queryKey: getListBotRunsQueryKey(executingBotId) });
