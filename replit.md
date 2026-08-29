@@ -8,10 +8,10 @@ Deriv-connected trading workspace backend with PKCE login, account proxying, con
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Production schema changes are synchronized by Replit Publish: it diffs the exported Drizzle schema and applies the reviewed change during publish. Do not run custom production migrations or startup-time DDL.
+- `pnpm --filter @workspace/db run push` — apply the exported Drizzle schema to the PostgreSQL URL in `DATABASE_URL` or `POSTGRES_URL`
+- `lib/db/migrations/0001_activity_events.sql` — idempotent SQL migration for the persistent activity ledger when a PostgreSQL provider uses its own migration runner
 - Required production env: `BASE_URL`, `SESSION_SECRET`, `DERIV_CLIENT_ID`, and `DERIV_PUBLIC_APP_ID`
-- Persistence accepts either `DATABASE_URL` or Vercel's `POSTGRES_URL` and can point to any standard PostgreSQL provider; public pages, health, OAuth, accounts, and live markets remain available when persistence is intentionally omitted
+- Persistence accepts either `DATABASE_URL` or Vercel's `POSTGRES_URL` and can point to any standard Vercel-compatible PostgreSQL provider. Configure the variable in Vercel and apply the schema before production traffic.
 - Optional signup env: `DERIV_AFFILIATE_TOKEN` plus the affiliate UTM settings
 - Optional cross-origin clients must be explicitly allowlisted with `ALLOWED_ORIGINS`; the web app is same-origin by default
 - Trading remains disabled unless `TRADING_ENABLED=true`; demo-only mode is the default
@@ -38,6 +38,9 @@ Deriv-connected trading workspace backend with PKCE login, account proxying, con
 - Access tokens stay in an encrypted HttpOnly cookie and are refreshed server-side when possible.
 - Trading is opt-in, demo-only by default, and bounded by stake, duration, and symbol limits; real-money execution has a separate explicit gate.
 - Analytics never invents funded-account or P&L values; partner metrics must come from Deriv Partner Hub.
+- Website activity is stored in PostgreSQL with a one-way browser identifier hash and event-specific sanitized metadata. OAuth and trading activity uses the existing hashed account-owner key.
+- Settlement and P/L events are written only by the server after an authoritative Deriv settlement response updates the transaction ledger.
+- Analytics persistence failures are isolated from OAuth and trading responses; the application never writes analytics to process memory or the deployment filesystem.
 
 ## Product
 
@@ -51,7 +54,7 @@ _Populate as you build — explicit user instructions worth remembering across s
 ## Gotchas
 
 - Register `https://www.protradersfx.com/oauth/callback` exactly in Deriv and set `BASE_URL=https://www.protradersfx.com`.
-- Analytics in the API service is in-memory/ephemeral; it does not write to the deployment filesystem and is not a durable source of business metrics.
+- Vercel must receive `DATABASE_URL` or `POSTGRES_URL` as a server-only environment variable. Database credentials are never included in browser bundles.
 - Do not enable real-money trading until the controlled demo test and independent risk review pass. TraderScheme is an external, unaffiliated reference only.
 
 ## Pointers

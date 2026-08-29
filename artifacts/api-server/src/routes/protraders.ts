@@ -4,6 +4,7 @@ import rateLimit from "express-rate-limit";
 import WebSocket, { type RawData } from "ws";
 import { and, desc, eq } from "drizzle-orm";
 import { consumedTradeProposals, databaseConfigured, db, riskAcknowledgements, transactions } from "@workspace/db";
+import { activitySummary, clientActivityTypes, recordActivity } from "../lib/activity-tracking";
 
 type SessionValue = {
   accessToken: string;
@@ -81,12 +82,6 @@ const realTradingReady = Boolean(
   !demoOnly &&
   allowedSymbols.size > 0,
 );
-
-const analytics = {
-  visitors: 0,
-  registrations: 0,
-  events: [] as Array<{ type: string; at: string; path?: string }>,
-};
 
 function positiveInteger(value: string | undefined, fallback: number) {
   const parsed = Number(value);
@@ -308,7 +303,7 @@ function oauthRequest(mode: "login" | "signup", targetAccount?: "demo" | "real")
   };
 }
 
-function beginOAuth(mode: "login" | "signup", res: Response, targetAccount?: "demo" | "real") {
+async function beginOAuth(mode: "login" | "signup", req: Request, res: Response, targetAccount?: "demo" | "real") {
   try {
     if (isProduction && !baseUrl.startsWith("https://")) {
       throw new Error("OAuth requires an HTTPS BASE_URL in production");
@@ -319,6 +314,12 @@ function beginOAuth(mode: "login" | "signup", res: Response, targetAccount?: "de
       seal({ nonce: request.nonce }),
       cookieOptions(10 * 60 * 1000),
     );
+    await recordActivity({
+      eventType: mode === "signup" ? "signup_start" : "login_start",
+      req,
+      path: req.path,
+      metadata: { flow: mode },
+    });
     return res.redirect(request.url);
   } catch (error) {
     return errorResponse(
@@ -380,13 +381,13 @@ router.get("/preflight", (_req, res) => {
   });
 });
 
-router.get("/deriv/login", (req, res) => {
+router.get("/deriv/login", async (req, res) => {
   const target = req.query.target === "demo" || req.query.target === "real"
     ? req.query.target
     : undefined;
-  return beginOAuth("login", res, target);
+  return beginOAuth("login", req, res, target);
 });
-router.get("/deriv/signup", (_req, res) => beginOAuth("signup", res));
+router.get("/deriv/signup", async (req, res) => beginOAuth("signup", req, res));
 router.get("/oauth/callback", handleOAuthCallback);
 
 router.get("/session", async (req, res) => {
@@ -406,32 +407,41 @@ function endSession(_req: Request, res: Response) {
 router.post("/logout", endSession);
 router.get("/logout", endSession);
 
-router.post("/track", (req, res) => {
-  const type = String(req.body?.type || "page_view").slice(0, 40);
-  if (type === "page_view") analytics.visitors += 1;
-  analytics.events.push({
-    type,
-    at: new Date().toISOString(),
-    path: String(req.body?.path || "/").slice(0, 200),
+router.post("/track", async (req, res) => {
+  const type = typeof req.body?.type === "string" ? req.body.type : "";
+  if (!clientActivityTypes.has(type)) {
+    return errorResponse(res, 400, "Unsupported activity event");
+  }
+  const persisted = await recordActivity({
+    eventType: type,
+    req,
+    path: req.body?.path,
+    visitorId: req.body?.visitorId,
+    metadata: req.body?.metadata,
   });
-  if (analytics.events.length > 5000) {
-    analytics.events.splice(0, analytics.events.length - 5000);
+  if (!persisted) {
+    return errorResponse(res, 503, "Analytics unavailable", "Configure DATABASE_URL or POSTGRES_URL for persistent activity tracking.");
   }
   return res.status(204).end();
 });
 
-router.get("/analytics", (_req, res) => {
-  res.json({
-    visitors: analytics.visitors,
-    registrations: analytics.registrations,
-    oauthSuccesses: analytics.events.filter(
-      (event) => event.type === "oauth_login_success" ||
-        event.type === "oauth_signup_success",
-    ).length,
-    fundedAccounts: null,
-    note: "Funded-account status must be confirmed in Deriv Partner Hub; it is not fabricated here.",
-    ephemeral: true,
-  });
+router.get("/analytics", async (_req, res) => {
+  try {
+    res.json(await activitySummary());
+  } catch (error) {
+    res.json({
+      visitors: 0,
+      visits: 0,
+      pagesViewed: 0,
+      registrations: 0,
+      oauthSuccesses: 0,
+      fundedAccounts: null,
+      events: {},
+      persistent: false,
+      note: "Analytics database is unavailable.",
+      error: error instanceof Error ? error.message : "Analytics unavailable",
+    });
+  }
 });
 
 router.get("/transactions", async (req, res) => {
@@ -526,8 +536,27 @@ router.post("/transactions/:id/refresh", async (req, res) => {
       status,
       settledAt: new Date(),
       updatedAt: new Date(),
-    }).where(and(eq(transactions.id, row.id), eq(transactions.ownerKey, ownerKey))).returning();
-    return res.json({ transaction: updated || row, refreshed: true });
+    }).where(and(
+      eq(transactions.id, row.id),
+      eq(transactions.ownerKey, ownerKey),
+      eq(transactions.status, "pending"),
+    )).returning();
+    if (!updated) {
+      return res.json({ transaction: row, refreshed: false });
+    }
+    void recordActivity({
+      eventType: "settlement",
+      ownerKey,
+      metadata: { status, hasPayout: payout !== null, settled: true },
+    });
+    if (profit !== null) {
+      void recordActivity({
+        eventType: "pnl_result",
+        ownerKey,
+        metadata: { result: status, netProfit: profit },
+      });
+    }
+    return res.json({ transaction: updated, refreshed: true });
   } catch (error) {
     return errorResponse(res, 502, "Settlement unavailable", error instanceof Error ? error.message : undefined);
   }
@@ -702,6 +731,13 @@ router.get("/account", async (req, res) => {
     if (account.account_id !== session.accountId) {
       setSessionCookie(res, { ...session, accountId: account.account_id });
     }
+    if (account.account_id !== session.accountId) {
+      void recordActivity({
+        eventType: "account_connection",
+        ownerKey: ownerKeyFor(account.account_id),
+        metadata: { accountType: account.account_type || "unknown", action: "selected" },
+      });
+    }
     return res.json({
       authenticated: true,
       balance: account.balance ?? null,
@@ -773,6 +809,16 @@ router.post("/trades/preview", async (req, res) => {
     if (!proposal?.id) return errorResponse(res, 502, "Deriv did not return a proposal");
     const askPrice = Number(proposal.ask_price);
     if (!Number.isFinite(askPrice) || askPrice <= 0) return errorResponse(res, 502, "Deriv returned an invalid proposal price");
+    void recordActivity({
+      eventType: "trade_preview",
+      ownerKey: ownerKeyFor(account.account_id),
+      metadata: {
+        market: symbol,
+        contractType: requestedContractType,
+        duration,
+        hasStopLoss: stopLoss !== null,
+      },
+    });
     return res.json({
       proposalToken: seal({ id: proposal.id, nonce: crypto.randomUUID(), accountId: account.account_id, symbol, contractType: requestedContractType, stake, duration, barrier: barrier || null, stopLoss, sessionId, askPrice, expiresAt: Date.now() + 30_000 }),
       symbol, contractType: requestedContractType, stake, duration, barrier: barrier || null,
@@ -971,6 +1017,16 @@ router.post("/trades", async (req, res) => {
         sessionId,
       },
     }).returning();
+    void recordActivity({
+      eventType: "trade_accepted",
+      ownerKey: ownerKeyFor(loginId),
+      metadata: {
+        market: symbol,
+        contractType: validatedContractType,
+        accountType: isDemoAccount ? "demo" : "real",
+        duration,
+      },
+    });
     return res.json({
       ok: true,
        message: `Trade accepted on ${symbol}. Contract ${contractId}.${stopLossApplied === false ? " Stop loss was rejected by Deriv; review the open contract." : stopLossApplied ? " Stop loss applied." : ""}`,
@@ -995,6 +1051,12 @@ export async function handleOAuthCallback(req: Request, res: Response) {
   try {
     if (req.query.error) {
       clearOAuthCookie(res);
+      void recordActivity({
+        eventType: "oauth_failure",
+        req,
+        path: "/oauth/callback",
+        metadata: { reason: "provider_denied" },
+      });
       return res.redirect(`/?oauth_error=${encodeURIComponent(String(req.query.error))}`);
     }
 
@@ -1052,15 +1114,27 @@ export async function handleOAuthCallback(req: Request, res: Response) {
     nextSession = { ...nextSession, accountId: selectedAccount.account_id };
     setSessionCookie(res, nextSession);
     clearOAuthCookie(res);
-    analytics.events.push({
-      type: state.mode === "signup" ? "oauth_signup_success" : "oauth_login_success",
-      at: new Date().toISOString(),
+    const ownerKey = ownerKeyFor(selectedAccount.account_id);
+    await recordActivity({
+      eventType: state.mode === "signup" ? "oauth_signup_success" : "oauth_login_success",
+      ownerKey,
+      metadata: { flow: state.mode },
     });
-    if (state.mode === "signup") analytics.registrations += 1;
+    await recordActivity({
+      eventType: "account_connection",
+      ownerKey,
+      metadata: { accountType: selectedAccount.account_type || "unknown" },
+    });
     return res.redirect(state.targetAccount ? `/initializing?account_switched=${state.targetAccount}` : "/initializing");
   } catch (error) {
     clearOAuthCookie(res);
-    console.error("[oauth]", error instanceof Error ? error.message : error);
+    void recordActivity({
+      eventType: "oauth_failure",
+      req,
+      path: "/oauth/callback",
+      metadata: { reason: "callback_failed" },
+    });
+    req.log?.warn({ err: error }, "OAuth callback failed");
     return res.redirect("/?oauth_error=oauth_failed");
   }
 }

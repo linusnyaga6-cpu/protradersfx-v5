@@ -20,6 +20,7 @@ import { FloatingScanner } from '@/components/trading/floating-scanner';
 import NotFound from '@/pages/not-found';
 import Course from '@/pages/course';
 import Analysis from '@/pages/analysis';
+import { ActivityTracker } from '@/hooks/use-activity-tracking';
 import {
   Route,
   Switch,
@@ -123,6 +124,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+          <ActivityTracker />
           <Router />
         </WouterRouter>
         <Toaster />

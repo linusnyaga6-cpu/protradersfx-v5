@@ -9,6 +9,7 @@ import {
   riskAcknowledgements, snapshots,
 } from "@workspace/db";
 import { derivRequest, getSession, listDerivAccounts } from "./protraders";
+import { recordActivity } from "../lib/activity-tracking";
 
 const router = Router();
 const RISK_VERSION = "2025-01";
@@ -430,6 +431,15 @@ router.post("/market/scan-best", async (req, res) => {
     }
     const ranked = results.filter((item) => item.observedSignalWinRate !== null);
     ranked.sort((a, b) => b.observedSignalWinRate - a.observedSignalWinRate || b.signalSampleSize - a.signalSampleSize || a.freshnessSeconds - b.freshnessSeconds);
+    void recordActivity({
+      eventType: "market_scan",
+      ownerKey: auth.key,
+      metadata: {
+        scannedCount: candidates.length,
+        availableCount: ranked.length,
+        bestMarket: ranked[0]?.symbol || null,
+      },
+    });
     return res.json({
       source: "deriv-candles",
       scannedCount: candidates.length,
@@ -465,6 +475,15 @@ router.post("/bots/:id/run-once", async (req, res) => {
   const strategy = dryRunStrategySchema.safeParse(bot.config);
   if (!strategy.success) return fail(res, 409, "Bot strategy is invalid");
   const [run] = await db.insert(botRuns).values({ ownerKey: auth.key, botId: bot.id, mode: "dry_run", status: "running" }).returning();
+  void recordActivity({
+    eventType: "bot_run",
+    ownerKey: auth.key,
+    metadata: {
+      market: bot.symbol,
+      mode: strategy.data.mode || "market_observer",
+      status: "started",
+    },
+  });
 
   try {
     if (strategy.data.mode === "recovery_guard") {
