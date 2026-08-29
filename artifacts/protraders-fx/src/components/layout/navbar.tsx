@@ -63,20 +63,20 @@ export function Navbar() {
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-4">
             {session?.authenticated && <GlobalSearch />}
-            {session?.authenticated ? (
+             {session?.authenticated ? (
               <div className="flex items-center gap-4">
                 <span className="hidden text-xs text-muted-foreground font-mono sm:inline-block border border-white/10 px-2 py-1 rounded-md bg-white/5">Secure Session</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleLogout}
+                 {location !== "/" && <Button
+                   variant="ghost"
+                   size="sm"
+                   onClick={handleLogout}
                    disabled={isLoggingOut}
-                  className="gap-2 text-muted-foreground hover:text-foreground hover:bg-white/5"
-                  data-testid="button-logout"
-                >
+                   className="gap-2 text-muted-foreground hover:text-foreground hover:bg-white/5"
+                   data-testid="button-logout"
+                 >
                    <LogOut className="h-4 w-4" />
                    {isLoggingOut ? "Signing out…" : "Log out"}
-                </Button>
+                 </Button>}
               </div>
             ) : (
               <div className="flex items-center gap-2">

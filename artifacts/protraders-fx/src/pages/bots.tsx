@@ -56,7 +56,7 @@ export default function Bots() {
         symbol: String(template.strategy?.symbol ?? "R_100"),
         config: {
           indicator: template.strategy?.indicator || "ema",
-          direction: template.strategy?.direction || "CALL",
+          direction: "BOTH",
            mode: template.strategy?.mode || "market_observer",
           stake: Number(template.strategy?.stake) || 10,
           duration: Number(template.strategy?.duration) || 5,
@@ -170,7 +170,6 @@ export default function Bots() {
                     <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">{t.description ?? "Server-defined strategy template"}</p>
                     <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] font-mono text-muted-foreground">
                       {t.strategy?.indicator && <div className="bg-background px-2 py-1 rounded border">Ind: {t.strategy.indicator}</div>}
-                      {t.strategy?.direction && <div className="bg-background px-2 py-1 rounded border">Dir: {t.strategy.direction}</div>}
                     </div>
                     <Button size="sm" variant="outline" className="mt-3 w-full bg-background" onClick={() => add(t)} disabled={create.isPending} data-testid={`button-use-template-${t.id ?? i}`}>
                       <Copy className="mr-2 h-3 w-3"/>{create.isPending ? "Creating..." : "Use as dry-run"}
@@ -215,7 +214,7 @@ function BotBuilder({ bot, accountCurrency, onUpdate }: { bot: any, accountCurre
   const [name, setName] = useState(bot.name || "");
   const [symbol, setSymbol] = useState(bot.symbol || "R_100");
   const [indicator, setIndicator] = useState(bot.config?.indicator || "ema");
-  const [direction, setDirection] = useState(bot.config?.direction || "CALL");
+  const direction = "BOTH";
   const [mode, setMode] = useState(bot.config?.mode || "market_observer");
   const [stake, setStake] = useState(bot.config?.stake?.toString() || "10");
   const [duration, setDuration] = useState(bot.config?.duration?.toString() || "5");
@@ -226,7 +225,6 @@ function BotBuilder({ bot, accountCurrency, onUpdate }: { bot: any, accountCurre
     setName(bot.name || "");
     setSymbol(bot.symbol || "R_100");
     setIndicator(bot.config?.indicator || "ema");
-    setDirection(bot.config?.direction || "CALL");
     setMode(bot.config?.mode || "market_observer");
     setStake(bot.config?.stake?.toString() || "10");
     setDuration(bot.config?.duration?.toString() || "5");
@@ -361,18 +359,6 @@ function BotBuilder({ bot, accountCurrency, onUpdate }: { bot: any, accountCurre
                   <SelectItem value="ema">Exponential Moving Average (EMA)</SelectItem>
                   <SelectItem value="rsi">Relative Strength Index (RSI)</SelectItem>
                   <SelectItem value="macd">MACD</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Trade Direction</Label>
-              <Select value={direction} onValueChange={setDirection}>
-                <SelectTrigger className="bg-background shadow-sm"><SelectValue placeholder="Select direction" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="CALL">CALL (UP)</SelectItem>
-                  <SelectItem value="PUT">PUT (DOWN)</SelectItem>
-                  <SelectItem value="BOTH">BOTH (Trend dependent)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

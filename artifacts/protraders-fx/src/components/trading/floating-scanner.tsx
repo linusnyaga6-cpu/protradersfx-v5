@@ -21,6 +21,7 @@ type ScannerResult = {
   asOf: string
   source: "deterministic" | "ai-advisory"
   advisoryOnly: true
+  winRate?: number
   indicators: { ema9: number; ema21: number; rsi14: number; macdHistogram: number; trend: string; volatilityPct?: number; volatilityLevel?: string }
   analysis: { summary: string; bias: "bullish" | "bearish" | "neutral"; observations: string[]; limitations: string }
 }
@@ -29,7 +30,15 @@ export function FloatingScanner() {
   const { data: session } = useGetSessionStatus({ query: { queryKey: getGetSessionStatusQueryKey() } })
   const [open, setOpen] = useState(false)
   const [symbol, setSymbol] = useState("R_100")
-  const [position, setPosition] = useState({ x: 0, y: 0 })
+  const [position, setPosition] = useState(() => {
+    if (typeof window === "undefined") return { x: 0, y: 0 }
+    try {
+      const saved = JSON.parse(window.localStorage.getItem("protraders-ai-position") || "null")
+      return Number.isFinite(saved?.x) && Number.isFinite(saved?.y) ? { x: saved.x, y: saved.y } : { x: 0, y: 0 }
+    } catch {
+      return { x: 0, y: 0 }
+    }
+  })
   const [result, setResult] = useState<ScannerResult | null>(null)
   const [error, setError] = useState("")
   const drag = useRef<{ x: number; y: number; startX: number; startY: number } | null>(null)
@@ -43,6 +52,10 @@ export function FloatingScanner() {
     window.addEventListener("protraders:open-scanner", show)
     return () => window.removeEventListener("protraders:open-scanner", show)
   }, [])
+
+  useEffect(() => {
+    window.localStorage.setItem("protraders-ai-position", JSON.stringify(position))
+  }, [position])
 
   const analyze = () => {
     setError("")
@@ -79,6 +92,7 @@ export function FloatingScanner() {
 
   const tick = ticker.data as any
   const candleData = candles.data as any
+  const aiWinRate = Number.isFinite(Number(result?.winRate)) ? `${Number(result?.winRate).toFixed(1)}%` : "Not available"
   return (
     <aside
       className="fixed inset-x-3 bottom-3 z-[70] max-h-[82vh] overflow-hidden rounded-2xl border border-primary/25 bg-card/95 shadow-[0_24px_90px_rgba(0,0,0,.6)] backdrop-blur-xl md:inset-auto md:right-5 md:top-24 md:w-[370px]"
@@ -132,9 +146,10 @@ export function FloatingScanner() {
             <span className="sr-only">Run analysis</span>
           </Button>
         </div>
-        <div className="grid grid-cols-2 gap-2">
+         <div className="grid grid-cols-3 gap-2">
           <Metric label="Latest quote" value={tick?.available === false ? "Offline" : String(tick?.quote ?? "—")} />
            <Metric label="Volatility" value={candleData?.indicators ? formatVolatility(candleData.indicators.volatilityLevel, candleData.indicators.volatilityPct) : "Unavailable"} />
+           <Metric label="AI win rate" value={aiWinRate} />
         </div>
         {error && <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">{error}</div>}
         {!result && !error && (
@@ -186,6 +201,7 @@ export function FloatingScanner() {
         <div className="flex items-center gap-2 border-t border-white/10 pt-3 text-[10px] uppercase tracking-wider text-muted-foreground">
           <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Advisory only · no order execution
         </div>
+         <p className="text-[11px] leading-5 text-muted-foreground">AI win rate is shown only when authoritative settled AI-labelled history is available; otherwise it remains unavailable.</p>
           </>
         )}
       </div>
