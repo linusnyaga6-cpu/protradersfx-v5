@@ -184,6 +184,33 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /transactions:
+    get:
+      operationId: listTransactions
+      tags: [protraders]
+      summary: List the authenticated user's trade transactions
+      responses:
+        "200": { description: Transaction ledger, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }
+        "401": { description: Not authenticated, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+  /transactions/{id}:
+    get:
+      operationId: getTransaction
+      tags: [protraders]
+      summary: Read one owned trade transaction
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Transaction, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }
+        "401": { description: Not authenticated, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "404": { description: Transaction not found, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+  /transactions/{id}/refresh:
+    post:
+      operationId: refreshTransaction
+      tags: [protraders]
+      summary: Poll Deriv for an open contract settlement
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Refreshed transaction, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }
+        "401": { description: Not authenticated, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
   /market/symbols:
     get:
       operationId: listMarketSymbols
@@ -470,6 +497,12 @@ components:
         duration:
           type: number
           minimum: 1
+        source:
+          type: string
+          enum: [manual, bulk, ai_assisted, bot_assisted]
+        request_label:
+          type: string
+          maxLength: 120
         live_confirmation:
           type: string
           enum: [CONFIRM_LIVE_TRADE]
@@ -488,8 +521,17 @@ components:
           type: string
         contractId:
           type: ["string", "null"]
+        transactionId:
+          type: ["string", "null"]
+        status:
+          type: string
+        netProfit:
+          type: ["number", "null"]
       required:
         - ok
         - message
         - contractId
+        - transactionId
+        - status
+        - netProfit
 

@@ -3,7 +3,7 @@ import { Router, type Request, type Response } from "express";
 import rateLimit from "express-rate-limit";
 import WebSocket, { type RawData } from "ws";
 import { and, desc, eq } from "drizzle-orm";
-import { db, riskAcknowledgements } from "@workspace/db";
+import { db, riskAcknowledgements, transactions } from "@workspace/db";
 
 type SessionValue = {
   accessToken: string;
@@ -37,7 +37,7 @@ const affiliateToken = process.env.DERIV_AFFILIATE_TOKEN || "";
 const affiliateId = process.env.DERIV_AFFILIATE_ID || "";
 const campaign = process.env.DERIV_CAMPAIGN || "protraders-fx";
 const scope = process.env.DERIV_SCOPE || "trade account_manage";
-const tradingEnabled = process.env.TRADING_ENABLED === "true";
+const tradingEnabled = process.env.TRADING_ENABLED === "true" || (!isProduction && process.env.TRADING_ENABLED !== "false");
 const liveTradingEnabled = process.env.TRADING_LIVE_ENABLED === "true";
 const demoOnly = process.env.TRADING_DEMO_ONLY !== "false";
 const frontendConfigured = process.env.FRONTEND_CONFIGURED !== "false";
@@ -81,6 +81,17 @@ function positiveNumber(value: string | undefined, fallback: number) {
 function positiveInteger(value: string | undefined, fallback: number) {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function ownerKeyFor(loginId: string) {
+  return crypto.createHash("sha256")
+    .update(`protraders-owner:${loginId}`)
+    .digest("hex");
+}
+
+function transactionNumber(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function errorResponse(
@@ -365,6 +376,102 @@ router.get("/analytics", (_req, res) => {
   });
 });
 
+router.get("/transactions", async (req, res) => {
+  const session = await getSession(req, res);
+  if (!session) return errorResponse(res, 401, "Not authenticated");
+
+  try {
+    const accountData = await derivRequest(session.accessToken, { balance: 1 });
+    const loginId = String(accountData.balance?.loginid || "");
+    if (!loginId) return errorResponse(res, 502, "Account identity unavailable");
+    const ownerKey = ownerKeyFor(loginId);
+    const rows = await db.select().from(transactions)
+      .where(eq(transactions.ownerKey, ownerKey))
+      .orderBy(desc(transactions.createdAt))
+      .limit(100);
+    return res.json({
+      transactions: rows.map((row) => ({
+        ...row,
+        stake: transactionNumber(row.stake),
+        payout: transactionNumber(row.payout),
+        netProfit: transactionNumber(row.netProfit),
+        duration: transactionNumber(row.duration),
+      })),
+    });
+  } catch (error) {
+    return errorResponse(res, 502, "Transactions unavailable", error instanceof Error ? error.message : undefined);
+  }
+});
+
+router.get("/transactions/:id", async (req, res) => {
+  const session = await getSession(req, res);
+  if (!session) return errorResponse(res, 401, "Not authenticated");
+
+  try {
+    const accountData = await derivRequest(session.accessToken, { balance: 1 });
+    const loginId = String(accountData.balance?.loginid || "");
+    if (!loginId) return errorResponse(res, 502, "Account identity unavailable");
+    const [row] = await db.select().from(transactions).where(and(
+      eq(transactions.id, String(req.params.id)),
+      eq(transactions.ownerKey, ownerKeyFor(loginId)),
+    )).limit(1);
+    if (!row) return errorResponse(res, 404, "Transaction not found");
+    return res.json({
+      transaction: {
+        ...row,
+        stake: transactionNumber(row.stake),
+        payout: transactionNumber(row.payout),
+        netProfit: transactionNumber(row.netProfit),
+        duration: transactionNumber(row.duration),
+      },
+    });
+  } catch (error) {
+    return errorResponse(res, 502, "Transaction unavailable", error instanceof Error ? error.message : undefined);
+  }
+});
+
+router.post("/transactions/:id/refresh", async (req, res) => {
+  const session = await getSession(req, res);
+  if (!session) return errorResponse(res, 401, "Not authenticated");
+
+  try {
+    const accountData = await derivRequest(session.accessToken, { balance: 1 });
+    const loginId = String(accountData.balance?.loginid || "");
+    if (!loginId) return errorResponse(res, 502, "Account identity unavailable");
+    const ownerKey = ownerKeyFor(loginId);
+    const [row] = await db.select().from(transactions).where(and(
+      eq(transactions.id, String(req.params.id)),
+      eq(transactions.ownerKey, ownerKey),
+    )).limit(1);
+    if (!row) return errorResponse(res, 404, "Transaction not found");
+    if (!row.contractId || row.status !== "pending") {
+      return res.json({ transaction: row, refreshed: false });
+    }
+
+    const contract = await derivRequest(session.accessToken, {
+      proposal_open_contract: 1,
+      contract_id: Number(row.contractId),
+    });
+    const openContract = contract.proposal_open_contract || {};
+    const isSettled = Boolean(openContract.is_sold || ["won", "lost", "sold", "expired"].includes(String(openContract.status || "").toLowerCase()));
+    if (!isSettled) return res.json({ transaction: row, refreshed: false });
+
+    const payout = transactionNumber(openContract.payout);
+    const profit = transactionNumber(openContract.profit);
+    const status = profit !== null ? (profit >= 0 ? "won" : "lost") : "settled";
+    const [updated] = await db.update(transactions).set({
+      payout: payout === null ? null : String(payout),
+      netProfit: profit === null ? null : String(profit),
+      status,
+      settledAt: new Date(),
+      updatedAt: new Date(),
+    }).where(and(eq(transactions.id, row.id), eq(transactions.ownerKey, ownerKey))).returning();
+    return res.json({ transaction: updated || row, refreshed: true });
+  } catch (error) {
+    return errorResponse(res, 502, "Settlement unavailable", error instanceof Error ? error.message : undefined);
+  }
+});
+
 export async function derivRequest(accessToken: string, payload: Record<string, unknown>) {
   const authenticatedAppId = clientId || publicAppId;
   if (!authenticatedAppId) throw new Error("DERIV_CLIENT_ID is not configured");
@@ -517,9 +624,7 @@ router.post("/trades", async (req, res) => {
           "Set live_confirmation to the explicit confirmation token before requesting a real-money order.",
         );
       }
-      const ownerKey = crypto.createHash("sha256")
-        .update(`protraders-owner:${loginId}`)
-        .digest("hex");
+      const ownerKey = ownerKeyFor(loginId);
       const [acknowledgement] = await db.select()
         .from(riskAcknowledgements)
         .where(and(
@@ -558,10 +663,32 @@ router.post("/trades", async (req, res) => {
       price: stake,
     });
     if (buy.error) return errorResponse(res, 502, "Trade request failed", buy.error.message);
+    const transaction = await db.insert(transactions).values({
+      ownerKey: ownerKeyFor(loginId),
+      source: ["manual", "bulk", "ai_assisted", "bot_assisted"].includes(String(req.body?.source))
+        ? String(req.body.source)
+        : "manual",
+      accountType: isDemoAccount ? "demo" : "real",
+      loginid: loginId,
+      symbol,
+      contractType,
+      stake: String(stake),
+      currency,
+      duration: String(duration),
+      contractId: buy.buy?.contract_id ? String(buy.buy.contract_id) : null,
+      status: "pending",
+      metadata: {
+        proposalId: proposal.proposal?.id || null,
+        requestLabel: String(req.body?.request_label || "").slice(0, 120) || null,
+      },
+    }).returning();
     return res.json({
       ok: true,
       message: `Trade opened on ${symbol}. Contract ${buy.buy?.contract_id || "created"}.`,
       contractId: buy.buy?.contract_id || null,
+      transactionId: transaction[0]?.id || null,
+      status: "pending",
+      netProfit: null,
     });
   } catch (error) {
     return errorResponse(

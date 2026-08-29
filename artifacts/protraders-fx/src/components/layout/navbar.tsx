@@ -76,7 +76,7 @@ export function Navbar() {
                   data-testid="button-logout"
                 >
                   <LogOut className="h-4 w-4" />
-                  Disconnect
+                   Log out
                 </Button>
               </div>
             ) : (

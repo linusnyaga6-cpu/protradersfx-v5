@@ -7,6 +7,7 @@
  */
 import type { TradeInputContractType } from './tradeInputContractType';
 import type { TradeInputLiveConfirmation } from './tradeInputLiveConfirmation';
+import type { TradeInputSource } from './tradeInputSource';
 
 export interface TradeInput {
   symbol: string;
@@ -15,6 +16,9 @@ export interface TradeInput {
   stake: number;
   /** @minimum 1 */
   duration: number;
+  source?: TradeInputSource;
+  /** @maxLength 120 */
+  request_label?: string;
   /** Required only for real-money accounts; ignored for demo accounts. */
   live_confirmation?: TradeInputLiveConfirmation;
 }

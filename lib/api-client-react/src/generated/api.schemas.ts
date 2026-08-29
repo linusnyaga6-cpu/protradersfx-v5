@@ -189,6 +189,16 @@ export const TradeInputContractType = {
   PUT: 'PUT',
 } as const;
 
+export type TradeInputSource = typeof TradeInputSource[keyof typeof TradeInputSource];
+
+
+export const TradeInputSource = {
+  manual: 'manual',
+  bulk: 'bulk',
+  ai_assisted: 'ai_assisted',
+  bot_assisted: 'bot_assisted',
+} as const;
+
 /**
  * Required only for real-money accounts; ignored for demo accounts.
  */
@@ -206,6 +216,9 @@ export interface TradeInput {
   stake: number;
   /** @minimum 1 */
   duration: number;
+  source?: TradeInputSource;
+  /** @maxLength 120 */
+  request_label?: string;
   /** Required only for real-money accounts; ignored for demo accounts. */
   live_confirmation?: TradeInputLiveConfirmation;
 }
@@ -215,6 +228,11 @@ export interface TradeResult {
   message: string;
   /** @nullable */
   contractId: string | null;
+  /** @nullable */
+  transactionId: string | null;
+  status: string;
+  /** @nullable */
+  netProfit: number | null;
 }
 
 export type GetMarketCandlesParams = {

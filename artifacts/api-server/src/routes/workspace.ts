@@ -111,7 +111,23 @@ function metrics(candles: Array<{ epoch: number; close: number }>) {
   const macdSeries = slowSeries.map((value, index) => fastSeries[index + 14] - value);
   let signal = macdSeries.slice(0, 9).reduce((a, b) => a + b, 0) / 9; for (const value of macdSeries.slice(9)) signal = (value - signal) * 0.2 + signal;
   const macd = macdSeries.at(-1)!;
-  return { sma20: sma(20), ema9: fast, ema21: slow, rsi14: rsi, macd, macdSignal: signal, macdHistogram: macd - signal, trend: fast > slow ? "up" : fast < slow ? "down" : "flat" };
+  const returns = closes.slice(1).map((close, index) => (close - closes[index]) / closes[index]).filter(Number.isFinite);
+  const meanReturn = returns.reduce((sum, value) => sum + value, 0) / Math.max(returns.length, 1);
+  const variance = returns.reduce((sum, value) => sum + ((value - meanReturn) ** 2), 0) / Math.max(returns.length, 1);
+  const volatilityPct = Math.sqrt(variance) * 100;
+  const volatilityLevel = volatilityPct >= 0.45 ? "high" : volatilityPct >= 0.18 ? "medium" : "low";
+  return {
+    sma20: sma(20),
+    ema9: fast,
+    ema21: slow,
+    rsi14: rsi,
+    macd,
+    macdSignal: signal,
+    macdHistogram: macd - signal,
+    trend: fast > slow ? "up" : fast < slow ? "down" : "flat",
+    volatilityPct,
+    volatilityLevel,
+  };
 }
 
 router.get("/market/symbols", async (_req, res) => {
@@ -167,7 +183,8 @@ router.post("/market/analyze", async (req, res) => {
       observations: [
         `EMA 9 is ${indicators.ema9 > indicators.ema21 ? "above" : indicators.ema9 < indicators.ema21 ? "below" : "equal to"} EMA 21.`,
         `RSI 14 is ${indicators.rsi14.toFixed(1)}.`,
-        `MACD histogram is ${indicators.macdHistogram.toFixed(5)}.`,
+       `MACD histogram is ${indicators.macdHistogram.toFixed(5)}.`,
+       `Observed candle volatility is ${indicators.volatilityPct.toFixed(3)}% (${indicators.volatilityLevel}).`,
       ],
       limitations: "This describes recent candles only. It is not a prediction, recommendation, or permission to trade.",
     };

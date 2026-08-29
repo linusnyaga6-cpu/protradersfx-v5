@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
-import { Activity, GripHorizontal, Loader2, Maximize2, RefreshCw, ShieldCheck, X } from "lucide-react"
+import { Activity, ArrowRight, GripHorizontal, Loader2, RefreshCw, ShieldCheck, X } from "lucide-react"
 import {
   getGetMarketCandlesQueryKey,
   getGetMarketTickerQueryKey,
@@ -20,7 +20,7 @@ type ScannerResult = {
   asOf: string
   source: "deterministic" | "ai-advisory"
   advisoryOnly: true
-  indicators: { ema9: number; ema21: number; rsi14: number; macdHistogram: number; trend: string }
+  indicators: { ema9: number; ema21: number; rsi14: number; macdHistogram: number; trend: string; volatilityPct?: number; volatilityLevel?: string }
   analysis: { summary: string; bias: "bullish" | "bearish" | "neutral"; observations: string[]; limitations: string }
 }
 
@@ -115,7 +115,7 @@ export function FloatingScanner() {
         </div>
         <div className="grid grid-cols-2 gap-2">
           <Metric label="Latest quote" value={tick?.available === false ? "Offline" : String(tick?.quote ?? "—")} />
-          <Metric label="Data status" value={candles.isFetching ? "Syncing" : candleData?.confidence ?? "Unavailable"} />
+           <Metric label="Volatility" value={candleData?.indicators?.volatilityLevel ? `${candleData.indicators.volatilityLevel} · ${Number(candleData.indicators.volatilityPct).toFixed(3)}%` : "Unavailable"} />
         </div>
         {error && <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">{error}</div>}
         {!result && !error && (
@@ -137,6 +137,20 @@ export function FloatingScanner() {
               <Metric label="EMA trend" value={result.indicators.trend} />
               <Metric label="MACD hist." value={result.indicators.macdHistogram.toFixed(4)} />
             </div>
+             <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+               <div className="flex items-center justify-between gap-3">
+                 <div>
+                   <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Observed volatility</div>
+                   <div className="mt-1 font-mono text-sm">{result.indicators.volatilityLevel ?? "—"} · {result.indicators.volatilityPct != null ? `${result.indicators.volatilityPct.toFixed(3)}%` : "—"}</div>
+                 </div>
+                 <Button size="sm" variant="outline" onClick={() => {
+                   const direction = result.analysis.bias === "bullish" ? "CALL" : result.analysis.bias === "bearish" ? "PUT" : "CALL"
+                   window.location.href = `/dashboard?symbol=${encodeURIComponent(symbol)}&direction=${direction}&source=ai_assisted`
+                 }} data-testid="button-review-ai-trade">
+                   Review order <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                 </Button>
+               </div>
+             </div>
             <ul className="space-y-2 text-xs text-muted-foreground">
               {result.analysis.observations.map(item => <li key={item} className="rounded-md bg-secondary/35 p-2">• {item}</li>)}
             </ul>

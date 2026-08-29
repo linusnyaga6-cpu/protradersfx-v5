@@ -11,4 +11,9 @@ export interface TradeResult {
   message: string;
   /** @nullable */
   contractId: string | null;
+  /** @nullable */
+  transactionId: string | null;
+  status: string;
+  /** @nullable */
+  netProfit: number | null;
 }

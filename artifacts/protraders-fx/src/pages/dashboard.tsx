@@ -1,4 +1,5 @@
 import * as React from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -25,6 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { TransactionLedger } from "@/components/trading/transaction-ledger"
 
 import { 
   useGetAccount,
@@ -52,6 +54,7 @@ type TradeFormValues = z.infer<typeof tradeSchema>
 export default function Dashboard() {
   const [, setLocation] = useLocation()
   const { toast } = useToast()
+  const queryClient = useQueryClient()
 
   const { data: session, isLoading: sessionLoading } = useGetSessionStatus({
     query: { queryKey: getGetSessionStatusQueryKey() }
@@ -73,6 +76,8 @@ export default function Dashboard() {
   const risk = useGetRiskAcknowledgementStatus({ query: { queryKey: getGetRiskAcknowledgementStatusQueryKey(), enabled: !!session?.authenticated } })
   const acceptRisk = useAcceptRiskAcknowledgement()
   const [liveConfirmed, setLiveConfirmed] = React.useState(false)
+  const [lastTrade, setLastTrade] = React.useState<any>(null)
+  const [handoffSource, setHandoffSource] = React.useState<"manual" | "ai_assisted">("manual")
 
   const {
     register,
@@ -101,6 +106,15 @@ export default function Dashboard() {
     (!isReal || (risk.data as any)?.accepted) &&
     (!isReal || liveConfirmed),
   )
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const requestedSymbol = params.get("symbol")
+    const requestedDirection = params.get("direction")
+    if (requestedSymbol && symbols.includes(requestedSymbol)) setValue("symbol", requestedSymbol)
+    if (requestedDirection === "CALL" || requestedDirection === "PUT") setValue("contract_type", requestedDirection as TradeInputContractType)
+    if (params.get("source") === "ai_assisted") setHandoffSource("ai_assisted")
+  }, [setValue, symbols.join(",")])
 
   const switchAccount = (target: string) => {
     if (target !== account?.accountType && (target === "demo" || target === "real")) {
@@ -131,8 +145,10 @@ export default function Dashboard() {
       })
       return
     }
-     createTrade.mutate({ data: { ...data, ...(isReal ? { live_confirmation: "CONFIRM_LIVE_TRADE" } : {}) } as any }, {
+     createTrade.mutate({ data: { ...data, source: handoffSource, request_label: handoffSource === "ai_assisted" ? "AI-assisted reviewed order" : "Manual order", ...(isReal ? { live_confirmation: "CONFIRM_LIVE_TRADE" } : {}) } as any }, {
       onSuccess: (result) => {
+         setLastTrade(result)
+         queryClient.invalidateQueries({ queryKey: getGetAccountQueryKey() })
         if (result.ok) {
           toast({
             title: "Trade Executed",
@@ -203,6 +219,18 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      {lastTrade?.transactionId && (
+        <Card className="mb-6 border-primary/25 bg-primary/5" data-testid="card-trade-receipt">
+          <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-widest text-primary">Execution receipt</div>
+              <div className="mt-1 text-sm font-medium">{lastTrade.message}</div>
+              <div className="mt-1 text-xs text-muted-foreground">Transaction {lastTrade.transactionId} · Settlement is polled from Deriv.</div>
+            </div>
+            <Badge variant="outline" className="w-fit uppercase">{lastTrade.status || "pending"}</Badge>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <ToolLink href="#manual-trading" icon={<TrendingUp className="h-4 w-4" />} title="Manual Trading" text="One controlled order review" />
@@ -405,6 +433,7 @@ export default function Dashboard() {
           </CardFooter>
         </Card>
       </div>
+      <TransactionLedger />
     </div>
   )
 }

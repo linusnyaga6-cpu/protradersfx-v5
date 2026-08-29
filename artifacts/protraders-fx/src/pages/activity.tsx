@@ -15,6 +15,7 @@ import {
 } from "@workspace/api-client-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
+import { TransactionLedger } from "@/components/trading/transaction-ledger"
 
 export default function Activity() {
   const { data: analytics, isLoading, isError } = useGetAnalytics({
@@ -85,6 +86,10 @@ export default function Activity() {
           />
         </div>
       )}
+
+      <div className="mb-8">
+        <TransactionLedger />
+      </div>
 
       <Card>
         <CardHeader>

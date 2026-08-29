@@ -894,6 +894,231 @@ export const useCreateTrade = <TError = ErrorType<ErrorResponse>,
       return useMutation(getCreateTradeMutationOptions(options));
     }
 
+export const getListTransactionsUrl = () => {
+
+
+
+
+  return `/api/transactions`
+}
+
+/**
+ * @summary List the authenticated user's trade transactions
+ */
+export const listTransactions = async ( options?: Parameters<typeof customFetch>[1]): Promise<WorkspaceData> => {
+
+  return customFetch<WorkspaceData>(getListTransactionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListTransactionsQueryKey = () => {
+    return [
+    `/api/transactions`
+    ] as const;
+    }
+
+
+export const getListTransactionsQueryOptions = <TData = Awaited<ReturnType<typeof listTransactions>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTransactions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListTransactionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTransactions>>> = ({ signal }) => listTransactions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTransactions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListTransactionsQueryResult = NonNullable<Awaited<ReturnType<typeof listTransactions>>>
+export type ListTransactionsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary List the authenticated user's trade transactions
+ */
+
+export function useListTransactions<TData = Awaited<ReturnType<typeof listTransactions>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTransactions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListTransactionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetTransactionUrl = (id: string,) => {
+
+
+
+
+  return `/api/transactions/${id}`
+}
+
+/**
+ * @summary Read one owned trade transaction
+ */
+export const getTransaction = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<WorkspaceData> => {
+
+  return customFetch<WorkspaceData>(getGetTransactionUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTransactionQueryKey = (id: string,) => {
+    return [
+    `/api/transactions/${id}`
+    ] as const;
+    }
+
+
+export const getGetTransactionQueryOptions = <TData = Awaited<ReturnType<typeof getTransaction>>, TError = ErrorType<ErrorResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTransaction>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTransactionQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTransaction>>> = ({ signal }) => getTransaction(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTransaction>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTransactionQueryResult = NonNullable<Awaited<ReturnType<typeof getTransaction>>>
+export type GetTransactionQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Read one owned trade transaction
+ */
+
+export function useGetTransaction<TData = Awaited<ReturnType<typeof getTransaction>>, TError = ErrorType<ErrorResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTransaction>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTransactionQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRefreshTransactionUrl = (id: string,) => {
+
+
+
+
+  return `/api/transactions/${id}/refresh`
+}
+
+/**
+ * @summary Poll Deriv for an open contract settlement
+ */
+export const refreshTransaction = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<WorkspaceData> => {
+
+  return customFetch<WorkspaceData>(getRefreshTransactionUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRefreshTransactionMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshTransaction>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof refreshTransaction>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['refreshTransaction'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof refreshTransaction>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  refreshTransaction(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RefreshTransactionMutationResult = NonNullable<Awaited<ReturnType<typeof refreshTransaction>>>
+
+    export type RefreshTransactionMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Poll Deriv for an open contract settlement
+ */
+export const useRefreshTransaction = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshTransaction>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof refreshTransaction>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getRefreshTransactionMutationOptions(options));
+    }
+
 export const getListMarketSymbolsUrl = () => {
 
 

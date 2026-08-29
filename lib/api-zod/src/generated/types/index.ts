@@ -28,5 +28,6 @@ export * from './trackEventInput';
 export * from './tradeInput';
 export * from './tradeInputContractType';
 export * from './tradeInputLiveConfirmation';
+export * from './tradeInputSource';
 export * from './tradeResult';
 export * from './workspaceData';

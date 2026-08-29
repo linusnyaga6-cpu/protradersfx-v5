@@ -63,7 +63,7 @@ export default function Home() {
             ) : session?.authenticated ? (
               <Button size="xl" asChild className="gap-2 group shadow-[0_0_30px_rgba(var(--primary),0.2)] hover:shadow-[0_0_40px_rgba(var(--primary),0.3)] transition-shadow bg-primary text-primary-foreground border-transparent" data-testid="hero-dashboard-btn">
                 <Link href="/dashboard">
-                  Enter Workspace
+                   Trade like a pro
                   <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </Button>

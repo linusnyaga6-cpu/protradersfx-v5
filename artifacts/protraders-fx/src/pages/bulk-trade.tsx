@@ -1,6 +1,8 @@
 import { useState } from "react"
-import { ArrowRight, Check, Layers3, ShieldCheck } from "lucide-react"
+import { ArrowRight, Check, Layers3, ShieldCheck, TrendingDown, TrendingUp, Loader2 } from "lucide-react"
 import { Link } from "wouter"
+import { useState } from "react"
+import { useCreateTrade, useGetProtradersPreflight, getGetProtradersPreflightQueryKey, useGetSessionStatus, getGetSessionStatusQueryKey } from "@workspace/api-client-react"
 import { Workspace } from "./markets"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -16,14 +18,43 @@ export default function BulkTrade() {
   const [stake, setStake] = useState("10")
   const [duration, setDuration] = useState("5")
   const [previewed, setPreviewed] = useState(false)
+  const [direction, setDirection] = useState<"CALL" | "PUT">("CALL")
+  const [results, setResults] = useState<any[]>([])
+  const createTrade = useCreateTrade()
+  const { data: preflight } = useGetProtradersPreflight({ query: { queryKey: getGetProtradersPreflightQueryKey() } })
+  const { data: session } = useGetSessionStatus({ query: { queryKey: getGetSessionStatusQueryKey() } })
 
   const toggle = (symbol: string) => {
     setPreviewed(false)
     setSelected(current => current.includes(symbol) ? current.filter(item => item !== symbol) : [...current, symbol])
   }
 
+  const executeReviewedBatch = async () => {
+    if (!selected.length || !previewed || !session?.authenticated || !preflight?.tradingEnabled || !preflight.demoOnly) return
+    setResults([])
+    const next: any[] = []
+    for (const symbol of selected) {
+      try {
+        const result = await createTrade.mutateAsync({
+          data: {
+            symbol,
+            contract_type: direction,
+            stake: Number(stake),
+            duration: Number(duration),
+            source: "bulk",
+            request_label: `Reviewed bulk ${direction} batch`,
+          } as any,
+        })
+        next.push({ symbol, ok: result.ok, transactionId: result.transactionId, status: result.status, message: result.message })
+      } catch (error) {
+        next.push({ symbol, ok: false, message: error instanceof Error ? error.message : "Order rejected" })
+      }
+      setResults([...next])
+    }
+  }
+
   return (
-    <Workspace title="Bulk Trade" eyebrow="Review queue" description="Prepare a multi-market batch. No orders are sent from this screen.">
+      <Workspace title="Bulk Trade" eyebrow="Review queue" description="Prepare a multi-market batch, review it, then send each demo order through the same controlled execution path.">
       <Alert className="border-primary/30 bg-primary/5">
         <ShieldCheck className="h-4 w-4 text-primary" />
         <AlertTitle>Review-only planner</AlertTitle>
@@ -31,7 +62,7 @@ export default function BulkTrade() {
       </Alert>
 
       <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
-        <Card>
+         <Card>
           <CardHeader className="border-b bg-secondary/10">
             <CardTitle className="flex items-center gap-2"><Layers3 className="h-5 w-5 text-primary" />Select markets</CardTitle>
           </CardHeader>
@@ -69,6 +100,13 @@ export default function BulkTrade() {
               <Label htmlFor="bulk-duration">Duration in ticks</Label>
               <Input id="bulk-duration" type="number" min="1" step="1" value={duration} onChange={event => { setDuration(event.target.value); setPreviewed(false) }} />
             </div>
+            <div className="space-y-2">
+              <Label>Direction</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button type="button" variant={direction === "CALL" ? "default" : "outline"} onClick={() => { setDirection("CALL"); setPreviewed(false) }}><TrendingUp className="mr-2 h-4 w-4" />CALL</Button>
+                <Button type="button" variant={direction === "PUT" ? "destructive" : "outline"} onClick={() => { setDirection("PUT"); setPreviewed(false) }}><TrendingDown className="mr-2 h-4 w-4" />PUT</Button>
+              </div>
+            </div>
             <Button className="w-full" disabled={!selected.length} onClick={() => setPreviewed(true)} data-testid="button-preview-bulk">
               Preview batch <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
@@ -87,10 +125,24 @@ export default function BulkTrade() {
           <Summary label="Duration" value={`${duration || 0} ticks`} />
         </CardContent>
         <div className="flex flex-col gap-3 border-t bg-secondary/10 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-muted-foreground">This preview does not call the trade endpoint.</p>
-          <Button variant="outline" asChild><Link href="/dashboard">Review manual trade <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
+           <p className="text-xs text-muted-foreground">Every order is reviewed, demo-only by default, and recorded in the transaction ledger.</p>
+           <div className="flex flex-wrap gap-2">
+             <Button variant="outline" asChild><Link href="/dashboard">Open manual terminal <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
+             <Button onClick={executeReviewedBatch} disabled={!previewed || !session?.authenticated || !preflight?.tradingEnabled || !preflight.demoOnly || createTrade.isPending} data-testid="button-execute-bulk">
+               {createTrade.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+               Execute demo batch
+             </Button>
+           </div>
         </div>
       </Card>
+      {results.length > 0 && (
+        <Card data-testid="card-bulk-results">
+          <CardHeader className="border-b bg-secondary/10"><CardTitle className="text-base">Batch receipts</CardTitle></CardHeader>
+          <CardContent className="divide-y p-0">
+            {results.map((result: any) => <div key={result.symbol} className="flex flex-col gap-1 p-4 sm:flex-row sm:items-center sm:justify-between"><div className="font-mono text-sm">{result.symbol} <span className="text-muted-foreground">{result.message}</span></div><Badge variant={result.ok ? "outline" : "destructive"}>{result.ok ? `${result.status} · ${result.transactionId}` : "rejected"}</Badge></div>)}
+          </CardContent>
+        </Card>
+      )}
     </Workspace>
   )
 }

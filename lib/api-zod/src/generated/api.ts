@@ -124,6 +124,8 @@ export const GetAccountResponse = zod.object({
 export const createTradeBodyStakeExclusiveMin = 0;
 
 
+export const createTradeBodyRequestLabelMax = 120;
+
 
 
 export const CreateTradeBody = zod.object({
@@ -131,14 +133,45 @@ export const CreateTradeBody = zod.object({
   "contract_type": zod.enum(['CALL', 'PUT']),
   "stake": zod.number().gt(createTradeBodyStakeExclusiveMin),
   "duration": zod.number().min(1),
+  "source": zod.enum(['manual', 'bulk', 'ai_assisted', 'bot_assisted']).optional(),
+  "request_label": zod.string().max(createTradeBodyRequestLabelMax).optional(),
   "live_confirmation": zod.enum(['CONFIRM_LIVE_TRADE']).optional().describe('Required only for real-money accounts; ignored for demo accounts.')
 })
 
 export const CreateTradeResponse = zod.object({
   "ok": zod.boolean(),
   "message": zod.string(),
-  "contractId": zod.string().nullable()
+  "contractId": zod.string().nullable(),
+  "transactionId": zod.string().nullable(),
+  "status": zod.string(),
+  "netProfit": zod.number().nullable()
 })
+
+
+/**
+ * @summary List the authenticated user's trade transactions
+ */
+export const ListTransactionsResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Read one owned trade transaction
+ */
+export const GetTransactionParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetTransactionResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary Poll Deriv for an open contract settlement
+ */
+export const RefreshTransactionParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const RefreshTransactionResponse = zod.record(zod.string(), zod.unknown())
 
 
 /**
