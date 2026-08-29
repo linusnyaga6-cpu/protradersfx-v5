@@ -113,7 +113,11 @@ export default function Bots() {
                   <div className="flex items-start gap-3">
                     <div className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-secondary"><BotIcon className="h-5 w-5 text-primary"/></div>
                     <div className="min-w-[150px] flex-1">
-                      <div className="font-semibold">{bot.name ?? `Bot ${i+1}`}</div>
+                       <div className="flex flex-wrap items-center gap-2">
+                         <div className="font-semibold">{bot.name ?? `Bot ${i+1}`}</div>
+                         {bot.name?.startsWith("Bot 1") && <Badge variant="outline" className="text-[10px] border-primary/30 text-primary">FREE</Badge>}
+                         {bot.name?.startsWith("Bot 2") && <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-600">RECOVERY</Badge>}
+                       </div>
                       <div className="text-xs font-mono text-muted-foreground mt-0.5">{bot.symbol ?? "symbol unavailable"}</div>
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         {bot.status === 'archived' || bot.status === 'stopped' ? (
@@ -160,7 +164,10 @@ export default function Bots() {
                 {templates.isLoading ? <SkeletonList /> : allTemplates.length ? allTemplates.map((t: any, i: number) => (
                   <div key={t.id ?? i} className="rounded-lg bg-secondary/30 border border-secondary/60 p-4 transition-colors hover:bg-secondary/50">
                     <div className="flex justify-between items-start">
-                      <div className="font-semibold text-sm">{t.name ?? "Unnamed template"}</div>
+                       <div className="flex flex-wrap items-center gap-2 font-semibold text-sm">
+                         {t.botNumber && <Badge variant="outline" className="text-[10px] border-primary/30 text-primary">BOT {t.botNumber}</Badge>}
+                         <span>{t.name ?? "Unnamed template"}</span>
+                       </div>
                       {custom.some((c: any) => c.id === t.id) && (
                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive shrink-0" onClick={() => archiveTpl.mutate({id: String(t.id)}, {onSuccess: () => { client.invalidateQueries({queryKey:getListBotTemplatesQueryKey()}); setNotice("Template archived.")}})}>
                            <Archive className="h-3.5 w-3.5" />
@@ -171,8 +178,8 @@ export default function Bots() {
                     <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] font-mono text-muted-foreground">
                       {t.strategy?.indicator && <div className="bg-background px-2 py-1 rounded border">Ind: {t.strategy.indicator}</div>}
                     </div>
-                    <Button size="sm" variant="outline" className="mt-3 w-full bg-background" onClick={() => add(t)} disabled={create.isPending} data-testid={`button-use-template-${t.id ?? i}`}>
-                      <Copy className="mr-2 h-3 w-3"/>{create.isPending ? "Creating..." : "Use as dry-run"}
+                     <Button size="sm" variant="outline" className="mt-3 w-full bg-background" onClick={() => add(t)} disabled={create.isPending} data-testid={`button-use-template-${t.id ?? i}`}>
+                       <Copy className="mr-2 h-3 w-3"/>{create.isPending ? "Creating..." : t.botNumber ? `Use Bot ${t.botNumber}` : "Use as dry-run"}
                     </Button>
                   </div>
                 )) : <Empty title="No templates found" text="Try a different search term." />}

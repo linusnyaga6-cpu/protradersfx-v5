@@ -16,12 +16,14 @@ const symbols = ["R_100", "R_75", "R_50", "R_25", "1HZ100V", "1HZ250V"]
 
 export default function Analysis() {
   const [selectedSymbol, setSelectedSymbol] = useState("R_100")
+  const [granularity, setGranularity] = useState(300)
   const ticker = useGetMarketTicker(selectedSymbol, {
     query: { queryKey: getGetMarketTickerQueryKey(selectedSymbol), refetchInterval: 5000 },
   })
-  const candles = useGetMarketCandles(selectedSymbol, { count: 60, granularity: 60 }, {
+  const candleParams = { count: 60, granularity }
+  const candles = useGetMarketCandles(selectedSymbol, candleParams, {
     query: {
-      queryKey: getGetMarketCandlesQueryKey(selectedSymbol, { count: 60, granularity: 60 }),
+      queryKey: getGetMarketCandlesQueryKey(selectedSymbol, candleParams),
       refetchInterval: 30000,
     },
   })
@@ -78,7 +80,7 @@ export default function Analysis() {
             <CardHeader className="flex-row items-center justify-between border-b bg-secondary/20">
               <div>
                 <CardTitle className="flex items-center gap-2 text-xl"><BarChart3 className="h-5 w-5 text-primary" />{selectedSymbol}</CardTitle>
-                <p className="mt-1 text-xs text-muted-foreground">Synthetic index · live quote</p>
+                <p className="mt-1 text-xs text-muted-foreground">Live quote · {timeframeLabel(granularity)} candles</p>
               </div>
               <Badge variant={offline ? "destructive" : "success"}><Radio className="mr-1 h-3 w-3" />{offline ? "OFFLINE" : "LIVE"}</Badge>
             </CardHeader>
@@ -93,6 +95,27 @@ export default function Analysis() {
                 </Button>
               </div>
 
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-white/[.08] bg-secondary/20 p-2">
+                <span className="mr-1 text-[10px] uppercase tracking-[.15em] text-muted-foreground">Timeframe</span>
+                {[
+                  [60, "1m"],
+                  [300, "5m"],
+                  [900, "15m"],
+                  [3600, "1h"],
+                ].map(([value, label]) => (
+                  <Button
+                    key={value}
+                    size="sm"
+                    variant={granularity === Number(value) ? "default" : "ghost"}
+                    className="h-8 px-3 text-xs"
+                    onClick={() => setGranularity(Number(value))}
+                    data-testid={`button-analysis-timeframe-${label}`}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+
               <CompactChart candles={history?.candles} />
 
               <div className="grid gap-3 sm:grid-cols-4">
@@ -105,6 +128,12 @@ export default function Analysis() {
                 <DataTile label="Volatility" value={history?.indicators ? formatVolatility(history.indicators.volatilityLevel, history.indicators.volatilityPct) : "Not available"} />
                 <DataTile label="History" value={candles.isLoading ? "Loading" : history?.candles?.length ? `${history.candles.length} candles` : "Not available"} />
               </div>
+              <div className="grid gap-3 sm:grid-cols-4">
+                <DataTile label="SMA 20" value={history?.indicators?.sma20} />
+                <DataTile label="EMA 9" value={history?.indicators?.ema9} />
+                <DataTile label="RSI 14" value={history?.indicators?.rsi14} />
+                <DataTile label="MACD histogram" value={history?.indicators?.macdHistogram} />
+              </div>
               <div className="flex flex-wrap gap-3 border-t border-white/[.08] pt-5">
                 <Button asChild><Link href="/markets">Open full market view <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
                 <Button asChild variant="outline"><Link href="/course">Read the course</Link></Button>
@@ -115,6 +144,10 @@ export default function Analysis() {
       </main>
     </div>
   )
+}
+
+function timeframeLabel(granularity: number) {
+  return granularity < 3600 ? `${granularity / 60}m` : `${granularity / 3600}h`
 }
 
 function InfoTile({ label, value }: { label: string; value: string }) {

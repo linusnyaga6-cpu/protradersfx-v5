@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { Layers3, Loader2 } from "lucide-react"
 import {
   getGetAccountQueryKey,
@@ -25,9 +26,11 @@ export default function BulkTrade() {
   const bestMarket = "R_100"
   const [stake, setStake] = useState("10")
   const [duration, setDuration] = useState("5")
-  const [direction, setDirection] = useState<"CALL" | "PUT">("CALL")
+  const [batchSize, setBatchSize] = useState("3")
   const [results, setResults] = useState<any[]>([])
+  const [isRunning, setIsRunning] = useState(false)
   const createTrade = useCreateTrade()
+  const queryClient = useQueryClient()
   const { data: session } = useGetSessionStatus({ query: { queryKey: getGetSessionStatusQueryKey() } })
   const preflight = useGetProtradersPreflight({ query: { queryKey: getGetProtradersPreflightQueryKey() } })
   const account = useGetAccount({
@@ -45,24 +48,55 @@ export default function BulkTrade() {
   const marketQuote = (ticker.data as any)?.quote ?? (ticker.data as any)?.price
   const marketOffline = ticker.isError || (ticker.data as any)?.available === false
 
+  const requestedBatchSize = Math.min(10, Math.max(1, Math.floor(Number(batchSize) || 0)))
+  const validOrder = Number(stake) > 0 && Number(duration) > 0 && Number.isInteger(Number(duration)) && Number(batchSize) >= 1
   const executeBatch = async () => {
-    if (!canRun) return
-    setResults([])
-    try {
-      const result = await createTrade.mutateAsync({
-        data: {
-          symbol: bestMarket,
-          contract_type: direction,
-          stake: Number(stake),
-          duration: Number(duration),
-          source: "bulk",
-          request_label: "Best market order",
-        } as any,
-      })
-      setResults([{ symbol: bestMarket, ok: result.ok, status: result.status, message: result.message }])
-    } catch (error) {
-      setResults([{ symbol: bestMarket, ok: false, message: error instanceof Error ? error.message : "Order rejected" }])
+    if (!canRun || !validOrder || isRunning) return
+    const count = requestedBatchSize
+    setIsRunning(true)
+    setResults(Array.from({ length: count }, (_, index) => ({
+      id: index,
+      symbol: bestMarket,
+      ok: null,
+      status: "queued",
+      message: `Waiting for entry ${index + 1} of ${count}`,
+    })))
+
+    for (let index = 0; index < count; index += 1) {
+      setResults(current => current.map(item => item.id === index ? { ...item, status: "sending", message: "Submitting demo order..." } : item))
+      try {
+        // Bulk execution intentionally reuses the reviewed demo contract path one entry at a time.
+        // The contract type remains server-compatible while direction controls stay out of the UI.
+        const result = await createTrade.mutateAsync({
+          data: {
+            symbol: bestMarket,
+            contract_type: "CALL",
+            stake: Number(stake),
+            duration: Number(duration),
+            source: "bulk",
+            request_label: `R_100 demo batch entry ${index + 1} of ${count}`,
+          } as any,
+        })
+        setResults(current => current.map(item => item.id === index ? {
+          ...item,
+          ok: result.ok,
+          status: result.status || (result.ok ? "accepted" : "rejected"),
+          message: result.message || (result.ok ? "Demo order accepted" : "Order rejected"),
+        } : item))
+      } catch (error) {
+        setResults(current => current.map(item => item.id === index ? {
+          ...item,
+          ok: false,
+          status: "rejected",
+          message: error instanceof Error ? error.message : "Order rejected",
+        } : item))
+      }
     }
+    setIsRunning(false)
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: getGetAccountQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getGetSessionStatusQueryKey() }),
+    ])
   }
 
   return (
@@ -104,18 +138,26 @@ export default function BulkTrade() {
               <Label htmlFor="bulk-stake">Stake ({accountCurrency})</Label>
               <Input id="bulk-stake" type="number" min="0.01" step="0.01" value={stake} onChange={event => setStake(event.target.value)} />
             </div>
-            <div className="space-y-2">
+             <div className="space-y-2">
               <Label htmlFor="bulk-duration">Duration</Label>
               <Input id="bulk-duration" type="number" min="1" step="1" value={duration} onChange={event => setDuration(event.target.value)} />
             </div>
+             <div className="space-y-2">
+               <Label htmlFor="bulk-size">Demo batch entries</Label>
+               <Input id="bulk-size" type="number" min="1" max="10" step="1" value={batchSize} onChange={event => setBatchSize(event.target.value)} />
+               <p className="text-xs leading-5 text-muted-foreground">Runs up to 10 reviewed demo entries sequentially so every result is visible.</p>
+             </div>
             <div className="rounded-lg bg-secondary/40 p-3 text-sm">
                <div className="flex justify-between"><span className="text-muted-foreground">Market</span><span className="font-mono">{bestMarket}</span></div>
-               <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Total stake</span><span>{formatMoney(Number(stake || 0), accountCurrency)}</span></div>
+                <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Entries</span><span>{requestedBatchSize}</span></div>
+                <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Total stake</span><span>{formatMoney(Number(stake || 0) * requestedBatchSize, accountCurrency)}</span></div>
             </div>
-             <Button className="w-full" onClick={executeBatch} disabled={!canRun || createTrade.isPending} data-testid="button-execute-bulk">
-              {createTrade.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-               {account.data?.accountType === "real" ? "Demo account required" : "Run best market"}
+              {!validOrder && <p className="text-xs text-destructive">Enter a positive stake, whole-number duration, and at least one batch entry.</p>}
+              <Button className="w-full" onClick={executeBatch} disabled={!canRun || !validOrder || isRunning} data-testid="button-execute-bulk">
+               {isRunning && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {account.data?.accountType === "real" ? "Demo account required" : isRunning ? "Running reviewed batch..." : "Run reviewed demo batch"}
             </Button>
+             <p className="text-[11px] leading-5 text-muted-foreground">Every entry uses the same protected demo trade flow. No real-money order is sent, and settlement values appear only when Deriv reports them.</p>
           </CardContent>
         </Card>
       </div>
@@ -124,10 +166,13 @@ export default function BulkTrade() {
         <Card data-testid="card-bulk-results">
           <CardHeader className="border-b bg-secondary/10"><CardTitle className="text-base">Results</CardTitle></CardHeader>
           <CardContent className="divide-y p-0">
-            {results.map((result: any) => (
-              <div key={result.symbol} className="flex items-center justify-between gap-3 p-4 text-sm">
-                <span className="font-mono">{result.symbol}</span>
-                <span className={result.ok ? "text-success" : "text-destructive"}>{result.ok ? result.status || "accepted" : result.message || "rejected"}</span>
+             {results.map((result: any) => (
+               <div key={result.id} className="flex items-center justify-between gap-3 p-4 text-sm">
+                 <div>
+                   <div className="font-mono">{result.symbol} · entry {result.id + 1}</div>
+                   <div className="mt-1 text-xs text-muted-foreground">{result.message}</div>
+                 </div>
+                 <span className={result.ok === true ? "text-success" : result.ok === false ? "text-destructive" : "text-muted-foreground"}>{result.status || "queued"}</span>
               </div>
             ))}
           </CardContent>
