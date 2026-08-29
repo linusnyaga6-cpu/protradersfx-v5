@@ -15,6 +15,10 @@
   ],
   "routes": [
     {
+      "src": "/health",
+      "dest": "artifacts/api-server/api/index.ts"
+    },
+    {
       "src": "/api/(.*)",
       "dest": "artifacts/api-server/api/index.ts"
     },

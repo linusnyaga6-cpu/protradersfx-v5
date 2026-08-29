@@ -3,7 +3,7 @@ import { Router, type Request, type Response } from "express";
 import rateLimit from "express-rate-limit";
 import WebSocket, { type RawData } from "ws";
 import { and, desc, eq } from "drizzle-orm";
-import { consumedTradeProposals, db, riskAcknowledgements, transactions } from "@workspace/db";
+import { consumedTradeProposals, databaseConfigured, db, riskAcknowledgements, transactions } from "@workspace/db";
 
 type SessionValue = {
   accessToken: string;
@@ -365,6 +365,7 @@ router.get("/preflight", (_req, res) => {
     tradingEnabled,
     liveTradingEnabled,
     demoOnly,
+    persistenceConfigured: databaseConfigured,
     maxDuration,
     allowedSymbols: Array.from(allowedSymbols),
     executionMode: !tradingEnabled

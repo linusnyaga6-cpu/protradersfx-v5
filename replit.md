@@ -11,6 +11,7 @@ Deriv-connected trading workspace backend with PKCE login, account proxying, con
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Production schema changes are synchronized by Replit Publish: it diffs the exported Drizzle schema and applies the reviewed change during publish. Do not run custom production migrations or startup-time DDL.
 - Required production env: `BASE_URL`, `SESSION_SECRET`, `DERIV_CLIENT_ID`, and `DERIV_PUBLIC_APP_ID`
+- Persistence accepts either `DATABASE_URL` or Vercel's `POSTGRES_URL` and can point to any standard PostgreSQL provider; public pages, health, OAuth, accounts, and live markets remain available when persistence is intentionally omitted
 - Optional signup env: `DERIV_AFFILIATE_TOKEN` plus the affiliate UTM settings
 - Optional cross-origin clients must be explicitly allowlisted with `ALLOWED_ORIGINS`; the web app is same-origin by default
 - Trading remains disabled unless `TRADING_ENABLED=true`; demo-only mode is the default
@@ -50,7 +51,7 @@ _Populate as you build — explicit user instructions worth remembering across s
 ## Gotchas
 
 - Register `https://www.protradersfx.com/oauth/callback` exactly in Deriv and set `BASE_URL=https://www.protradersfx.com`.
-- Analytics in the API service is in-memory/ephemeral; it is not a durable source of business metrics.
+- Analytics in the API service is in-memory/ephemeral; it does not write to the deployment filesystem and is not a durable source of business metrics.
 - Do not enable real-money trading until the controlled demo test and independent risk review pass. TraderScheme is an external, unaffiliated reference only.
 
 ## Pointers
