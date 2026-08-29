@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { BarChart3, Bot, Search } from "lucide-react"
 import { useLocation } from "wouter"
+import { ALL_MARKET_SYMBOLS } from "@/lib/markets"
 import {
   CommandDialog,
   CommandEmpty,
@@ -13,7 +14,7 @@ import {
 } from "@/components/ui/command"
 import { Button } from "@/components/ui/button"
 
-const markets = ["R_100", "R_75", "R_50", "R_25", "1HZ100V", "BOOM_500"]
+const markets = ALL_MARKET_SYMBOLS
 
 const pages = [
   { label: "Analysis Tools", hint: "Live quotes and movement", href: "/analysis", icon: BarChart3 },

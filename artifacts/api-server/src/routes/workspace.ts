@@ -163,21 +163,25 @@ router.get("/market/symbols", async (_req, res) => {
   try {
     const body = await cachedMarket("symbols", async () => {
       const data = await publicDeriv({ active_symbols: "brief" });
-      const symbols = (data.active_symbols || []).map((s: any) => ({
+      const providerSymbols = (data.active_symbols || []).map((s: any) => ({
         symbol: s.symbol,
         displayName: s.display_name,
         market: s.market,
         submarket: s.submarket,
+        discovered: true,
       }));
+      const knownSymbols = new Set(providerSymbols.map((item: any) => item.symbol));
+      const configuredSymbols = fallbackMarketSymbols
+        .filter((symbol) => !knownSymbols.has(symbol))
+        .map((symbol) => ({
+          symbol,
+          displayName: symbol,
+          market: symbol.startsWith("frx") ? "forex" : "synthetic_index",
+          submarket: symbol.startsWith("frx") ? "major_pairs" : "volatility",
+          discovered: false,
+        }));
       return {
-        symbols: symbols.length
-          ? symbols
-          : fallbackMarketSymbols.map((symbol) => ({
-            symbol,
-            displayName: symbol,
-            market: symbol.startsWith("frx") ? "forex" : "synthetic_index",
-            submarket: symbol.startsWith("frx") ? "major_pairs" : "volatility",
-          })),
+        symbols: [...providerSymbols, ...configuredSymbols],
       };
     });
     return res.json(body);

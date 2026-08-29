@@ -10,8 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AccountStrip } from "@/components/trading/account-strip"
 import { BotRunSummary } from "@/components/trading/bot-run-summary"
 import { formatVolatility } from "@/lib/format"
+import { ALL_MARKET_SYMBOLS } from "@/lib/markets"
 
-const fallback = ["R_10","R_25","R_50","R_75","R_100","1HZ10V","1HZ25V","1HZ50V","1HZ75V","1HZ100V","1HZ150V","1HZ250V","frxAUDUSD","frxEURUSD","frxGBPUSD","frxUSDJPY"]
+const fallback = ALL_MARKET_SYMBOLS
 export default function Markets() {
   const [symbol,setSymbol] = useState("R_100")
   const [marketSearch,setMarketSearch] = useState("")

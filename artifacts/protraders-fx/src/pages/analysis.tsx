@@ -11,8 +11,9 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatVolatility } from "@/lib/format"
+import { ALL_MARKET_SYMBOLS } from "@/lib/markets"
 
-const symbols = ["R_100", "R_75", "R_50", "R_25", "1HZ100V", "1HZ250V"]
+const symbols = ALL_MARKET_SYMBOLS
 
 export default function Analysis() {
   const [selectedSymbol, setSelectedSymbol] = useState("R_100")

@@ -3,8 +3,9 @@ import { Activity, ArrowDownRight, ArrowRight, BarChart3, BookOpen, Bot, Check, 
 import { Link } from "wouter"
 import { useGetMarketCandles, getGetMarketCandlesQueryKey, useGetMarketTicker, getGetMarketTickerQueryKey, useGetSessionStatus, getGetSessionStatusQueryKey, useTrackEvent } from "@workspace/api-client-react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { VOLATILITY_SYMBOLS } from "@/lib/markets"
 
-const tickerSymbols = ["R_100", "R_75", "R_50", "R_25", "1HZ100V", "BOOM_500"]
+const tickerSymbols = VOLATILITY_SYMBOLS
 
 const toolCards = [
   { title: "Analysis Tools", eyebrow: "Context", description: "Inspect live quotes, candles, and advisory signals before you decide.", href: "/analysis", icon: Activity },
@@ -104,7 +105,7 @@ export default function Home() {
                   </div>
                   <div className="mt-5 grid grid-cols-3 divide-x divide-white/[.08] border-y border-white/[.08] py-4 text-center">
                      <div><div className="font-mono text-[10px] text-muted-foreground">BIAS</div><div className="mt-1 text-sm font-semibold text-primary">{pulseChange == null ? "OBSERVE" : pulseChange > 0 ? "UP" : pulseChange < 0 ? "DOWN" : "FLAT"}</div></div>
-                    <div><div className="font-mono text-[10px] text-muted-foreground">MODE</div><div className="mt-1 text-sm font-semibold text-foreground">DEMO</div></div>
+                     <div><div className="font-mono text-[10px] text-muted-foreground">MODE</div><div className="mt-1 text-sm font-semibold text-foreground">SAFE</div></div>
                     <div><div className="font-mono text-[10px] text-muted-foreground">RISK</div><div className="mt-1 text-sm font-semibold text-accent">VISIBLE</div></div>
                   </div>
                 </div>

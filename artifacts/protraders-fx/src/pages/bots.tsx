@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { ALL_MARKET_SYMBOLS } from "@/lib/markets"
 
 export default function Bots() {
   const client = useQueryClient();
@@ -53,7 +54,7 @@ export default function Bots() {
     create.mutate({
       data: {
         name: `${template.name ?? "Observation"} / ${template.id ?? "new"}`,
-        symbol: String(template.strategy?.symbol ?? "R_100"),
+         symbol: String(template.symbol ?? template.strategy?.symbol ?? "R_100"),
         config: {
           indicator: template.strategy?.indicator || "ema",
           direction: "BOTH",
@@ -352,9 +353,12 @@ function BotBuilder({ bot, accountCurrency, onUpdate }: { bot: any, accountCurre
               {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Instrument Symbol</Label>
-              <Input value={symbol} onChange={e => setSymbol(e.target.value)} className="bg-background shadow-sm font-mono" />
+               <div className="space-y-2">
+               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Instrument Symbol</Label>
+               <Select value={symbol} onValueChange={setSymbol}>
+                 <SelectTrigger className="bg-background shadow-sm font-mono"><SelectValue /></SelectTrigger>
+                 <SelectContent>{ALL_MARKET_SYMBOLS.map(item => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
+               </Select>
               {errors.symbol && <p className="text-xs text-destructive">{errors.symbol}</p>}
             </div>
 
