@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "artifacts/api-server/api/index.js",
+      "src": "artifacts/api-server/api/index.ts",
       "use": "@vercel/node"
     },
     {
@@ -16,15 +16,15 @@
   "routes": [
     {
       "src": "/health",
-      "dest": "artifacts/api-server/api/index.js"
+      "dest": "artifacts/api-server/api/index.ts"
     },
     {
       "src": "/api/(.*)",
-      "dest": "artifacts/api-server/api/index.js"
+      "dest": "artifacts/api-server/api/index.ts"
     },
     {
       "src": "/oauth/(.*)",
-      "dest": "artifacts/api-server/api/index.js"
+      "dest": "artifacts/api-server/api/index.ts"
     },
     {
       "handle": "filesystem"

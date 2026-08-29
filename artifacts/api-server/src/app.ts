@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import cookieParser from "cookie-parser";
@@ -8,7 +8,7 @@ import router from "./routes";
 import { handleOAuthCallback } from "./routes/protraders";
 import { logger } from "./lib/logger";
 
-const app: Express = express();
+const app = express();
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || "")
   .split(",")
   .map((origin) => origin.trim())
