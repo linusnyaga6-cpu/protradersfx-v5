@@ -264,9 +264,10 @@ export function FloatingScanner() {
                    Review order <ArrowRight className="ml-1 h-3.5 w-3.5" />
                  </Button>
                  <Button size="sm" variant="outline" onClick={() => {
-                   window.location.href = `/create-bot?symbol=${encodeURIComponent(symbol)}`
+                    const direction = result.analysis.bias === "bullish" ? "CALL" : result.analysis.bias === "bearish" ? "PUT" : "CALL"
+                    window.location.href = `/create-bot?symbol=${encodeURIComponent(symbol)}&contract=${direction}&source=ai_assisted`
                  }} data-testid="button-run-ai-bot">
-                   Run bot
+                    Review & Run Bot
                  </Button>
                  </div>
                </div>

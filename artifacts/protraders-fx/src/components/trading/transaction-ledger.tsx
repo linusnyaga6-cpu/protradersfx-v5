@@ -48,19 +48,23 @@ export function TransactionLedger({ compact = false, accountBalance, accountCurr
     }
   }, [pendingIds])
 
-  const summary = useMemo(() => rows.reduce((acc: { net: number; staked: number; runs: number; wins: number; losses: number }, row: any) => {
+  const summary = useMemo(() => rows.reduce((acc: { net: number; staked: number; runs: number; wins: number; losses: number; settled: number }, row: any) => {
     const net = Number(row.netProfit)
     const stake = Number(row.stake)
+    const settled = row.status === "won" || row.status === "lost" || Number.isFinite(net)
     return {
       net: acc.net + (Number.isFinite(net) ? net : 0),
       staked: acc.staked + (Number.isFinite(stake) ? stake : 0),
       runs: acc.runs + 1,
       wins: acc.wins + (row.status === "won" ? 1 : 0),
       losses: acc.losses + (row.status === "lost" ? 1 : 0),
+      settled: acc.settled + (settled ? 1 : 0),
     }
-  }, { net: 0, staked: 0, runs: 0, wins: 0, losses: 0 }), [rows])
+  }, { net: 0, staked: 0, runs: 0, wins: 0, losses: 0, settled: 0 }), [rows])
   const summaryCurrency = accountCurrency || rows.find((row: any) => row.currency)?.currency || "USD"
-  const signedNet = `${summary.net >= 0 ? "+" : "-"}${formatMoney(Math.abs(summary.net), summaryCurrency)}`
+  const signedNet = summary.settled > 0
+    ? `${summary.net >= 0 ? "+" : "-"}${formatMoney(Math.abs(summary.net), summaryCurrency)}`
+    : "Not settled"
 
   return (
     <Card className={compact ? "shadow-sm" : "shadow-md"} data-testid="card-transaction-ledger">
@@ -79,7 +83,7 @@ export function TransactionLedger({ compact = false, accountBalance, accountCurr
       </CardHeader>
       <CardContent className="space-y-4 pt-5">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-          <Summary label="Cumulative P/L" value={signedNet} positive={summary.net >= 0} />
+          <Summary label="Cumulative P/L" value={signedNet} positive={summary.settled > 0 ? summary.net >= 0 : undefined} />
           <Summary label="Runs" value={String(summary.runs)} />
           <Summary label="Wins" value={String(summary.wins)} positive={summary.wins > 0} />
           <Summary label="Losses" value={String(summary.losses)} positive={summary.losses === 0} />
