@@ -15,6 +15,7 @@ export function Navbar() {
   const navItems = [
     { path: "/", label: "Home", icon: Home, show: true },
     { path: "/dashboard", label: "Workspace", icon: LayoutDashboard, show: session?.authenticated },
+    { path: "/bulk-trade", label: "Trade", icon: BarChart3, show: session?.authenticated },
     { path: "/activity", label: "Activity", icon: Activity, show: !!session?.authenticated },
     { path: "/about", label: "About", icon: UserRound, show: true },
     { path: "/course", label: "Course", icon: BookOpen, show: true },
@@ -22,7 +23,6 @@ export function Navbar() {
     { path: "/markets", label: "Markets", icon: BarChart3, show: session?.authenticated },
     { path: "/bots", label: "Bots", icon: Bot, show: session?.authenticated },
     { path: "/recovery", label: "Recovery", icon: CircleAlert, show: session?.authenticated },
-    { path: "/bulk-trade", label: "Trade", icon: BarChart3, show: session?.authenticated },
   ]
 
   const handleLogout = async () => {

@@ -70,9 +70,9 @@ export default function Dashboard() {
       )}
 
       <div className="grid gap-3 sm:grid-cols-3">
+        <ActionCard href="/bulk-trade" icon={<Layers3 className="h-4 w-4" />} title="Instant trade" featured />
         <ActionCard href="/markets" icon={<Activity className="h-4 w-4" />} title="Scan market" />
         <ActionCard href="/bots" icon={<Bot className="h-4 w-4" />} title="Run bot" />
-        <ActionCard href="/bulk-trade" icon={<Layers3 className="h-4 w-4" />} title="Instant trade" />
       </div>
 
       <TransactionLedger accountBalance={account.data?.balance} accountCurrency={account.data?.currency} />
@@ -80,9 +80,9 @@ export default function Dashboard() {
   )
 }
 
-function ActionCard({ href, icon, title }: { href: string; icon: React.ReactNode; title: string }) {
+function ActionCard({ href, icon, title, featured }: { href: string; icon: React.ReactNode; title: string; featured?: boolean }) {
   return (
-    <Link href={href} className="group flex items-center gap-3 rounded-xl border bg-card/60 p-4 transition-colors hover:border-primary/40 hover:bg-card">
+    <Link href={href} className={`group flex items-center gap-3 rounded-xl border p-4 transition-colors hover:border-primary/60 hover:bg-card ${featured ? "border-primary/45 bg-primary/10 shadow-[0_8px_30px_rgba(190,240,40,.08)]" : "bg-card/60"}`}>
       <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary">{icon}</span>
       <span className="font-medium">{title}</span>
       <span className="ml-auto text-muted-foreground transition-transform group-hover:translate-x-1">→</span>
