@@ -89,15 +89,19 @@ export function FloatingScanner() {
   }
 
   const startDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (window.matchMedia("(max-width: 767px)").matches) return
     drag.current = { x: position.x, y: position.y, startX: event.clientX, startY: event.clientY }
     event.currentTarget.setPointerCapture(event.pointerId)
   }
   const moveDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!drag.current) return
+    const mobile = window.innerWidth < 768
+    // The mobile panel spans the available width, so keep it horizontally
+    // anchored and let users reposition it vertically without losing it.
+    const minX = mobile ? 0 : -(window.innerWidth - 390)
+    const minY = -(window.innerHeight - (mobile ? 220 : 320))
     setPosition({
-      x: Math.min(0, Math.max(-(window.innerWidth - 390), drag.current.x + event.clientX - drag.current.startX)),
-      y: Math.min(window.innerHeight - 180, Math.max(-(window.innerHeight - 220), drag.current.y + event.clientY - drag.current.startY)),
+      x: Math.min(0, Math.max(minX, drag.current.x + event.clientX - drag.current.startX)),
+      y: Math.min(0, Math.max(minY, drag.current.y + event.clientY - drag.current.startY)),
     })
   }
 
@@ -124,17 +128,19 @@ export function FloatingScanner() {
       data-testid="panel-ai-scanner"
     >
       <div
-        className="flex touch-none cursor-grab items-center justify-between border-b border-white/10 bg-secondary/40 px-4 py-3 active:cursor-grabbing"
+        className="flex touch-none select-none cursor-grab items-center justify-between border-b border-white/10 bg-secondary/40 px-4 py-3 active:cursor-grabbing"
         onPointerDown={startDrag}
         onPointerMove={moveDrag}
         onPointerUp={() => { drag.current = null }}
+        onPointerCancel={() => { drag.current = null }}
+        onLostPointerCapture={() => { drag.current = null }}
       >
         <div className="flex items-center gap-2">
           <GripHorizontal className="hidden h-4 w-4 text-muted-foreground md:block" />
           <Activity className="h-4 w-4 text-primary" />
           <span className="text-sm font-semibold">AI Market Scanner</span>
         </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOpen(false)} aria-label="Close scanner">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onPointerDown={(event) => event.stopPropagation()} onClick={() => setOpen(false)} aria-label="Close scanner">
           <X className="h-4 w-4" />
         </Button>
       </div>
