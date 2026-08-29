@@ -4,3 +4,4 @@
 - [Custom domain routing](custom-domain-routing.md) — verify the public host's DNS and Server header; a Vercel 500 means traffic has not reached Replit.
 - [API codegen barrel collision](api-codegen-barrel-collision.md) — generated query parameter types can collide with runtime Zod schemas in the barrel.
 - [Logout cookie reliability](logout-cookie-reliability.md) — use an explicit credentialed logout request and a guaranteed redirect; clear session cookies with an expired value and no-store headers.
+- [Mockup sandbox production builds](mockup-sandbox-builds.md) — Vite build config must not require workflow-only PORT or BASE_PATH variables.
