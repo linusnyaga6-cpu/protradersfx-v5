@@ -6,7 +6,7 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "noCheck": true,
-    "rootDir": "..",
+    "rootDir": "../../..",
     "types": ["node"]
   },
   "include": ["index.ts", "../src/**/*.ts"]
