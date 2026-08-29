@@ -477,13 +477,10 @@ router.post("/transactions/:id/refresh", async (req, res) => {
   }
 });
 
-export async function derivRequest(accessToken: string, payload: Record<string, unknown>) {
-  const authenticatedAppId = clientId || publicAppId;
-  if (!authenticatedAppId) throw new Error("DERIV_CLIENT_ID is not configured");
-
+async function derivRequestOnce(accessToken: string, payload: Record<string, unknown>, appId: string) {
   return new Promise<any>((resolve, reject) => {
     const socket = new WebSocket(
-      `wss://ws.derivws.com/websockets/v3?app_id=${encodeURIComponent(authenticatedAppId)}`,
+      `wss://ws.derivws.com/websockets/v3?app_id=${encodeURIComponent(appId)}`,
     );
     let settled = false;
     const timer = setTimeout(() => {
@@ -522,6 +519,26 @@ export async function derivRequest(accessToken: string, payload: Record<string, 
     socket.on("error", (error: Error) => finish(reject, error));
     socket.on("close", () => clearTimeout(timer));
   });
+}
+
+export async function derivRequest(accessToken: string, payload: Record<string, unknown>) {
+  const appIds = [...new Set([
+    process.env.DERIV_WS_APP_ID,
+    publicAppId,
+    "1089",
+  ].filter((value): value is string => Boolean(value)))];
+  let lastError: unknown;
+  for (const appId of appIds) {
+    try {
+      return await derivRequestOnce(accessToken, payload, appId);
+    } catch (error) {
+      lastError = error;
+      if (!/(401|invalid.?app.?id|unexpected server response)/i.test(error instanceof Error ? error.message : String(error))) {
+        throw error;
+      }
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Deriv WebSocket app ID rejected");
 }
 
 router.get("/account", async (req, res) => {

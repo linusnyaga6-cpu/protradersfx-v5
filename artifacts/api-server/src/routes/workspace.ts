@@ -79,9 +79,7 @@ async function authenticated(req: Request, res: Response) {
     return null;
   }
 }
-function publicDeriv(payload: Record<string, unknown>) {
-  const appId = process.env.DERIV_PUBLIC_APP_ID;
-  if (!appId) return Promise.reject(new Error("DERIV_PUBLIC_APP_ID is not configured"));
+function publicDerivOnce(payload: Record<string, unknown>, appId: string) {
   return new Promise<any>((resolve, reject) => {
     const socket = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${encodeURIComponent(appId)}`);
     let done = false;
@@ -91,6 +89,24 @@ function publicDeriv(payload: Record<string, unknown>) {
     socket.on("message", (raw: RawData) => { try { const data = JSON.parse(raw.toString()); data.error ? finish(reject, new Error(data.error.message || "Deriv API error")) : finish(resolve, data); } catch { finish(reject, new Error("Invalid Deriv market response")); } });
     socket.on("error", (error) => finish(reject, error));
   });
+}
+async function publicDeriv(payload: Record<string, unknown>) {
+  const appIds = [...new Set([
+    process.env.DERIV_PUBLIC_APP_ID,
+    "1089",
+  ].filter((value): value is string => Boolean(value)))];
+  let lastError: unknown;
+  for (const appId of appIds) {
+    try {
+      return await publicDerivOnce(payload, appId);
+    } catch (error) {
+      lastError = error;
+      if (!/(401|invalid.?app.?id|unexpected server response)/i.test(error instanceof Error ? error.message : String(error))) {
+        throw error;
+      }
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Deriv public WebSocket app ID rejected");
 }
 function metrics(candles: Array<{ epoch: number; close: number }>) {
   const closes = candles.map((c) => c.close);
