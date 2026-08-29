@@ -30,11 +30,19 @@
       "dest": "artifacts/api-server/api/index.js"
     },
     {
+      "src": "/assets/(.*)",
+      "dest": "/artifacts/protraders-fx/assets/$1"
+    },
+    {
+      "src": "/(favicon\\.svg|robots\\.txt|sitemap\\.xml)",
+      "dest": "/artifacts/protraders-fx/$1"
+    },
+    {
       "handle": "filesystem"
     },
     {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "/artifacts/protraders-fx/index.html"
     }
   ]
 }
