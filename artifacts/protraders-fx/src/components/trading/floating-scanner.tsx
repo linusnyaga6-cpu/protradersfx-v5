@@ -43,8 +43,6 @@ export function FloatingScanner() {
     return () => window.removeEventListener("protraders:open-scanner", show)
   }, [])
 
-  if (!session?.authenticated) return null
-
   const analyze = () => {
     setError("")
     analyzeMarket.mutate({ data: { symbol } }, {
@@ -103,6 +101,26 @@ export function FloatingScanner() {
         </Button>
       </div>
       <div className="max-h-[calc(82vh-48px)] space-y-4 overflow-y-auto p-4">
+        {!session?.authenticated ? (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <ShieldCheck className="h-4 w-4 text-primary" />
+                Connect to scan live markets
+              </div>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                The scanner uses current Deriv market data and returns advisory context only. Connect your account to run a scan.
+              </p>
+            </div>
+            <Button asChild className="w-full" data-testid="button-connect-scanner">
+              <a href="/api/deriv/login">Connect Deriv account <ArrowRight className="ml-2 h-4 w-4" /></a>
+            </Button>
+            <div className="flex items-center gap-2 border-t border-white/10 pt-3 text-[10px] uppercase tracking-wider text-muted-foreground">
+              <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Advisory only · no order execution
+            </div>
+          </div>
+        ) : (
+          <>
         <div className="flex gap-2">
           <Select value={symbol} onValueChange={(value) => { setSymbol(value); setResult(null); setError("") }}>
             <SelectTrigger className="bg-background/70"><SelectValue /></SelectTrigger>
@@ -160,6 +178,8 @@ export function FloatingScanner() {
         <div className="flex items-center gap-2 border-t border-white/10 pt-3 text-[10px] uppercase tracking-wider text-muted-foreground">
           <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Advisory only · no order execution
         </div>
+          </>
+        )}
       </div>
     </aside>
   )
