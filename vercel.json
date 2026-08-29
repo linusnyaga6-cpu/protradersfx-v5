@@ -3,13 +3,31 @@
 "builds": [
 {
 "src": "server.js",
-"use": "@vercel/node"
+"use": "@vercel/node",
+"config": {
+"includeFiles": [
+"index.html",
+"style.css",
+"tracker.js",
+"workspace.html",
+"workspace.js",
+"signals.html",
+"marketplace.html",
+"builder.html",
+"course.html",
+"privacy.html",
+"terms.html",
+"favicon.svg",
+"logo.svg",
+"robots.txt"
+]
+}
 }
 ],
 "routes": [
 {
 "src": "/(.*)",
-"dest": "/server.js"
+"dest": "server.js"
 }
 ]
 }
