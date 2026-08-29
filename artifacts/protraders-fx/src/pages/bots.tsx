@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import {
-  Bot as BotIcon, CheckCircle2, Copy, Pause, Play, Plus, RotateCcw, ShieldCheck,
+  Bot as BotIcon, CheckCircle2, Copy, Pause, Play, Plus, ShieldCheck,
   Settings, Save, Archive, Clock, Activity, Loader2, AlertTriangle, AlertCircle, Search
 } from "lucide-react"
 import {
   useListBots, getListBotsQueryKey,
   useListBotTemplates, getListBotTemplatesQueryKey,
-  useCreateBot, useUpdateBot, useChangeBotLifecycle, useRunBotOnce,
+  useCreateBot, useUpdateBot, useChangeBotLifecycle,
   useListBotRuns, getListBotRunsQueryKey,
   useCreateBotTemplate, useUpdateBotTemplate, useArchiveBotTemplate,
   useGetAccount, getGetAccountQueryKey, useGetProtradersPreflight, getGetProtradersPreflightQueryKey,
@@ -37,7 +37,6 @@ export default function Bots() {
 
   const create = useCreateBot();
   const life = useChangeBotLifecycle();
-  const run = useRunBotOnce();
   const archiveTpl = useArchiveBotTemplate();
   const preflight = useGetProtradersPreflight({ query: { queryKey: getGetProtradersPreflightQueryKey() } });
 
@@ -101,24 +100,18 @@ export default function Bots() {
     }
     setExecutingBotId(String(bot.id));
     try {
-      const observation = await run.mutateAsync({ id: String(bot.id) });
-      const action = String((observation as any)?.result?.action || "");
-      if (!action.startsWith("review-")) {
-        setNotice("Bot paused: no entry condition was present.");
-      } else {
-        const contractType = String(bot.config?.contractType || (action === "review-put" ? "PUT" : "CALL"));
-        const orderData = {
-            symbol: String(bot.symbol),
-            contract_type: contractType as any,
-            ...(CONTRACT_LABELS[contractType]?.needsBarrier ? { barrier: String(bot.config?.barrier || "5") } : {}),
-            stake: Number(bot.config?.stake || 1),
-            duration: Number(bot.config?.duration || 1),
-            stop_loss: Number(bot.config?.stopLoss || 1),
-            source: "bot_assisted",
-            request_label: `${bot.name} reviewed demo order`,
-        };
-        await runSession.start(orderData, Number(bot.config?.runCount || 1), Number(bot.config?.takeProfit || 1));
-      }
+      const contractType = String(bot.config?.contractType || "CALL");
+      const orderData = {
+          symbol: String(bot.symbol),
+          contract_type: contractType as any,
+          ...(CONTRACT_LABELS[contractType]?.needsBarrier ? { barrier: String(bot.config?.barrier || "5") } : {}),
+          stake: Number(bot.config?.stake || 1),
+          duration: Number(bot.config?.duration || 1),
+          stop_loss: Number(bot.config?.stopLoss || 1),
+          source: "bot_assisted",
+          request_label: `${bot.name} user-started bot session`,
+      };
+      await runSession.start(orderData, Number(bot.config?.runCount || 1), Number(bot.config?.takeProfit || 1));
     } catch (error) {
       setNotice(`Bot execution stopped: ${error instanceof Error ? error.message : "Deriv rejected the request"}`);
     } finally {
@@ -131,7 +124,7 @@ export default function Bots() {
     <Workspace title="Bots" eyebrow="Controlled automation" description="Choose the market, contract, stake, run limit, take-profit target, duration, and risk controls, then start one bounded session with Run Bot.">
       <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} />
       <div className="flex items-center justify-between">
-        <Badge variant="outline" className="bg-background"><ShieldCheck className="mr-1 h-3 w-3" />Dry-run default</Badge>
+        <Badge variant="outline" className="bg-background"><ShieldCheck className="mr-1 h-3 w-3" />User-started sessions</Badge>
         <Button onClick={() => add({name:"Blank observation",id:"blank",strategy:{}})} data-testid="button-create-bot">
           <Plus className="h-4 w-4 mr-2" />New bot
         </Button>
@@ -186,11 +179,13 @@ export default function Bots() {
                     </div>
                   </div>
                   <div className="flex w-full gap-2 mt-1">
-                     <Button size="sm" variant="outline" className="flex-1 bg-background" onClick={(e) => { e.stopPropagation(); run.mutate({id:String(bot.id)}, {onSuccess:r=>{client.invalidateQueries({queryKey:getListBotRunsQueryKey(String(bot.id))});setNotice(`Dry-run complete: ${String((r as any)?.result?.recommendation?.action ?? (r as any)?.result?.action ?? "result available")}`)},onError:e=>setNotice(`Run failed: ${e.message}`)})}} disabled={run.isPending} data-testid={`button-run-bot-${bot.id}`}>
-                      <RotateCcw className="mr-2 h-3 w-3"/>Run once
-                    </Button>
-                    <Button size="sm" variant={bot.status === "observing" ? "secondary" : "default"} className="flex-1" onClick={(e) => { e.stopPropagation(); life.mutate({id:String(bot.id),action:bot.status==="observing"?"pause":"start"},{onSuccess:()=>{client.invalidateQueries({queryKey:getListBotsQueryKey()});setNotice("Lifecycle state updated.")},onError:e=>setNotice(`Lifecycle failed: ${e.message}`)})}} disabled={bot.status === 'archived'} data-testid={`button-toggle-bot-${bot.id}`}>
-                      {bot.status === "observing" ? <><Pause className="mr-2 h-3 w-3"/>Pause</> : <><Play className="mr-2 h-3 w-3"/>Start</>}
+                     {bot.config?.mode !== "recovery_guard" && selectedBotId !== String(bot.id) && executingBotId !== String(bot.id) && (
+                       <Button size="sm" className="flex-1" onClick={(e) => { e.stopPropagation(); executeBot(bot); }} disabled={Boolean(executingBotId)} data-testid={`button-run-bot-${bot.id}`}>
+                         <Play className="mr-2 h-3 w-3"/>Run Bot
+                       </Button>
+                     )}
+                     <Button size="sm" variant={bot.status === "observing" ? "secondary" : "outline"} className="flex-1" onClick={(e) => { e.stopPropagation(); life.mutate({id:String(bot.id),action:bot.status==="observing"?"pause":"start"},{onSuccess:()=>{client.invalidateQueries({queryKey:getListBotsQueryKey()});setNotice("Lifecycle state updated.")},onError:e=>setNotice(`Lifecycle failed: ${e.message}`)})}} disabled={bot.status === 'archived'} data-testid={`button-toggle-bot-${bot.id}`}>
+                      {bot.status === "observing" ? <><Pause className="mr-2 h-3 w-3"/>Pause observation</> : <><Play className="mr-2 h-3 w-3"/>Observe</>}
                     </Button>
                   </div>
                   {bot.config?.mode !== "recovery_guard" && (selectedBotId === String(bot.id) || executingBotId === String(bot.id)) && (
@@ -414,7 +409,7 @@ function BotBuilder({ bot, accountCurrency, onUpdate }: { bot: any, accountCurre
             <CardTitle className="text-2xl font-bold tracking-tight">{name || "Unnamed Bot"}</CardTitle>
             <CardDescription className="mt-2 flex flex-wrap items-center gap-2">
               <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 uppercase tracking-wider">
-                <ShieldCheck className="h-3 w-3 mr-1" /> {mode === "recovery_guard" ? "Recovery Guard (dry_run)" : "Observation Only (dry_run)"}
+                <ShieldCheck className="h-3 w-3 mr-1" /> {mode === "recovery_guard" ? "Recovery Guard (monitor-only)" : "User-started bot session"}
               </Badge>
               <Badge variant="secondary" className="uppercase tracking-wider">
                 Status: {bot.status === 'archived' || bot.status === 'stopped' ? bot.status : (bot.status === 'observing' ? 'observing' : (bot.status ?? "draft"))}
@@ -604,7 +599,7 @@ function BotRunHistory({ botId, accountCurrency }: { botId: string; accountCurre
           ) : (
             <div className="p-10 text-center text-sm text-muted-foreground">
               <Clock className="h-8 w-8 mx-auto mb-3 text-muted-foreground/40" />
-              No dry-runs recorded yet. Click 'Run once' to test the configuration.
+              No observation records yet.
             </div>
           )}
         </CardContent>
