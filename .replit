@@ -1,4 +1,4 @@
-modules = ["nodejs-24"]
+modules = ["nodejs-24", "python-base-3.13", "postgresql-16"]
 
 [deployment]
 router = "application"
@@ -21,3 +21,21 @@ timeoutMs = 20000
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.production]
+BASE_URL = "https://www.protradersfx.com"
+DERIV_AFFILIATE_PARAM = "t"
+DERIV_CAMPAIGN = "protraders-fx"
+FRONTEND_CONFIGURED = "true"
+TRADING_ALLOWED_SYMBOLS = "R_100,R_75,R_50,R_25,1HZ100V"
+TRADING_DEMO_ONLY = "true"
+TRADING_ENABLED = "true"
+TRADING_LIVE_ENABLED = "false"
+
+[userenv.development]
+TRADING_ALLOWED_SYMBOLS = "R_100,R_75,R_50,R_25,1HZ100V"
+TRADING_DEMO_ONLY = "true"
+TRADING_ENABLED = "true"
+TRADING_LIVE_ENABLED = "false"

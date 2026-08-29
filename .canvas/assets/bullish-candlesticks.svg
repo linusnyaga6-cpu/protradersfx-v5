@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="420" viewBox="0 0 640 420">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d1a2b"/>
+      <stop offset="1" stop-color="#10283a"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#020617" flood-opacity=".35"/>
+    </filter>
+  </defs>
+  <rect width="640" height="420" rx="28" fill="url(#bg)"/>
+  <rect x="1" y="1" width="638" height="418" rx="27" fill="none" stroke="#28445b"/>
+  <g stroke="#315066" stroke-width="1" opacity=".48">
+    <path d="M52 90H588M52 150H588M52 210H588M52 270H588M52 330H588"/>
+    <path d="M100 64V350M190 64V350M280 64V350M370 64V350M460 64V350M550 64V350"/>
+  </g>
+  <text x="52" y="50" fill="#f8fafc" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700">BULLISH CANDLESTICK</text>
+  <circle cx="558" cy="43" r="8" fill="#39d98a"/>
+  <g stroke="#39d98a" stroke-width="6" stroke-linecap="round" filter="url(#shadow)">
+    <path d="M100 278V168"/>
+    <path d="M190 238V112"/>
+    <path d="M280 202V88"/>
+    <path d="M370 164V64"/>
+    <path d="M460 126V52"/>
+    <path d="M550 94V38"/>
+  </g>
+  <g fill="#39d98a" stroke="#b4f5d3" stroke-width="2">
+    <rect x="78" y="218" width="44" height="56" rx="4"/>
+    <rect x="168" y="168" width="44" height="66" rx="4"/>
+    <rect x="258" y="126" width="44" height="64" rx="4"/>
+    <rect x="348" y="90" width="44" height="62" rx="4"/>
+    <rect x="438" y="70" width="44" height="44" rx="4"/>
+    <rect x="528" y="48" width="44" height="40" rx="4"/>
+  </g>
+  <path d="M74 308 C164 284 230 252 304 210 S450 142 568 82" fill="none" stroke="#8af0bc" stroke-width="3" stroke-dasharray="8 8" opacity=".9"/>
+  <text x="52" y="384" fill="#9db3c3" font-family="Inter,Arial,sans-serif" font-size="16">Close above open • upward momentum</text>
+</svg>
