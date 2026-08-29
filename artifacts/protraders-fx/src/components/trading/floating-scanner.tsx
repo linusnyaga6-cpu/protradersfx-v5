@@ -224,8 +224,10 @@ export function FloatingScanner() {
                <Badge variant="success">{Number(bestMarket.observedSignalWinRate).toFixed(1)}% observed</Badge>
              </div>
              <div className="grid grid-cols-2 gap-2">
-               <Metric label="Historical signal hit rate" value={`${Number(bestMarket.observedSignalWinRate).toFixed(1)}%`} />
-               <Metric label="Signals tested" value={String(bestMarket.signalSampleSize)} />
+                <Metric label="Market" value={`${bestMarket.displayName || bestMarket.symbol} · ${bestMarket.symbol}`} />
+                <Metric label="Volatility" value={formatVolatility(bestMarket.indicators?.volatilityLevel, bestMarket.indicators?.volatilityPct)} />
+                <Metric label="Historical signal hit rate" value={`${Number(bestMarket.observedSignalWinRate).toFixed(1)}%`} />
+                <Metric label="Signals tested" value={String(bestMarket.signalSampleSize)} />
              </div>
              <p className="text-xs leading-5 text-muted-foreground">This is a recent one-step candle backtest, not a guaranteed Deriv win percentage. Review the market and contract before placing any order.</p>
              <Button className="w-full" variant="outline" onClick={() => {
@@ -289,7 +291,7 @@ export function FloatingScanner() {
                  const direction = market.bias === "bearish" ? "PUT" : "CALL"
                  window.location.href = `/create-bot?symbol=${encodeURIComponent(market.symbol)}&contract=${direction}&source=ai_assisted`
                }}>
-                 <span><span className="mr-2 font-mono text-xs text-primary">#{index + 1}</span><span className="text-xs">{market.displayName}</span><span className="ml-2 font-mono text-[10px] text-muted-foreground">{market.symbol}</span><span className="ml-2 text-[10px] uppercase text-muted-foreground">{market.bias} · {market.freshnessSeconds}s old</span></span>
+                  <span><span className="mr-2 font-mono text-xs text-primary">#{index + 1}</span><span className="text-xs">{market.displayName}</span><span className="ml-2 font-mono text-[10px] text-muted-foreground">{market.symbol}</span><span className="ml-2 text-[10px] uppercase text-muted-foreground">{formatVolatility(market.indicators?.volatilityLevel, market.indicators?.volatilityPct)} · {market.bias} · {market.freshnessSeconds}s old</span></span>
                  <span className="font-mono text-xs">Score {market.score}</span>
                </button>
              ))}

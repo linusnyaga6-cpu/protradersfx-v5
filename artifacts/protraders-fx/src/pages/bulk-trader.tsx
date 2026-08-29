@@ -22,12 +22,13 @@ import { AccountStrip } from "@/components/trading/account-strip"
 import { RunSessionSummary } from "@/components/trading/run-session-summary"
 import { useTradingRunSession } from "@/hooks/use-trading-run-session"
 import { DEFAULT_MARKET_SYMBOL, CONTRACT_LABELS, marketLabel } from "@/lib/markets"
+import { formatVolatility } from "@/lib/format"
 import { useDerivMarkets } from "@/hooks/use-deriv-markets"
 import { Workspace } from "./markets"
 
 export default function BulkTrader() {
   const queryClient = useQueryClient()
-  const account = useGetAccount({ query: { queryKey: getGetAccountQueryKey(), refetchInterval: 5000 } })
+  const account = useGetAccount(undefined, { query: { queryKey: getGetAccountQueryKey(), refetchInterval: 5000 } })
   const preflight = useGetProtradersPreflight({ query: { queryKey: getGetProtradersPreflightQueryKey() } })
   const marketQuery = useDerivMarkets()
   const scan = useScanBestMarket()
@@ -257,8 +258,8 @@ function ScanPanel({ rows, bestMarket, status, progress, isScanning, error }: { 
       <div className="mt-4 space-y-2">
         {rows.length ? rows.map((row, index) => (
           <div key={row.symbol || index} className={`flex items-center justify-between rounded-lg border px-3 py-2 text-xs ${index === 0 ? "border-primary/30 bg-primary/10" : "border-white/10 bg-white/[.03]"}`}>
-            <div><span className="mr-2 font-mono text-muted-foreground">0{index + 1}</span><span className="font-medium">{row.symbol}</span></div>
-            <div className="text-right"><span className="font-mono">{row.score == null ? "—" : `${row.score}/100`}</span><span className="ml-2 text-muted-foreground">{row.bias || "neutral"}</span></div>
+            <div><span className="mr-2 font-mono text-muted-foreground">0{index + 1}</span><span className="font-medium">{row.displayName || row.symbol}</span><span className="ml-2 font-mono text-[10px] text-muted-foreground">{row.symbol}</span></div>
+            <div className="text-right"><span className="block font-mono">{formatVolatility(row.indicators?.volatilityLevel, row.indicators?.volatilityPct)}</span><span className="text-muted-foreground">{row.score == null ? "—" : `${row.score}/100`} · {row.bias || "neutral"}</span></div>
           </div>
         )) : (
           <div className="flex items-center gap-2 rounded-lg border border-dashed border-white/10 p-4 text-xs text-muted-foreground">

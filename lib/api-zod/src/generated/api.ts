@@ -107,6 +107,10 @@ export const GetAnalyticsResponse = zod.object({
 /**
  * @summary Read the authenticated Deriv account
  */
+export const GetAccountQueryParams = zod.object({
+  "account_type": zod.enum(['demo', 'real']).optional().describe('Select the Deriv demo or real account to display and use.')
+})
+
 export const GetAccountResponse = zod.object({
   "authenticated": zod.boolean(),
   "balance": zod.number().nullable(),

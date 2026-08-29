@@ -8,7 +8,7 @@ export default function Initializing() {
   const [, setLocation] = useLocation()
   const [timedOut, setTimedOut] = useState(false)
   const session = useGetSessionStatus({ query: { queryKey: getGetSessionStatusQueryKey(), retry: 2, refetchInterval: 1500 } })
-  const account = useGetAccount({ query: { queryKey: getGetAccountQueryKey(), enabled: !!session.data?.authenticated, retry: 2, refetchInterval: session.data?.authenticated ? 1800 : false } })
+  const account = useGetAccount(undefined, { query: { queryKey: getGetAccountQueryKey(), enabled: !!session.data?.authenticated, retry: 2, refetchInterval: session.data?.authenticated ? 1800 : false } })
 
   useEffect(() => {
     const timer = window.setTimeout(() => setTimedOut(true), 16000)

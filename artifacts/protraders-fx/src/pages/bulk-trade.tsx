@@ -58,7 +58,7 @@ export default function BulkTrade() {
   }, [marketQuery.markets, marketQuery.defaultSymbol, selectedMarket])
   const { data: session } = useGetSessionStatus({ query: { queryKey: getGetSessionStatusQueryKey() } })
   const preflight = useGetProtradersPreflight({ query: { queryKey: getGetProtradersPreflightQueryKey() } })
-  const account = useGetAccount({
+  const account = useGetAccount(undefined, {
     query: {
       queryKey: getGetAccountQueryKey(),
       enabled: !!session?.authenticated,

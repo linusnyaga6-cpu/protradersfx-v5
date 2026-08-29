@@ -25,6 +25,7 @@ import type {
   BotInput,
   BotPatchInput,
   ErrorResponse,
+  GetAccountParams,
   GetMarketCandlesParams,
   HealthStatus,
   MarketScanInput,
@@ -748,20 +749,27 @@ export function useGetAnalytics<TData = Awaited<ReturnType<typeof getAnalytics>>
 
 
 
-export const getGetAccountUrl = () => {
+export const getGetAccountUrl = (params?: GetAccountParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/account`
+  return stringifiedParams.length > 0 ? `/api/account?${stringifiedParams}` : `/api/account`
 }
 
 /**
  * @summary Read the authenticated Deriv account
  */
-export const getAccount = async ( options?: Parameters<typeof customFetch>[1]): Promise<Account> => {
+export const getAccount = async (params?: GetAccountParams, options?: Parameters<typeof customFetch>[1]): Promise<Account> => {
 
-  return customFetch<Account>(getGetAccountUrl(),
+  return customFetch<Account>(getGetAccountUrl(params),
   {
     ...options,
     method: 'GET'
@@ -774,23 +782,23 @@ export const getAccount = async ( options?: Parameters<typeof customFetch>[1]): 
 
 
 
-export const getGetAccountQueryKey = () => {
+export const getGetAccountQueryKey = (params?: GetAccountParams,) => {
     return [
-    `/api/account`
+    `/api/account`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetAccountQueryOptions = <TData = Awaited<ReturnType<typeof getAccount>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAccount>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetAccountQueryOptions = <TData = Awaited<ReturnType<typeof getAccount>>, TError = ErrorType<ErrorResponse>>(params?: GetAccountParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAccount>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetAccountQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGetAccountQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAccount>>> = ({ signal }) => getAccount({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAccount>>> = ({ signal }) => getAccount(params, { signal, ...requestOptions });
 
 
 
@@ -808,11 +816,11 @@ export type GetAccountQueryError = ErrorType<ErrorResponse>
  */
 
 export function useGetAccount<TData = Awaited<ReturnType<typeof getAccount>>, TError = ErrorType<ErrorResponse>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAccount>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: GetAccountParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAccount>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetAccountQueryOptions(options)
+  const queryOptions = getGetAccountQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

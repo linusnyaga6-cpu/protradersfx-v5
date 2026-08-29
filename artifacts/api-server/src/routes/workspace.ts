@@ -311,7 +311,9 @@ router.get("/market/contracts/:symbol", async (req, res) => {
   }
 });
 router.get("/market/ticker/:symbol", async (req, res) => {
-  const symbol = string(req.params.symbol, 30); if (!symbol || !isVolatilitySymbol(symbol)) return fail(res, 400, "Choose a supported Volatility 10–100 market");
+  const symbol = string(req.params.symbol, 30);
+  const isConversionQuote = symbol === "frxUSDKES";
+  if (!symbol || (!isVolatilitySymbol(symbol) && !isConversionQuote)) return fail(res, 400, "Choose a supported Volatility 10–100 market");
   try { const body = await cachedMarket(`ticker:${symbol}`, async () => {
     const data = await publicDeriv({ ticks_history: symbol, style: "ticks", count: 1, end: "latest" });
     const quote = Number(data.history?.prices?.at?.(-1));

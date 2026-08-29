@@ -681,8 +681,23 @@ router.get("/account", async (req, res) => {
 
   try {
     const accounts = await listDerivAccounts(session.accessToken);
-    const account = chooseAccount(accounts, undefined, session.accountId);
+    const requestedAccountType = req.query.account_type === "demo" || req.query.account_type === "real"
+      ? req.query.account_type
+      : undefined;
+    const account = chooseAccount(
+      accounts,
+      requestedAccountType,
+      requestedAccountType ? undefined : session.accountId,
+    );
     if (!account?.account_id) throw new Error("No Deriv options account was returned");
+    if (requestedAccountType && account.account_type !== requestedAccountType) {
+      return errorResponse(
+        res,
+        404,
+        `${requestedAccountType === "real" ? "Real" : "Demo"} account unavailable`,
+        `This Deriv connection does not include a ${requestedAccountType} options account.`,
+      );
+    }
     if (account.account_id !== session.accountId) {
       setSessionCookie(res, { ...session, accountId: account.account_id });
     }

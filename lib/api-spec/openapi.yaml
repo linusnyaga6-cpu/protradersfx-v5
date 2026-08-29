@@ -129,6 +129,14 @@ paths:
       operationId: getAccount
       tags: [protraders]
       summary: Read the authenticated Deriv account
+      parameters:
+        - name: account_type
+          in: query
+          required: false
+          description: Select the Deriv demo or real account to display and use.
+          schema:
+            type: string
+            enum: [demo, real]
       responses:
         "200":
           description: Account data

@@ -18,7 +18,7 @@ export default function Dashboard() {
   const { data: session, isLoading: sessionLoading } = useGetSessionStatus({
     query: { queryKey: getGetSessionStatusQueryKey() },
   })
-  const account = useGetAccount({
+  const account = useGetAccount(undefined, {
     query: {
       queryKey: getGetAccountQueryKey(),
       enabled: !!session?.authenticated,

@@ -348,6 +348,21 @@ export interface TradeResult {
   stopLossMessage: string | null;
 }
 
+export type GetAccountParams = {
+/**
+ * Select the Deriv demo or real account to display and use.
+ */
+account_type?: GetAccountAccountType;
+};
+
+export type GetAccountAccountType = typeof GetAccountAccountType[keyof typeof GetAccountAccountType];
+
+
+export const GetAccountAccountType = {
+  demo: 'demo',
+  real: 'real',
+} as const;
+
 export type GetMarketCandlesParams = {
 granularity?: number;
 count?: number;

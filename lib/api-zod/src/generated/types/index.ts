@@ -18,6 +18,8 @@ export * from './dryRunStrategyExecution';
 export * from './dryRunStrategyIndicator';
 export * from './dryRunStrategyMode';
 export * from './errorResponse';
+export * from './getAccountAccountType';
+export * from './getAccountParams';
 export * from './getMarketCandlesParams';
 export * from './healthStatus';
 export * from './marketScanInput';

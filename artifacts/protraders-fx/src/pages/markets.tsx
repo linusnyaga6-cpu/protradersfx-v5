@@ -20,7 +20,7 @@ export default function Markets() {
   const marketQuery = useDerivMarkets()
   const ticker = useGetMarketTicker(symbol,{query:{queryKey:getGetMarketTickerQueryKey(symbol),refetchInterval:15000}})
   const candles = useGetMarketCandles(symbol,{count:60,granularity:60},{query:{queryKey:getGetMarketCandlesQueryKey(symbol,{count:60,granularity:60}),staleTime:30000}})
-  const account = useGetAccount({query:{queryKey:getGetAccountQueryKey(),refetchInterval:5000}})
+  const account = useGetAccount(undefined, {query:{queryKey:getGetAccountQueryKey(),refetchInterval:5000}})
   const bots = useListBots({query:{queryKey:getListBotsQueryKey(),refetchInterval:10000}})
   const botList = Array.isArray((bots.data as any)?.bots) ? (bots.data as any).bots : []
   const [selectedBotId,setSelectedBotId] = useState("")

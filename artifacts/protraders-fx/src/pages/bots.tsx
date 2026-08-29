@@ -33,7 +33,7 @@ export default function Bots() {
   const client = useQueryClient();
   const bots = useListBots({ query: { queryKey: getListBotsQueryKey(), refetchInterval: 10000 } });
   const templates = useListBotTemplates({ query: { queryKey: getListBotTemplatesQueryKey() } });
-  const account = useGetAccount({ query: { queryKey: getGetAccountQueryKey(), refetchInterval: 5000 } });
+  const account = useGetAccount(undefined, { query: { queryKey: getGetAccountQueryKey(), refetchInterval: 5000 } });
 
   const create = useCreateBot();
   const life = useChangeBotLifecycle();
