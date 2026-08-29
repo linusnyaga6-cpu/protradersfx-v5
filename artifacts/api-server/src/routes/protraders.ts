@@ -636,27 +636,40 @@ router.post("/trades/preview", async (req, res) => {
   const duration = Number(req.body?.duration);
   const stopLoss = req.body?.stop_loss === undefined ? null : Number(req.body.stop_loss);
   const barrier = req.body?.barrier === undefined ? undefined : String(req.body.barrier);
-  if (!contractType || !/^[A-Z0-9_]+$/.test(symbol) || !Number.isFinite(stake) || stake <= 0 || stake > maxStake || !Number.isInteger(duration) || duration < 1 || duration > maxDuration || (stopLoss !== null && (!Number.isFinite(stopLoss) || stopLoss <= 0)) || (barrierContractTypes.has(contractType) && !/^[0-9]$/.test(barrier || ""))) {
-    return errorResponse(res, 400, "Invalid proposal parameters");
+  const previewErrors = [
+    !contractType ? "Choose a supported Deriv contract type." : "",
+    !/^[A-Z0-9_]+$/.test(symbol) ? "Choose a valid market symbol." : "",
+    !Number.isFinite(stake) || stake <= 0 ? "Stake must be greater than 0." : "",
+    stake > maxStake ? `Stake cannot exceed ${maxStake}.` : "",
+    !Number.isInteger(duration) || duration < 1 ? "Duration must be at least 1 tick." : "",
+    duration > maxDuration ? `Duration cannot exceed ${maxDuration} ticks.` : "",
+    stopLoss !== null && (!Number.isFinite(stopLoss) || stopLoss <= 0) ? "Stop loss must be greater than 0." : "",
+    contractType && barrierContractTypes.has(contractType) && !/^[0-9]$/.test(barrier || "") ? "Choose a digit barrier from 0 to 9." : "",
+  ].filter(Boolean);
+  if (previewErrors.length) {
+    return errorResponse(res, 400, "Invalid proposal parameters", previewErrors.join(" "));
   }
+  const requestedContractType = contractType as string;
   try {
     const accounts = await listDerivAccounts(session.accessToken);
     const account = chooseAccount(accounts, undefined, session.accountId);
     if (!account?.account_id || !account.currency) return errorResponse(res, 502, "Account identity unavailable");
     const availability = await derivRequest(session.accessToken, { contracts_for: symbol }, session.accountId);
     const offered = new Set((availability.contracts_for?.available || []).map((item: any) => String(item.contract_type)));
-    if (!offered.has(contractType)) return errorResponse(res, 400, "Contract unavailable", `${contractType} is not offered by Deriv for ${symbol}.`);
+    if (!offered.has(requestedContractType)) return errorResponse(res, 400, "Contract unavailable", `${requestedContractType} is not offered by Deriv for ${symbol}.`);
     const response = await derivRequest(session.accessToken, {
-      proposal: 1, amount: stake, basis: "stake", contract_type: contractType,
+      proposal: 1, amount: stake, basis: "stake", contract_type: requestedContractType,
       currency: account.currency, duration, duration_unit: "t", symbol,
-      ...(barrierContractTypes.has(contractType) ? { barrier } : {}),
+      ...(barrierContractTypes.has(requestedContractType) ? { barrier } : {}),
     }, session.accountId);
     const proposal = response.proposal;
     if (!proposal?.id) return errorResponse(res, 502, "Deriv did not return a proposal");
+    const askPrice = Number(proposal.ask_price);
+    if (!Number.isFinite(askPrice) || askPrice <= 0) return errorResponse(res, 502, "Deriv returned an invalid proposal price");
     return res.json({
-      proposalToken: seal({ id: proposal.id, nonce: crypto.randomUUID(), accountId: account.account_id, symbol, contractType, stake, duration, barrier: barrier || null, stopLoss, expiresAt: Date.now() + 30_000 }),
-      symbol, contractType, stake, duration, barrier: barrier || null,
-      askPrice: Number.isFinite(Number(proposal.ask_price)) ? Number(proposal.ask_price) : null,
+      proposalToken: seal({ id: proposal.id, nonce: crypto.randomUUID(), accountId: account.account_id, symbol, contractType: requestedContractType, stake, duration, barrier: barrier || null, stopLoss, askPrice, expiresAt: Date.now() + 30_000 }),
+      symbol, contractType: requestedContractType, stake, duration, barrier: barrier || null,
+      askPrice,
       payout: Number.isFinite(Number(proposal.payout)) ? Number(proposal.payout) : null,
       longcode: proposal.longcode || null,
       expiresAt: new Date(Date.now() + 30_000).toISOString(),
@@ -707,7 +720,6 @@ router.post("/trades", async (req, res) => {
   const validationErrors = [
     !contractType ? "Choose a supported Deriv contract type." : "",
     !/^([A-Z0-9_]+)$/.test(symbol) ? "Choose a valid symbol." : "",
-    allowedSymbols.size > 0 && !allowedSymbols.has(symbol) ? "That symbol is not allowed." : "",
     !Number.isFinite(stake) || stake <= 0 ? "Stake must be greater than 0." : "",
     stake > maxStake ? `Stake cannot exceed ${maxStake}.` : "",
     !Number.isInteger(duration) || duration < 1 ? "Duration must be at least 1 tick." : "",
@@ -733,6 +745,9 @@ router.post("/trades", async (req, res) => {
         "Demo account required",
         "Live trading is disabled by TRADING_DEMO_ONLY.",
       );
+    }
+    if (!isDemoAccount && allowedSymbols.size > 0 && !allowedSymbols.has(symbol)) {
+      return errorResponse(res, 403, "Market not enabled for real trading", `${symbol} is available in Demo but is not on the reviewed real-money allowlist.`);
     }
     if (!isDemoAccount) {
       if (req.body?.live_confirmation !== liveConfirmationToken) {
@@ -778,7 +793,7 @@ router.post("/trades", async (req, res) => {
     const matches = reviewed?.accountId === loginId && reviewed?.symbol === symbol && reviewed?.contractType === validatedContractType
       && reviewed?.stake === stake && reviewed?.duration === duration && reviewed?.barrier === (barrier || null)
       && reviewed?.stopLoss === (stopLoss ?? null) && reviewed?.expiresAt > Date.now();
-    if (!matches || !reviewed?.id || !reviewed?.nonce) return errorResponse(res, 409, "Proposal expired or changed", "Review the current order again before execution.");
+    if (!matches || !reviewed?.id || !reviewed?.nonce || !Number.isFinite(reviewed?.askPrice) || reviewed.askPrice <= 0) return errorResponse(res, 409, "Proposal expired or changed", "Review the current order again before execution.");
     const consumed = await db.insert(consumedTradeProposals).values({
       nonce: reviewed.nonce,
       ownerKey: ownerKeyFor(account.account_id || loginId),
@@ -791,7 +806,7 @@ router.post("/trades", async (req, res) => {
     }
     const buy = await derivRequest(session.accessToken, {
       buy: proposal.proposal.id,
-      price: stake,
+      price: reviewed.askPrice,
     }, session.accountId);
     if (buy.error) return errorResponse(res, 502, "Trade request failed", buy.error.message);
     const contractId = buy.buy?.contract_id ? Number(buy.buy.contract_id) : null;

@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { AccountStrip } from "@/components/trading/account-strip"
 import { formatMoney, formatVolatility } from "@/lib/format"
@@ -33,7 +34,8 @@ export default function BulkTrade() {
   const [contractType, setContractType] = useState(requested?.get("contract") || "DIGITOVER")
   const [barrier, setBarrier] = useState("5")
   const [stopLoss, setStopLoss] = useState("1")
-  const [stake, setStake] = useState("10")
+  const [stake, setStake] = useState("1")
+  const [stakeAuthorized, setStakeAuthorized] = useState(false)
   const [duration, setDuration] = useState("1")
   const [results, setResults] = useState<any[]>([])
   const [isRunning, setIsRunning] = useState(false)
@@ -85,12 +87,22 @@ export default function BulkTrade() {
     if (availableTypes.length && !availableTypes.includes(contractType)) setContractType(availableTypes[0])
   }, [availableTypes.join("|"), contractType])
   const needsBarrier = Boolean(CONTRACT_LABELS[contractType]?.needsBarrier)
-  useEffect(() => setProposal(null), [selectedMarket, contractType, barrier, stopLoss, stake, duration])
+  useEffect(() => {
+    setProposal(null)
+    setStakeAuthorized(false)
+  }, [selectedMarket, contractType, barrier, stopLoss, stake, duration])
   const tradeSource = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("source") === "ai_assisted"
     ? "ai_assisted" as const
     : "manual" as const
 
-  const validOrder = Number(stake) > 0 && Number(stopLoss) > 0 && Number(duration) > 0 && Number.isInteger(Number(duration)) && availableTypes.includes(contractType) && (!needsBarrier || /^[0-9]$/.test(barrier))
+  const validOrder = Number(stake) > 0
+    && Number(stake) <= Number(preflight.data?.maxStake || 10)
+    && Number(stopLoss) > 0
+    && Number(duration) > 0
+    && Number(duration) <= Number(preflight.data?.maxDuration || 3600)
+    && Number.isInteger(Number(duration))
+    && availableTypes.includes(contractType)
+    && (!needsBarrier || /^[0-9]$/.test(barrier))
   const orderData = {
     symbol: selectedMarket, contract_type: contractType,
     ...(needsBarrier ? { barrier } : {}), stop_loss: Number(stopLoss),
@@ -98,13 +110,13 @@ export default function BulkTrade() {
     request_label: `${selectedMarket} ${tradeSource === "ai_assisted" ? "scanner-assisted" : "manual"} order`,
   }
   const reviewOrder = async () => {
-    if (!canRun || !validOrder || previewTrade.isPending) return
+    if (!canRun || !validOrder || !stakeAuthorized || previewTrade.isPending) return
     setProposal(null)
     try { setProposal(await previewTrade.mutateAsync({ data: orderData as any })) }
     catch (error) { setResults([{ id: 0, symbol: selectedMarket, ok: false, status: "rejected", message: error instanceof Error ? error.message : "Proposal unavailable" }]) }
   }
   const executeOrder = async () => {
-    if (!canRun || !validOrder || isRunning || !proposal?.proposalToken) return
+    if (!canRun || !validOrder || !stakeAuthorized || isRunning || !proposal?.proposalToken) return
     setIsRunning(true)
     setResults([{
       id: 0,
@@ -209,7 +221,12 @@ export default function BulkTrade() {
             )}
             <div className="space-y-2">
               <Label htmlFor="bulk-stake">Stake ({accountCurrency})</Label>
-              <Input id="bulk-stake" type="number" min="0.01" step="0.01" value={stake} onChange={event => setStake(event.target.value)} />
+              <Input id="bulk-stake" type="number" min="0.01" max={Number(preflight.data?.maxStake || 10)} step="0.01" value={stake} onChange={event => setStake(event.target.value)} />
+              <p className="text-xs text-muted-foreground">Maximum controlled stake: {formatMoney(Number(preflight.data?.maxStake || 10), accountCurrency)}.</p>
+              <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs leading-5">
+                <Checkbox checked={stakeAuthorized} onCheckedChange={(checked) => setStakeAuthorized(checked === true)} />
+                <span>I authorize this exact stake for the one order shown below. The provider proposal and final execution must match it.</span>
+              </label>
             </div>
             <div className="space-y-2">
               <Label htmlFor="bulk-stop-loss">Stop loss ({accountCurrency})</Label>
@@ -221,7 +238,7 @@ export default function BulkTrade() {
               <div className="grid grid-cols-4 gap-2">
                 {["1", "2", "3", "5"].map(ticks => <Button key={ticks} type="button" size="sm" variant={duration === ticks ? "default" : "outline"} onClick={() => setDuration(ticks)}>{ticks}</Button>)}
               </div>
-              <Input id="bulk-duration" type="number" min="1" max="10" step="1" value={duration} onChange={event => setDuration(event.target.value)} />
+              <Input id="bulk-duration" type="number" min="1" max={Number(preflight.data?.maxDuration || 3600)} step="1" value={duration} onChange={event => setDuration(event.target.value)} />
               <p className="text-xs leading-5 text-muted-foreground">Reduce this before submitting. One tick is the shortest selectable duration; Deriv validates whether it is available for the chosen contract.</p>
             </div>
             <div className="rounded-lg bg-secondary/40 p-3 text-sm">
@@ -237,9 +254,9 @@ export default function BulkTrade() {
                <p className="mt-2 text-xs text-muted-foreground">{proposal.longcode || "Provider proposal received."} Valid for 30 seconds; refresh it if you need more time.</p>
              </div>}
                {!validOrder && <p className="text-xs text-destructive">Choose an available Deriv contract and enter valid stake, stop loss, and duration.</p>}
-               {!proposal ? <Button className="w-full" onClick={reviewOrder} disabled={!canRun || !validOrder || previewTrade.isPending || marketOffline} data-testid="button-review-order">
+               {!proposal ? <Button className="w-full" onClick={reviewOrder} disabled={!canRun || !validOrder || !stakeAuthorized || previewTrade.isPending || marketOffline} data-testid="button-review-order">
                  {previewTrade.isPending ? "Requesting Deriv proposal..." : "Review Deriv proposal"}
-               </Button> : <Button className="w-full" onClick={executeOrder} disabled={!canRun || !validOrder || isRunning || marketOffline} data-testid="button-execute-order">
+               </Button> : <Button className="w-full" onClick={executeOrder} disabled={!canRun || !validOrder || !stakeAuthorized || isRunning || marketOffline} data-testid="button-execute-order">
                {isRunning && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                  {isRunning ? "Submitting one order..." : "Review and place one order"}
              </Button>}

@@ -48,6 +48,7 @@ export function FloatingScanner() {
   const [result, setResult] = useState<ScannerResult | null>(null)
   const [error, setError] = useState("")
   const drag = useRef<{ x: number; y: number; startX: number; startY: number } | null>(null)
+  const wasDragged = useRef(false)
   const analyzeMarket = useAnalyzeMarket()
   const scanBestMarket = useScanBestMarket()
   const ticker = useGetMarketTicker(symbol, { query: { queryKey: getGetMarketTickerQueryKey(symbol), enabled: !!session?.authenticated && open, refetchInterval: 15000 } })
@@ -88,12 +89,16 @@ export function FloatingScanner() {
     })
   }
 
-  const startDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+  const startDrag = (event: ReactPointerEvent<HTMLElement>) => {
     drag.current = { x: position.x, y: position.y, startX: event.clientX, startY: event.clientY }
+    wasDragged.current = false
     event.currentTarget.setPointerCapture(event.pointerId)
   }
-  const moveDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+  const moveDrag = (event: ReactPointerEvent<HTMLElement>) => {
     if (!drag.current) return
+    if (Math.abs(event.clientX - drag.current.startX) > 4 || Math.abs(event.clientY - drag.current.startY) > 4) {
+      wasDragged.current = true
+    }
     const mobile = window.innerWidth < 768
     // The mobile panel spans the available width, so keep it horizontally
     // anchored and let users reposition it vertically without losing it.
@@ -108,8 +113,22 @@ export function FloatingScanner() {
   if (!open) {
     return (
       <Button
-        className="fixed bottom-5 right-5 z-[70] gap-2 rounded-full shadow-[0_14px_50px_rgba(0,0,0,.45)]"
-        onClick={() => setOpen(true)}
+        className="fixed bottom-5 right-5 z-[70] touch-none select-none cursor-grab gap-2 rounded-full shadow-[0_14px_50px_rgba(0,0,0,.45)] active:cursor-grabbing"
+        style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
+        onPointerDown={startDrag}
+        onPointerMove={moveDrag}
+        onPointerUp={() => { drag.current = null }}
+        onPointerCancel={() => { drag.current = null }}
+        onLostPointerCapture={() => { drag.current = null }}
+        onClick={(event) => {
+          if (wasDragged.current) {
+            event.preventDefault()
+            wasDragged.current = false
+            return
+          }
+          setOpen(true)
+        }}
+        title="Drag AI Scanner to move it, or click to open"
         data-testid="button-open-scanner"
       >
         <Activity className="h-4 w-4" /> AI Scanner
