@@ -232,7 +232,7 @@ export function FloatingScanner() {
                const direction = bestMarket.bias === "bearish" ? "PUT" : "CALL"
                window.location.href = `/bulk-trade?symbol=${encodeURIComponent(bestMarket.symbol)}&contract=${direction}&source=ai_assisted`
              }} data-testid="button-review-best-market">
-               Use this market in Trade <ArrowRight className="ml-1 h-3.5 w-3.5" />
+               Configure Run Bot <ArrowRight className="ml-1 h-3.5 w-3.5" />
              </Button>
            </div>
          )}

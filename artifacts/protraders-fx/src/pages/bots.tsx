@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import {
   Bot as BotIcon, CheckCircle2, Copy, Pause, Play, Plus, RotateCcw, ShieldCheck,
@@ -7,7 +7,7 @@ import {
 import {
   useListBots, getListBotsQueryKey,
   useListBotTemplates, getListBotTemplatesQueryKey,
-  useCreateBot, useUpdateBot, useChangeBotLifecycle, useRunBotOnce, useCreateTrade, usePreviewTrade,
+  useCreateBot, useUpdateBot, useChangeBotLifecycle, useRunBotOnce,
   useListBotRuns, getListBotRunsQueryKey,
   useCreateBotTemplate, useUpdateBotTemplate, useArchiveBotTemplate,
   useGetAccount, getGetAccountQueryKey, useGetProtradersPreflight, getGetProtradersPreflightQueryKey,
@@ -26,6 +26,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { DEFAULT_MARKET_SYMBOL, CONTRACT_LABELS } from "@/lib/markets"
 import { useDerivMarkets } from "@/hooks/use-deriv-markets"
+import { useTradingRunSession } from "@/hooks/use-trading-run-session"
+import { RunSessionSummary } from "@/components/trading/run-session-summary"
 
 export default function Bots() {
   const client = useQueryClient();
@@ -36,8 +38,6 @@ export default function Bots() {
   const create = useCreateBot();
   const life = useChangeBotLifecycle();
   const run = useRunBotOnce();
-  const trade = useCreateTrade();
-  const previewTrade = usePreviewTrade();
   const archiveTpl = useArchiveBotTemplate();
   const preflight = useGetProtradersPreflight({ query: { queryKey: getGetProtradersPreflightQueryKey() } });
 
@@ -46,7 +46,10 @@ export default function Bots() {
   const [templateSearch, setTemplateSearch] = useState("");
   const [executingBotId, setExecutingBotId] = useState<string | null>(null);
   const requestedSymbol = typeof window === "undefined" ? DEFAULT_MARKET_SYMBOL : new URLSearchParams(window.location.search).get("symbol") || DEFAULT_MARKET_SYMBOL;
-  const stopRequested = useRef(false);
+  const runSession = useTradingRunSession("protraders-run-session:bot", () => {
+    client.invalidateQueries({ queryKey: getGetAccountQueryKey() });
+    if (executingBotId) client.invalidateQueries({ queryKey: getListBotRunsQueryKey(executingBotId) });
+  });
 
   const list = Array.isArray((bots.data as any)?.bots) ? (bots.data as any).bots : Array.isArray(bots.data) ? bots.data : [];
   const builtIns = Array.isArray((templates.data as any)?.builtIn) ? (templates.data as any).builtIn : [];
@@ -96,15 +99,13 @@ export default function Bots() {
       setNotice("Bot execution requires the protected Deriv demo mode.");
       return;
     }
-    stopRequested.current = false;
     setExecutingBotId(String(bot.id));
-    let accepted = 0;
     try {
       const observation = await run.mutateAsync({ id: String(bot.id) });
       const action = String((observation as any)?.result?.action || "");
       if (!action.startsWith("review-")) {
         setNotice("Bot paused: no entry condition was present.");
-      } else if (!stopRequested.current) {
+      } else {
         const contractType = String(bot.config?.contractType || (action === "review-put" ? "PUT" : "CALL"));
         const orderData = {
             symbol: String(bot.symbol),
@@ -116,27 +117,8 @@ export default function Bots() {
             source: "bot_assisted",
             request_label: `${bot.name} reviewed demo order`,
         };
-        const proposal = await previewTrade.mutateAsync({ data: orderData as any }) as any;
-        const confirmed = window.confirm([
-          `Run ${bot.name} with this Deriv proposal?`,
-          `${String(bot.symbol)} · ${CONTRACT_LABELS[contractType]?.action || contractType} · ${Number(bot.config?.duration || 1)} tick(s)`,
-          `Ask price: ${proposal.askPrice ?? "unavailable"} ${account.data?.currency || ""}`,
-          `Potential payout: ${proposal.payout ?? "unavailable"} ${account.data?.currency || ""}`,
-          proposal.longcode || "",
-          "This places exactly one demo contract.",
-        ].filter(Boolean).join("\n"));
-        if (!confirmed) {
-          setNotice("Bot proposal reviewed. No order was placed.");
-          return;
-        }
-        await trade.mutateAsync({
-          data: { ...orderData, proposal_token: proposal.proposalToken } as any,
-        })
-        accepted = 1;
-        await client.invalidateQueries({ queryKey: getGetAccountQueryKey() });
+        await runSession.start(orderData, Number(bot.config?.runCount || 1), Number(bot.config?.takeProfit || 1));
       }
-      if (stopRequested.current) setNotice("Bot stopped before placing the order.");
-      else if (accepted) setNotice("Bot placed one reviewed demo order.");
     } catch (error) {
       setNotice(`Bot execution stopped: ${error instanceof Error ? error.message : "Deriv rejected the request"}`);
     } finally {
@@ -146,7 +128,7 @@ export default function Bots() {
   };
 
   return (
-    <Workspace title="Bots" eyebrow="Controlled automation" description="Choose the volatility market, contract type, tick speed, and risk limits before running one user-confirmed bot order.">
+    <Workspace title="Bots" eyebrow="Controlled automation" description="Choose the market, contract, stake, run limit, take-profit target, duration, and risk controls, then start one bounded session with Run Bot.">
       <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} />
       <div className="flex items-center justify-between">
         <Badge variant="outline" className="bg-background"><ShieldCheck className="mr-1 h-3 w-3" />Dry-run default</Badge>
@@ -211,18 +193,16 @@ export default function Bots() {
                       {bot.status === "observing" ? <><Pause className="mr-2 h-3 w-3"/>Pause</> : <><Play className="mr-2 h-3 w-3"/>Start</>}
                     </Button>
                   </div>
-                  {bot.config?.mode !== "recovery_guard" && (
-                    <Button size="sm" className="w-full" variant={executingBotId === String(bot.id) ? "destructive" : "default"} onClick={(event) => {
-                      event.stopPropagation();
-                      if (executingBotId === String(bot.id)) {
-                        stopRequested.current = true;
-                        setNotice("Stop requested. The current Deriv request will finish; no new entry will start.");
-                      } else {
-                        executeBot(bot);
-                      }
-                    }} disabled={Boolean(executingBotId && executingBotId !== String(bot.id))} data-testid={`button-execute-bot-${bot.id}`}>
-                      {executingBotId === String(bot.id) ? <><Pause className="mr-2 h-3 w-3" />Submitting one order</> : <><Play className="mr-2 h-3 w-3" />Run bot</>}
-                    </Button>
+                  {bot.config?.mode !== "recovery_guard" && (selectedBotId === String(bot.id) || executingBotId === String(bot.id)) && (
+                    <div onClick={event => event.stopPropagation()}>
+                      <RunSessionSummary
+                        state={runSession.state}
+                        currency={account.data?.currency || "USD"}
+                        onStart={() => executeBot(bot)}
+                        onStop={runSession.stop}
+                        disabled={Boolean(executingBotId && executingBotId !== String(bot.id))}
+                      />
+                    </div>
                   )}
                 </div>
               )) : <Empty title="No bots configured" text="Start with an observation bot. No trades will be placed by default." />}
@@ -308,6 +288,8 @@ function BotBuilder({ bot, accountCurrency, onUpdate }: { bot: any, accountCurre
   const [mode, setMode] = useState(bot.config?.mode || "market_observer");
   const [stake, setStake] = useState(bot.config?.stake?.toString() || "10");
   const [duration, setDuration] = useState(bot.config?.duration?.toString() || "1");
+  const [runCount, setRunCount] = useState(bot.config?.runCount?.toString() || "1");
+  const [takeProfit, setTakeProfit] = useState(bot.config?.takeProfit?.toString() || "1");
   const [notes, setNotes] = useState(bot.config?.notes || "");
   const [riskCap, setRiskCap] = useState(bot.config?.riskCap?.toString() || "100");
   const contracts = useGetMarketContracts(symbol, {
@@ -334,6 +316,8 @@ function BotBuilder({ bot, accountCurrency, onUpdate }: { bot: any, accountCurre
     setMode(bot.config?.mode || "market_observer");
     setStake(bot.config?.stake?.toString() || "10");
     setDuration(bot.config?.duration?.toString() || "1");
+    setRunCount(bot.config?.runCount?.toString() || "1");
+    setTakeProfit(bot.config?.takeProfit?.toString() || "1");
     setNotes(bot.config?.notes || "");
     setRiskCap(bot.config?.riskCap?.toString() || "100");
     setErrors({});
@@ -350,6 +334,10 @@ function BotBuilder({ bot, accountCurrency, onUpdate }: { bot: any, accountCurre
     if (isNaN(stakeNum) || stakeNum <= 0) errs.stake = "Stake must be positive";
     const durationNum = Number(duration);
     if (isNaN(durationNum) || durationNum < 1 || !Number.isInteger(durationNum)) errs.duration = "Duration must be positive integer";
+    const runCountNum = Number(runCount);
+    if (!Number.isInteger(runCountNum) || runCountNum < 1 || runCountNum > 10) errs.runCount = "Runs must be a whole number from 1 to 10";
+    const takeProfitNum = Number(takeProfit);
+    if (!Number.isFinite(takeProfitNum) || takeProfitNum <= 0) errs.takeProfit = "Take profit must be positive";
     const capNum = Number(riskCap);
     if (isNaN(capNum) || capNum <= 0) errs.riskCap = "Risk cap must be positive";
     if (!Number.isFinite(Number(stopLoss)) || Number(stopLoss) <= 0) errs.stopLoss = "Stop loss must be positive";
@@ -375,6 +363,8 @@ function BotBuilder({ bot, accountCurrency, onUpdate }: { bot: any, accountCurre
            mode,
           stake: stakeNum,
           duration: durationNum,
+          runCount: runCountNum,
+          takeProfit: takeProfitNum,
           ...(notes.trim() ? { notes: notes.trim().substring(0, 1000) } : {}),
           riskCap: capNum,
           execution: "dry_run" // Hard-coded protective measure
@@ -401,7 +391,7 @@ function BotBuilder({ bot, accountCurrency, onUpdate }: { bot: any, accountCurre
         name: `${name} Template`,
         description: notes || `Template derived from ${name}`,
         strategy: {
-           indicator, direction, mode, stake: Number(stake) || 10, duration: Number(duration) || 1, riskCap: Number(riskCap) || 100,
+           indicator, direction, mode, stake: Number(stake) || 10, duration: Number(duration) || 1, runCount: Number(runCount) || 1, takeProfit: Number(takeProfit) || 1, riskCap: Number(riskCap) || 100,
           ...(notes.trim() ? { notes: notes.trim().substring(0, 1000) } : {}),
           execution: "dry_run"
         }
@@ -497,7 +487,7 @@ function BotBuilder({ bot, accountCurrency, onUpdate }: { bot: any, accountCurre
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Simulated Stake (USD)</Label>
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Stake ({accountCurrency || "account currency"})</Label>
               <Input type="number" step="1" value={stake} onChange={e => setStake(e.target.value)} className="bg-background shadow-sm font-numeric" />
               {errors.stake && <p className="text-xs text-destructive">{errors.stake}</p>}
             </div>
@@ -513,8 +503,20 @@ function BotBuilder({ bot, accountCurrency, onUpdate }: { bot: any, accountCurre
                 {["1", "2", "3", "5"].map(ticks => <Button key={ticks} type="button" size="sm" variant={duration === ticks ? "default" : "outline"} onClick={() => setDuration(ticks)}>{ticks}</Button>)}
               </div>
               <Input type="number" min="1" max="10" step="1" value={duration} onChange={e => setDuration(e.target.value)} className="bg-background shadow-sm font-numeric" />
-              <p className="text-xs text-muted-foreground">Choose the tick count before running the bot. One click can place at most one contract.</p>
+              <p className="text-xs text-muted-foreground">Choose the tick count before starting. The next order waits for authoritative settlement.</p>
               {errors.duration && <p className="text-xs text-destructive">{errors.duration}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Number of runs</Label>
+              <Input type="number" min="1" max="10" step="1" value={runCount} onChange={e => setRunCount(e.target.value)} className="bg-background shadow-sm font-numeric" />
+              {errors.runCount && <p className="text-xs text-destructive">{errors.runCount}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Take-profit target ({accountCurrency || "account currency"})</Label>
+              <Input type="number" min="0.01" step="0.01" value={takeProfit} onChange={e => setTakeProfit(e.target.value)} className="bg-background shadow-sm font-numeric" />
+              {errors.takeProfit && <p className="text-xs text-destructive">{errors.takeProfit}</p>}
             </div>
 
             <div className="space-y-2 md:col-span-2">

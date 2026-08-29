@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
-import { Layers3, Loader2 } from "lucide-react"
+import { Layers3 } from "lucide-react"
 import {
   getGetAccountQueryKey,
   getGetMarketCandlesQueryKey,
@@ -8,15 +8,12 @@ import {
   getGetMarketContractsQueryKey,
   getGetProtradersPreflightQueryKey,
   getGetSessionStatusQueryKey,
-  useCreateTrade,
-  usePreviewTrade,
   useGetAccount,
   useGetMarketCandles,
   useGetMarketTicker,
   useGetMarketContracts,
   useGetProtradersPreflight,
   useGetSessionStatus,
-  useRefreshTransaction,
 } from "@workspace/api-client-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -27,6 +24,8 @@ import { AccountStrip } from "@/components/trading/account-strip"
 import { formatMoney, formatVolatility } from "@/lib/format"
 import { CONTRACT_LABELS, DEFAULT_MARKET_SYMBOL, marketLabel } from "@/lib/markets"
 import { useDerivMarkets } from "@/hooks/use-deriv-markets"
+import { useTradingRunSession } from "@/hooks/use-trading-run-session"
+import { RunSessionSummary } from "@/components/trading/run-session-summary"
 
 export default function BulkTrade() {
   const requested = typeof window === "undefined" ? null : new URLSearchParams(window.location.search)
@@ -37,18 +36,8 @@ export default function BulkTrade() {
   const [stake, setStake] = useState("1")
   const [runCount, setRunCount] = useState("1")
   const [takeProfit, setTakeProfit] = useState("1")
-  const [completedRuns, setCompletedRuns] = useState(0)
-  const [sequenceProfit, setSequenceProfit] = useState<number | null>(0)
-  const [awaitingNextRun, setAwaitingNextRun] = useState(false)
-  const [sequenceStopped, setSequenceStopped] = useState(false)
   const [availabilityNotice, setAvailabilityNotice] = useState("")
   const [duration, setDuration] = useState("1")
-  const [results, setResults] = useState<any[]>([])
-  const [isRunning, setIsRunning] = useState(false)
-  const createTrade = useCreateTrade()
-  const previewTrade = usePreviewTrade()
-  const refreshTransaction = useRefreshTransaction()
-  const [proposal, setProposal] = useState<any>(null)
   const queryClient = useQueryClient()
   const marketQuery = useDerivMarkets()
   const marketGroups = useMemo(() => {
@@ -75,6 +64,13 @@ export default function BulkTrade() {
   })
   const accountCurrency = account.data?.currency || "USD"
   const canRun = Boolean(session?.authenticated && account.data?.accountType === "demo" && preflight.data?.tradingEnabled && preflight.data?.demoOnly)
+  const tradeSource = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("source") === "ai_assisted"
+    ? "ai_assisted" as const
+    : "manual" as const
+  const runSession = useTradingRunSession(
+    `protraders-run-session:${tradeSource}`,
+    () => { queryClient.invalidateQueries({ queryKey: getGetAccountQueryKey() }) },
+  )
   const ticker = useGetMarketTicker(selectedMarket, { query: { queryKey: getGetMarketTickerQueryKey(selectedMarket), refetchInterval: 15000 } })
   const candles = useGetMarketCandles(selectedMarket, { count: 60, granularity: 60 }, { query: { queryKey: getGetMarketCandlesQueryKey(selectedMarket, { count: 60, granularity: 60 }), refetchInterval: 30000 } })
   const marketData = candles.data as any
@@ -107,17 +103,6 @@ export default function BulkTrade() {
     if (availableTypes.length && !availableTypes.includes(contractType)) setContractType(availableTypes[0])
   }, [availableTypes.join("|"), contractType])
   const needsBarrier = Boolean(CONTRACT_LABELS[contractType]?.needsBarrier)
-  useEffect(() => {
-    setProposal(null)
-    setCompletedRuns(0)
-    setSequenceProfit(0)
-    setAwaitingNextRun(false)
-    setSequenceStopped(false)
-    setResults([])
-  }, [selectedMarket, contractType, barrier, stopLoss, stake, duration, runCount, takeProfit])
-  const tradeSource = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("source") === "ai_assisted"
-    ? "ai_assisted" as const
-    : "manual" as const
 
   const totalRuns = Number(runCount)
   const targetProfit = Number(takeProfit)
@@ -140,93 +125,6 @@ export default function BulkTrade() {
     stake: Number(stake), duration: Number(duration), source: tradeSource,
     request_label: `${selectedMarket} ${tradeSource === "ai_assisted" ? "scanner-assisted" : "manual"} order`,
   }
-  const reviewOrder = async () => {
-    if (!canRun || !validOrder || previewTrade.isPending) return
-    setProposal(null)
-    setCompletedRuns(0)
-    setSequenceProfit(0)
-    setAwaitingNextRun(false)
-    setSequenceStopped(false)
-    try { setProposal(await previewTrade.mutateAsync({ data: orderData as any })) }
-    catch (error) { setResults([{ id: 0, symbol: selectedMarket, ok: false, status: "rejected", message: error instanceof Error ? error.message : "Proposal unavailable" }]) }
-  }
-  const executeOrder = async () => {
-    if (!canRun || !validOrder || isRunning || !proposal?.proposalToken) return
-    setIsRunning(true)
-    const runNumber = completedRuns + 1
-    const resultId = runNumber - 1
-    setResults(current => [...current, {
-      id: resultId,
-             symbol: selectedMarket,
-      ok: null,
-      status: "sending",
-      message: `Submitting run ${runNumber} of ${totalRuns} to Deriv...`,
-    }])
-
-    try {
-        // This action always submits exactly one contract through the protected trade path.
-        const result = await createTrade.mutateAsync({
-          data: { ...orderData, proposal_token: proposal.proposalToken } as any,
-        })
-        setResults(current => current.map(item => item.id === resultId ? {
-          ...item,
-          ok: result.ok,
-           status: result.ok ? "accepted" : (result.status || "rejected"),
-           transactionId: result.transactionId || null,
-           message: result.message || (result.ok && result.contractId ? `Deriv accepted contract ${result.contractId}` : "Order rejected"),
-        } : item))
-        setCompletedRuns(runNumber)
-        setProposal(null)
-        if (result.ok && runNumber < totalRuns && result.transactionId) {
-          setAwaitingNextRun(true)
-        } else if (result.ok && runNumber >= totalRuns) {
-          setSequenceStopped(true)
-        }
-    } catch (error) {
-        setProposal(null)
-        setResults(current => current.map(item => item.id === resultId ? {
-          ...item,
-          ok: false,
-          status: "rejected",
-          message: error instanceof Error ? error.message : "Order rejected",
-        } : item))
-    }
-    setIsRunning(false)
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: getGetAccountQueryKey() }),
-      queryClient.invalidateQueries({ queryKey: getGetSessionStatusQueryKey() }),
-    ])
-  }
-  const prepareNextRun = async () => {
-    if (!awaitingNextRun || refreshTransaction.isPending || previewTrade.isPending) return
-    const latest = results.at(-1)
-    if (!latest?.transactionId) return
-    try {
-      const refreshed: any = await refreshTransaction.mutateAsync({ id: String(latest.transactionId) })
-      const transaction = refreshed?.transaction
-      if (!refreshed?.refreshed || !transaction || !["won", "lost", "settled"].includes(String(transaction.status).toLowerCase())) {
-        setResults(current => current.map(item => item.id === latest.id ? { ...item, message: "Contract is still open. Check settlement again before the next confirmation." } : item))
-        return
-      }
-      const settledProfit = Number(transaction.netProfit)
-      if (!Number.isFinite(settledProfit)) {
-        setResults(current => current.map(item => item.id === latest.id ? { ...item, message: "Deriv settled the contract without a usable profit value. The next run remains blocked." } : item))
-        return
-      }
-      const nextProfit = (sequenceProfit ?? 0) + settledProfit
-      setSequenceProfit(nextProfit)
-      setAwaitingNextRun(false)
-      if (nextProfit >= targetProfit) {
-        setSequenceStopped(true)
-        setResults(current => [...current, { id: latest.id + 0.5, symbol: selectedMarket, ok: true, status: "target reached", message: `Take-profit target reached at ${formatMoney(nextProfit, accountCurrency)}. No further run will be submitted.` }])
-        return
-      }
-      setProposal(await previewTrade.mutateAsync({ data: orderData as any }))
-    } catch (error) {
-      setResults(current => [...current, { id: Date.now(), symbol: selectedMarket, ok: false, status: "settlement unavailable", message: error instanceof Error ? error.message : "Settlement unavailable. The next run remains blocked." }])
-    }
-  }
-
   return (
     <div className="mx-auto w-full max-w-6xl space-y-5 p-4 md:p-8">
       <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} />
@@ -308,12 +206,12 @@ export default function BulkTrade() {
               <div className="space-y-2">
                 <Label htmlFor="bulk-run-count">Number of runs</Label>
                 <Input id="bulk-run-count" type="number" min="1" max="100" step="1" value={runCount} onChange={event => setRunCount(event.target.value)} />
-                <p className="text-xs text-muted-foreground">Each run requires a fresh proposal and separate confirmation.</p>
+                <p className="text-xs text-muted-foreground">Run Bot obtains a fresh provider proposal automatically before every bounded run.</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="bulk-take-profit">Take-profit target ({accountCurrency})</Label>
                 <Input id="bulk-take-profit" type="number" min="0.01" step="0.01" value={takeProfit} onChange={event => setTakeProfit(event.target.value)} />
-                <p className="text-xs text-muted-foreground">Stops future confirmations after Deriv reports cumulative settled profit at or above this target.</p>
+                <p className="text-xs text-muted-foreground">Stops future runs after Deriv reports cumulative settled profit at or above this target.</p>
               </div>
             </div>
              <div className="space-y-2">
@@ -329,44 +227,38 @@ export default function BulkTrade() {
                 <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Type</span><span>{CONTRACT_LABELS[contractType]?.action || contractType}{needsBarrier ? ` ${barrier}` : ""}</span></div>
                  <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Stop loss</span><span>{formatMoney(Number(stopLoss || 0), accountCurrency)}</span></div>
                 <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Stake</span><span>{formatMoney(Number(stake || 0), accountCurrency)}</span></div>
-                <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Run plan</span><span>{Number.isInteger(totalRuns) ? `${completedRuns}/${totalRuns}` : "Invalid"} · TP {formatMoney(Number(takeProfit || 0), accountCurrency)}</span></div>
+                 <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Run plan</span><span>{Number.isInteger(totalRuns) ? `${runSession.state.completedRuns}/${totalRuns}` : "Invalid"} · TP {formatMoney(Number(takeProfit || 0), accountCurrency)}</span></div>
             </div>
-             {proposal && <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
-               <div className="flex items-center justify-between gap-3"><div className="font-medium">Deriv proposal ready</div><Button type="button" size="sm" variant="ghost" onClick={reviewOrder} disabled={previewTrade.isPending}>Refresh proposal</Button></div>
-               <div className="mt-2 flex justify-between"><span className="text-muted-foreground">Ask price</span><span>{proposal.askPrice == null ? "Unavailable" : formatMoney(proposal.askPrice, accountCurrency)}</span></div>
-               <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Potential payout</span><span>{proposal.payout == null ? "Unavailable" : formatMoney(proposal.payout, accountCurrency)}</span></div>
-               <p className="mt-2 text-xs text-muted-foreground">{proposal.longcode || "Provider proposal received."} Valid for 30 seconds; refresh it if you need more time.</p>
-             </div>}
                {!contracts.isLoading && !contracts.isError && !availableTypes.length && (
                  <p className="text-xs text-destructive">Deriv currently offers no supported contracts for {selectedMarket}. Choose another market.</p>
                )}
                {availableTypes.length > 0 && !validInputs && (
                  <p className="text-xs text-destructive">Enter a stake within the displayed limit, a positive stop loss, a whole-number tick duration, and any required digit barrier.</p>
                )}
-               {awaitingNextRun ? <Button className="w-full" onClick={prepareNextRun} disabled={refreshTransaction.isPending || previewTrade.isPending || marketOffline} data-testid="button-check-next-run">
-                 {refreshTransaction.isPending ? "Checking Deriv settlement..." : "Check settlement and prepare next run"}
-               </Button> : !proposal && !sequenceStopped ? <Button className="w-full" onClick={reviewOrder} disabled={!canRun || !validOrder || previewTrade.isPending || marketOffline} data-testid="button-review-order">
-                 {previewTrade.isPending ? "Requesting Deriv proposal..." : "Review Deriv proposal"}
-               </Button> : proposal ? <Button className="w-full" onClick={executeOrder} disabled={!canRun || !validOrder || isRunning || marketOffline} data-testid="button-execute-order">
-               {isRunning && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                 {isRunning ? `Submitting run ${completedRuns + 1}...` : `Confirm and place run ${completedRuns + 1} of ${totalRuns}`}
-               </Button> : <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs leading-5 text-muted-foreground">Sequence complete or stopped at the take-profit target. Start a new reviewed sequence to place another run.</div>}
-               <p className="text-[11px] leading-5 text-muted-foreground">Each click submits at most one contract through the protected trade flow. The next run stays blocked until Deriv reports settlement for the previous contract.</p>
+                <RunSessionSummary
+                  state={runSession.state}
+                  currency={accountCurrency}
+                  onStart={() => runSession.start(orderData, totalRuns, targetProfit)}
+                  onStop={runSession.stop}
+                  disabled={!canRun || !validOrder || marketOffline || runSession.isBusy}
+                  label="Run Bot"
+                />
+                <p className="text-[11px] leading-5 text-muted-foreground">Run Bot starts one bounded session. Each run gets a fresh Deriv proposal and the next order waits for the previous contract to settle. Stop Bot prevents future entries.</p>
           </CardContent>
         </Card>
       </div>
 
-      {results.length > 0 && (
+       {runSession.state.results.length > 0 && (
         <Card data-testid="card-bulk-results">
           <CardHeader className="border-b bg-secondary/10"><CardTitle className="text-base">Results</CardTitle></CardHeader>
           <CardContent className="divide-y p-0">
-             {results.map((result: any) => (
+              {runSession.state.results.map((result: any) => (
                <div key={result.id} className="flex items-center justify-between gap-3 p-4 text-sm">
                  <div>
-                    <div className="font-mono">{result.symbol} · single order</div>
+                     <div className="font-mono">{selectedMarket} · run {result.run}</div>
                    <div className="mt-1 text-xs text-muted-foreground">{result.message}</div>
                  </div>
-                 <span className={result.ok === true ? "text-success" : result.ok === false ? "text-destructive" : "text-muted-foreground"}>{result.status || "queued"}</span>
+                  <span className={["won", "settled"].includes(result.status) ? "text-success" : result.status === "rejected" ? "text-destructive" : "text-muted-foreground"}>{result.status || "queued"}</span>
               </div>
             ))}
           </CardContent>

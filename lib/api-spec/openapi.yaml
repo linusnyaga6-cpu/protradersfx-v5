@@ -352,6 +352,7 @@ components:
         barrier: { type: string, pattern: "^[0-9]$" }
         stopLoss: { type: number, exclusiveMinimum: 0, maximum: 10000 }
         runCount: { type: number, minimum: 1, maximum: 10, multipleOf: 1 }
+        takeProfit: { type: number, exclusiveMinimum: 0, maximum: 100000 }
         stake: { type: number, exclusiveMinimum: 0, maximum: 10000 }
         duration: { type: number, minimum: 1, maximum: 3600, multipleOf: 1 }
         riskCap: { type: number, exclusiveMinimum: 0, maximum: 100000 }
@@ -547,6 +548,9 @@ components:
         request_label:
           type: string
           maxLength: 120
+        session_id:
+          type: string
+          maxLength: 80
         live_confirmation:
           type: string
           enum: [CONFIRM_LIVE_TRADE]
@@ -584,6 +588,9 @@ components:
         request_label:
           type: string
           maxLength: 120
+        session_id:
+          type: string
+          maxLength: 80
         live_confirmation:
           type: string
           enum: [CONFIRM_LIVE_TRADE]

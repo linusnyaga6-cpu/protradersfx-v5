@@ -637,6 +637,9 @@ router.post("/trades/preview", async (req, res) => {
   const duration = Number(req.body?.duration);
   const stopLoss = req.body?.stop_loss === undefined ? null : Number(req.body.stop_loss);
   const barrier = req.body?.barrier === undefined ? undefined : String(req.body.barrier);
+  const sessionId = typeof req.body?.session_id === "string" && /^[a-zA-Z0-9-]{1,80}$/.test(req.body.session_id)
+    ? req.body.session_id
+    : null;
   const previewErrors = [
     !contractType ? "Choose a supported Deriv contract type." : "",
     !/^[A-Z0-9_]+$/.test(symbol) ? "Choose a valid market symbol." : "",
@@ -668,7 +671,7 @@ router.post("/trades/preview", async (req, res) => {
     const askPrice = Number(proposal.ask_price);
     if (!Number.isFinite(askPrice) || askPrice <= 0) return errorResponse(res, 502, "Deriv returned an invalid proposal price");
     return res.json({
-      proposalToken: seal({ id: proposal.id, nonce: crypto.randomUUID(), accountId: account.account_id, symbol, contractType: requestedContractType, stake, duration, barrier: barrier || null, stopLoss, askPrice, expiresAt: Date.now() + 30_000 }),
+      proposalToken: seal({ id: proposal.id, nonce: crypto.randomUUID(), accountId: account.account_id, symbol, contractType: requestedContractType, stake, duration, barrier: barrier || null, stopLoss, sessionId, askPrice, expiresAt: Date.now() + 30_000 }),
       symbol, contractType: requestedContractType, stake, duration, barrier: barrier || null,
       askPrice,
       payout: Number.isFinite(Number(proposal.payout)) ? Number(proposal.payout) : null,
@@ -718,6 +721,9 @@ router.post("/trades", async (req, res) => {
   const duration = Number(req.body?.duration);
   const barrier = req.body?.barrier === undefined ? undefined : String(req.body.barrier);
   const stopLoss = req.body?.stop_loss === undefined ? undefined : Number(req.body.stop_loss);
+  const sessionId = typeof req.body?.session_id === "string" && /^[a-zA-Z0-9-]{1,80}$/.test(req.body.session_id)
+    ? req.body.session_id
+    : null;
   const validationErrors = [
     !contractType ? "Choose a supported Deriv contract type." : "",
     !/^([A-Z0-9_]+)$/.test(symbol) ? "Choose a valid symbol." : "",
@@ -793,7 +799,7 @@ router.post("/trades", async (req, res) => {
     const reviewed = unseal(req.body.proposal_token);
     const matches = reviewed?.accountId === loginId && reviewed?.symbol === symbol && reviewed?.contractType === validatedContractType
       && reviewed?.stake === stake && reviewed?.duration === duration && reviewed?.barrier === (barrier || null)
-      && reviewed?.stopLoss === (stopLoss ?? null) && reviewed?.expiresAt > Date.now();
+      && reviewed?.stopLoss === (stopLoss ?? null) && reviewed?.sessionId === sessionId && reviewed?.expiresAt > Date.now();
     if (!matches || !reviewed?.id || !reviewed?.nonce || !Number.isFinite(reviewed?.askPrice) || reviewed.askPrice <= 0) return errorResponse(res, 409, "Proposal expired or changed", "Review the current order again before execution.");
     const consumed = await db.insert(consumedTradeProposals).values({
       nonce: reviewed.nonce,
@@ -807,7 +813,7 @@ router.post("/trades", async (req, res) => {
     }
     const buy = await derivRequest(session.accessToken, {
       buy: proposal.proposal.id,
-      parameters: { price: reviewed.askPrice },
+      price: reviewed.askPrice,
     }, session.accountId);
     if (buy.error) return errorResponse(res, 502, "Trade request failed", buy.error.message);
     const contractId = buy.buy?.contract_id ? Number(buy.buy.contract_id) : null;
@@ -850,6 +856,7 @@ router.post("/trades", async (req, res) => {
         stopLossApplied,
         stopLossMessage,
         requestLabel: String(req.body?.request_label || "").slice(0, 120) || null,
+        sessionId,
       },
     }).returning();
     return res.json({

@@ -23,6 +23,8 @@ export interface TradeExecutionInput {
   source?: TradeExecutionInputSource;
   /** @maxLength 120 */
   request_label?: string;
+  /** @maxLength 80 */
+  session_id?: string;
   live_confirmation?: TradeExecutionInputLiveConfirmation;
   /** Required signed single-use token returned by proposal preview. */
   proposal_token: string;

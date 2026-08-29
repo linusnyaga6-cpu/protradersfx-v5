@@ -34,6 +34,7 @@ const dryRunStrategySchema = z.object({
   barrier: z.string().regex(/^[0-9]$/).optional(),
   stopLoss: z.number().positive().max(10_000).optional(),
   runCount: z.number().int().min(1).max(10).optional(),
+  takeProfit: z.number().positive().max(100_000).optional(),
   stake: z.number().positive().max(10_000),
   duration: z.number().int().positive().max(3_600),
   riskCap: z.number().positive().max(100_000),

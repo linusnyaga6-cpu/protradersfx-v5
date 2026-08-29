@@ -26,6 +26,8 @@ export interface TradePreviewInput {
   source?: TradePreviewInputSource;
   /** @maxLength 120 */
   request_label?: string;
+  /** @maxLength 80 */
+  session_id?: string;
   /** Required only for real-money accounts; ignored for demo accounts. */
   live_confirmation?: TradePreviewInputLiveConfirmation;
   /** Signed short-lived token returned by the proposal preview. */

@@ -79,6 +79,11 @@ export interface DryRunStrategy {
      */
   runCount?: number;
   /**
+     * @maximum 100000
+     * @exclusiveMinimum 0
+     */
+  takeProfit?: number;
+  /**
      * @maximum 10000
      * @exclusiveMinimum 0
      */
@@ -255,6 +260,8 @@ export interface TradePreviewInput {
   source?: TradePreviewInputSource;
   /** @maxLength 120 */
   request_label?: string;
+  /** @maxLength 80 */
+  session_id?: string;
   /** Required only for real-money accounts; ignored for demo accounts. */
   live_confirmation?: TradePreviewInputLiveConfirmation;
   /** Signed short-lived token returned by the proposal preview. */
@@ -304,6 +311,8 @@ export interface TradeExecutionInput {
   source?: TradeExecutionInputSource;
   /** @maxLength 120 */
   request_label?: string;
+  /** @maxLength 80 */
+  session_id?: string;
   live_confirmation?: TradeExecutionInputLiveConfirmation;
   /** Required signed single-use token returned by proposal preview. */
   proposal_token: string;

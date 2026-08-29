@@ -29,6 +29,11 @@ export interface DryRunStrategy {
      */
   runCount?: number;
   /**
+     * @maximum 100000
+     * @exclusiveMinimum 0
+     */
+  takeProfit?: number;
+  /**
      * @maximum 10000
      * @exclusiveMinimum 0
      */
