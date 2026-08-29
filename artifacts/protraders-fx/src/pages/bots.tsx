@@ -302,6 +302,22 @@ function BotBuilder({ bot, accountCurrency, onUpdate }: { bot: any, accountCurre
   }, [availableTypes.join("|"), contractType]);
 
   useEffect(() => {
+    const fallbackSymbol = marketQuery.defaultSymbol;
+    const shouldFallback = Boolean(
+      fallbackSymbol
+      && symbol !== fallbackSymbol
+      && !contracts.isLoading
+      && (contracts.isError || availableTypes.length === 0),
+    );
+    if (shouldFallback) {
+      setNotice(`${symbol} is not exposing contract choices right now. Switched to ${fallbackSymbol}; choose another live market if needed.`);
+      setSymbol(fallbackSymbol);
+      setContractType("CALL");
+      setErrors({});
+    }
+  }, [availableTypes.length, contracts.isError, contracts.isLoading, marketQuery.defaultSymbol, symbol]);
+
+  useEffect(() => {
     setName(bot.name || "");
     setSymbol(bot.symbol || DEFAULT_MARKET_SYMBOL);
     setContractType(bot.config?.contractType || "CALL");
@@ -476,7 +492,8 @@ function BotBuilder({ bot, accountCurrency, onUpdate }: { bot: any, accountCurre
                 </div>
               })}
               {contracts.isLoading && <p className="text-xs text-muted-foreground">Checking Deriv contracts for this volatility…</p>}
-              {!contracts.isLoading && !availableTypes.length && <p className="text-xs text-destructive">No supported trading type is currently available from Deriv for this symbol.</p>}
+              {contracts.isError && <p className="text-xs text-amber-600">Deriv contract availability is temporarily unavailable for this symbol. The builder will use the current default market when available.</p>}
+              {!contracts.isLoading && !contracts.isError && !availableTypes.length && <p className="text-xs text-amber-600">Deriv has not returned a supported trading type for this symbol yet. Choose another live market.</p>}
               {errors.contractType && <p className="text-xs text-destructive">{errors.contractType}</p>}
               {CONTRACT_LABELS[contractType]?.needsBarrier && <div className="grid grid-cols-5 gap-1">{Array.from({ length: 10 }, (_, i) => String(i)).map(digit => <Button key={digit} type="button" size="sm" variant={barrier === digit ? "default" : "outline"} onClick={() => setBarrier(digit)}>{digit}</Button>)}</div>}
             </div>
