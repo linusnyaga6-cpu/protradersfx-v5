@@ -54,7 +54,25 @@ export default function BulkTrader() {
   const availableTypes = Array.isArray((contracts.data as any)?.availableContractTypes)
     ? (contracts.data as any).availableContractTypes.filter((item: string) => CONTRACT_LABELS[item])
     : []
-  const selectedContract = availableTypes.includes("CALL") ? "CALL" : availableTypes[0] || "CALL"
+  const fallbackSymbol = marketQuery.defaultSymbol || DEFAULT_MARKET_SYMBOL
+  const scannedContractUnavailable = !contracts.isLoading
+    && (contracts.isError || Boolean(contracts.data && availableTypes.length === 0))
+  const fallbackContracts = useGetMarketContracts(fallbackSymbol, {
+    query: {
+      queryKey: getGetMarketContractsQueryKey(fallbackSymbol),
+      enabled: Boolean(scannedSymbol !== fallbackSymbol && scannedContractUnavailable),
+      staleTime: 60_000,
+    },
+  })
+  const fallbackTypes = Array.isArray((fallbackContracts.data as any)?.availableContractTypes)
+    ? (fallbackContracts.data as any).availableContractTypes.filter((item: string) => CONTRACT_LABELS[item])
+    : []
+  const usingFallback = scannedSymbol !== fallbackSymbol && scannedContractUnavailable && fallbackTypes.length > 0
+  const executionSymbol = usingFallback ? fallbackSymbol : scannedSymbol
+  const executionTypes = usingFallback ? fallbackTypes : availableTypes
+  const selectedContract = executionTypes.includes("CALL") ? "CALL" : executionTypes[0] || "CALL"
+  const contractReady = executionTypes.length > 0
+    && !(usingFallback ? fallbackContracts.isLoading || fallbackContracts.isError : contracts.isLoading || contracts.isError)
   const availableBalance = Number(account.data?.balance)
   const totalRuns = Number(runCount)
   const stakeValue = Number(stake)
@@ -66,6 +84,7 @@ export default function BulkTrader() {
     && preflight.data?.tradingEnabled
     && preflight.data?.demoOnly
     && validSetup
+    && contractReady
     && !runSession.isBusy,
   )
   const scanRows = useMemo(() => Array.isArray(scanData?.markets) ? scanData.markets.slice(0, 5) : [], [scanData])
@@ -97,9 +116,9 @@ export default function BulkTrader() {
     setNotice("")
     const freshScan = await performScan()
     const market = freshScan?.best || freshScan?.markets?.[0] || bestMarket
-    const symbol = String(market?.symbol || scannedSymbol)
-    const preferredDirection = market?.bias === "bearish" ? "PUT" : "CALL"
-    const contractType = availableTypes.includes(preferredDirection) ? preferredDirection : selectedContract
+    const symbol = executionSymbol
+    const preferredDirection = market?.symbol === symbol && market?.bias === "bearish" ? "PUT" : "CALL"
+    const contractType = executionTypes.includes(preferredDirection) ? preferredDirection : selectedContract
     setSetupOpen(false)
     await runSession.start({
       symbol,
@@ -209,6 +228,8 @@ export default function BulkTrader() {
             </div>
             {account.data?.accountType !== "demo" && <p className="text-xs text-destructive">Bulk Trader requires the protected Deriv demo account.</p>}
             {!validSetup && <p className="text-xs text-destructive">Enter a stake below the available account balance and a whole-number run count from 1 to 100.</p>}
+            {usingFallback && <p className="text-xs text-amber-600">{scannedSymbol} did not return usable contracts, so this run will use the verified fallback market {fallbackSymbol}.</p>}
+            {!contractReady && !contracts.isLoading && !fallbackContracts.isLoading && <p className="text-xs text-amber-600">A supported Deriv contract is not currently verified. Run the scan again before starting.</p>}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setSetupOpen(false)}>Cancel</Button>

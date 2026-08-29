@@ -89,14 +89,12 @@ export default function BulkTrade() {
     : []
   useEffect(() => {
     if (
-      contracts.data
-      && !contracts.isLoading
-      && !contracts.isError
-      && availableTypes.length === 0
+      !contracts.isLoading
       && selectedMarket !== DEFAULT_MARKET_SYMBOL
       && marketQuery.markets.some(item => item.symbol === DEFAULT_MARKET_SYMBOL)
+      && (contracts.isError || (contracts.data && availableTypes.length === 0))
     ) {
-      setAvailabilityNotice(`${selectedMarket} currently has no supported Deriv contracts. Switched to ${DEFAULT_MARKET_SYMBOL}.`)
+      setAvailabilityNotice(`${selectedMarket} is not currently returning usable contract choices. Switched to ${DEFAULT_MARKET_SYMBOL}.`)
       setSelectedMarket(DEFAULT_MARKET_SYMBOL)
     }
   }, [contracts.data, contracts.isLoading, contracts.isError, availableTypes.length, selectedMarket, marketQuery.markets])
@@ -184,7 +182,8 @@ export default function BulkTrade() {
                 ))}
               </div>
               {contracts.isLoading && <p className="text-xs text-muted-foreground">Checking contracts offered by Deriv…</p>}
-              {!contracts.isLoading && !availableTypes.length && <p className="text-xs text-destructive">No supported contracts are currently offered for this symbol.</p>}
+              {contracts.isError && <p className="text-xs text-amber-600">Deriv contract availability is temporarily unavailable for this symbol. Choose another live market.</p>}
+              {!contracts.isLoading && !contracts.isError && !availableTypes.length && <p className="text-xs text-amber-600">Deriv has not returned a supported contract for this symbol yet. Choose another live market.</p>}
             </div>
             {needsBarrier && (
               <div className="space-y-2">
@@ -233,9 +232,6 @@ export default function BulkTrade() {
                 <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Stake</span><span>{formatMoney(Number(stake || 0), accountCurrency)}</span></div>
                  <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Run plan</span><span>{Number.isInteger(totalRuns) ? `${runSession.state.completedRuns}/${totalRuns}` : "Invalid"} · TP {formatMoney(Number(takeProfit || 0), accountCurrency)}</span></div>
             </div>
-               {!contracts.isLoading && !contracts.isError && !availableTypes.length && (
-                 <p className="text-xs text-destructive">Deriv currently offers no supported contracts for {selectedMarket}. Choose another market.</p>
-               )}
                 <RunSessionSummary
                   state={runSession.state}
                   currency={accountCurrency}
