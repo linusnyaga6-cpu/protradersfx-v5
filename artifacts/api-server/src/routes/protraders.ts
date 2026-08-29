@@ -660,19 +660,19 @@ router.post("/trades", async (req, res) => {
     : null;
   const stake = Number(req.body?.stake);
   const duration = Number(req.body?.duration);
-  if (
-    !contractType ||
-    !/^([A-Z0-9_]+)$/.test(symbol) ||
-    (allowedSymbols.size > 0 && !allowedSymbols.has(symbol)) ||
-    !Number.isFinite(stake) ||
-    stake <= 0 ||
-    stake > maxStake ||
-    !Number.isInteger(duration) ||
-    duration < 1 ||
-    duration > maxDuration
-  ) {
-    return errorResponse(res, 400, "Invalid trade parameters");
+  const validationErrors = [
+    !contractType ? "Choose CALL or PUT." : "",
+    !/^([A-Z0-9_]+)$/.test(symbol) ? "Choose a valid symbol." : "",
+    allowedSymbols.size > 0 && !allowedSymbols.has(symbol) ? "That symbol is not allowed." : "",
+    !Number.isFinite(stake) || stake <= 0 ? "Stake must be greater than 0." : "",
+    stake > maxStake ? `Stake cannot exceed ${maxStake}.` : "",
+    !Number.isInteger(duration) || duration < 1 ? "Duration must be at least 1 tick." : "",
+    duration > maxDuration ? `Duration cannot exceed ${maxDuration} ticks.` : "",
+  ].filter(Boolean);
+  if (validationErrors.length) {
+    return errorResponse(res, 400, "Invalid trade parameters", validationErrors.join(" "));
   }
+  const validatedContractType = contractType as "CALL" | "PUT";
 
   try {
     const accounts = await listDerivAccounts(session.accessToken);
@@ -722,7 +722,7 @@ router.post("/trades", async (req, res) => {
       proposal: 1,
       amount: stake,
       basis: "stake",
-      contract_type: contractType,
+      contract_type: validatedContractType,
       currency,
       duration,
       duration_unit: "t",
@@ -744,7 +744,7 @@ router.post("/trades", async (req, res) => {
       accountType: isDemoAccount ? "demo" : "real",
       loginid: loginId,
       symbol,
-      contractType,
+      contractType: validatedContractType,
       stake: String(stake),
       currency,
       duration: String(duration),

@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
+import { formatVolatility } from "@/lib/format"
 
-const fallback = ["R_100","R_75","R_50","R_25","1HZ100V"]
+const fallback = ["R_10","R_25","R_50","R_75","R_100","1HZ10V","1HZ25V","1HZ50V","1HZ75V","1HZ100V","1HZ150V","1HZ250V","frxAUDUSD","frxEURUSD","frxGBPUSD","frxUSDJPY"]
 export default function Markets() {
   const [symbol,setSymbol] = useState("R_100")
   const [marketSearch,setMarketSearch] = useState("")
@@ -30,7 +31,7 @@ export default function Markets() {
       </CardContent></Card>
       <div className="space-y-5">
          <Card className="overflow-hidden"><CardHeader className="flex-row items-center justify-between border-b bg-secondary/30"><div><CardTitle className="flex items-center gap-2 text-xl"><BarChart3 className="h-5 w-5 text-primary"/>{symbol}</CardTitle><p className="mt-1 text-xs text-muted-foreground">Synthetic index · live quote</p></div><Badge variant={tickerOffline?"destructive":"success"}><Radio className="mr-1 h-3 w-3"/>{tickerOffline?"OFFLINE":"LIVE"}</Badge></CardHeader><CardContent className="p-6"><div className="flex items-end gap-5"><div className="font-numeric text-5xl">{tick?.quote ?? tick?.price ?? "—"}</div><div className="pb-2 text-sm text-muted-foreground">{tickerOffline ? "Quote unavailable" : "last price"}</div></div><div className="mt-6 h-56 rounded-lg border bg-[linear-gradient(150deg,hsl(var(--secondary)),transparent)] p-3"><ChartGrid data={candle}/></div><div className="mt-3 grid grid-cols-4 gap-2 text-xs">{["open","high","low","close"].map(k=><div key={k} className="rounded bg-secondary/60 p-2"><div className="uppercase text-muted-foreground">{k}</div><div className="mt-1 font-numeric">{candle?.candles?.at?.(-1)?.[k]??"—"}</div></div>)}</div><div className="mt-4 flex justify-between text-xs text-muted-foreground"><span>Source: Deriv market endpoint · actual price scale</span><span>{candles.isLoading ? "Requesting history…" : candle ? `As of ${candle.asOf??"server timestamp"}` : "History unavailable"}</span></div></CardContent></Card>
-         <div className="grid gap-5 md:grid-cols-4"><DataCard label="Bid / ask" value={tick?.bid && tick?.ask ? `${tick.bid} / ${tick.ask}` : "Unavailable"} /><DataCard label="Freshness" value={ticker.isFetching?"Syncing":"Auto-refresh 3s"} /><DataCard label="Volatility" value={candle?.indicators?.volatilityLevel ? `${candle.indicators.volatilityLevel} · ${Number(candle.indicators.volatilityPct).toFixed(3)}%` : "Not available"} /><DataCard label="Analysis" value={candle?.indicators ? "Deterministic indicators" : "Not available"} /></div>
+         <div className="grid gap-5 md:grid-cols-4"><DataCard label="Bid / ask" value={tick?.bid && tick?.ask ? `${tick.bid} / ${tick.ask}` : "Unavailable"} /><DataCard label="Freshness" value={ticker.isFetching?"Syncing":"Auto-refresh 3s"} /><DataCard label="Volatility" value={candle?.indicators ? formatVolatility(candle.indicators.volatilityLevel, candle.indicators.volatilityPct) : "Not available"} /><DataCard label="Analysis" value={candle?.indicators ? "Deterministic indicators" : "Not available"} /></div>
       </div>
     </div>
   </Workspace>

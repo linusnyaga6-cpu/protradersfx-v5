@@ -4,14 +4,14 @@ import { useListTransactions, getListTransactionsQueryKey } from "@workspace/api
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { formatMoney } from "@/lib/format"
 
 type TransactionLedgerProps = {
   compact?: boolean
 }
 
 function money(value: unknown, currency = "USD") {
-  const amount = Number(value)
-  return Number.isFinite(amount) ? `${currency} ${amount.toFixed(2)}` : "—"
+  return formatMoney(value, currency)
 }
 
 function statusVariant(status: string) {

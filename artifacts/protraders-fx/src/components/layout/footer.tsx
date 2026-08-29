@@ -13,8 +13,7 @@ export function Footer() {
             <span className="tracking-wide text-foreground">ProTraders <span className="text-primary">FX</span></span>
           </Link>
           <p className="mt-5 max-w-sm text-sm leading-relaxed text-muted-foreground">
-            A review-first trading workspace built around transparent market data,
-            controlled execution, and responsible decision-making.
+            Live market context, controlled execution, and visible risk limits.
           </p>
         </div>
         <div>
@@ -47,7 +46,7 @@ export function Footer() {
       </div>
       <div className="border-t border-white/5">
         <div className="container mx-auto px-4 py-6 text-xs text-muted-foreground/60 font-mono md:px-8">
-          © 2026 ProTraders FX · Designed and owned by Linus Nyaga Ndambiri.
+          ProTraders FX · By Issay-KE.
         </div>
       </div>
     </footer>

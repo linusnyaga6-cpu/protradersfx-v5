@@ -12,8 +12,9 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { formatVolatility } from "@/lib/format"
 
-const symbols = ["R_100", "R_75", "R_50", "R_25", "1HZ100V"]
+const symbols = ["R_10", "R_25", "R_50", "R_75", "R_100", "1HZ10V", "1HZ25V", "1HZ50V", "1HZ75V", "1HZ100V", "1HZ150V", "1HZ250V", "frxAUDUSD", "frxEURUSD", "frxGBPUSD", "frxUSDJPY"]
 
 type ScannerResult = {
   symbol: string
@@ -133,7 +134,7 @@ export function FloatingScanner() {
         </div>
         <div className="grid grid-cols-2 gap-2">
           <Metric label="Latest quote" value={tick?.available === false ? "Offline" : String(tick?.quote ?? "—")} />
-           <Metric label="Volatility" value={candleData?.indicators?.volatilityLevel ? `${candleData.indicators.volatilityLevel} · ${Number(candleData.indicators.volatilityPct).toFixed(3)}%` : "Unavailable"} />
+           <Metric label="Volatility" value={candleData?.indicators ? formatVolatility(candleData.indicators.volatilityLevel, candleData.indicators.volatilityPct) : "Unavailable"} />
         </div>
         {error && <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">{error}</div>}
         {!result && !error && (
@@ -159,7 +160,7 @@ export function FloatingScanner() {
                <div className="flex items-center justify-between gap-3">
                  <div>
                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Observed volatility</div>
-                   <div className="mt-1 font-mono text-sm">{result.indicators.volatilityLevel ?? "—"} · {result.indicators.volatilityPct != null ? `${result.indicators.volatilityPct.toFixed(3)}%` : "—"}</div>
+                   <div className="mt-1 font-mono text-sm">{formatVolatility(result.indicators.volatilityLevel, result.indicators.volatilityPct)}</div>
                  </div>
                  <Button size="sm" variant="outline" onClick={() => {
                    const direction = result.analysis.bias === "bullish" ? "CALL" : result.analysis.bias === "bearish" ? "PUT" : "CALL"

@@ -54,7 +54,7 @@ export default function Home() {
            </h1>
           
           <p className="max-w-2xl mx-auto text-lg md:text-xl text-muted-foreground font-light leading-relaxed">
-            Live market context, bot templates, and visible risk boundaries. A focused environment built for discipline, devoid of noise.
+            Live prices, controlled bots, and clear risk limits.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8">

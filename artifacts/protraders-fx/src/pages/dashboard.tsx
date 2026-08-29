@@ -10,7 +10,7 @@ import {
   TrendingDown, 
   AlertCircle, 
   Clock, 
-  DollarSign, 
+  Coins,
   Lock,
   ChevronRight,
   ShieldAlert,
@@ -27,6 +27,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { TransactionLedger } from "@/components/trading/transaction-ledger"
+import { formatMoney } from "@/lib/format"
 
 import { 
   useGetAccount,
@@ -98,7 +99,8 @@ export default function Dashboard() {
   const contractType = watch("contract_type")
   const symbols = preflight?.allowedSymbols?.length
     ? preflight.allowedSymbols
-    : ["R_100", "R_10", "1HZ100V"]
+    : ["R_10", "R_25", "R_50", "R_75", "R_100", "1HZ10V", "1HZ25V", "1HZ50V", "1HZ75V", "1HZ100V", "1HZ150V", "1HZ250V", "frxEURUSD", "frxGBPUSD", "frxUSDJPY"]
+  const accountCurrency = account?.currency || "USD"
   const isReal = account?.accountType === "real"
   const canTrade = Boolean(
     preflight?.tradingEnabled &&
@@ -139,8 +141,8 @@ export default function Dashboard() {
     }
     if (data.stake > preflight.maxStake || data.duration > preflight.maxDuration) {
       toast({
-        title: "Safety Limit Exceeded",
-        description: `Maximum stake is ${preflight.maxStake} and maximum duration is ${preflight.maxDuration} ticks.`,
+        title: "Trade limit exceeded",
+        description: `Max stake ${preflight.maxStake}; max duration ${preflight.maxDuration} ticks.`,
         variant: "destructive"
       })
       return
@@ -165,8 +167,8 @@ export default function Dashboard() {
       },
       onError: (err) => {
         toast({
-          title: "System Error",
-          description: err.message || "Failed to communicate with trading engine.",
+          title: "Trade rejected",
+          description: shortError(err, "Trading service unavailable."),
           variant: "destructive"
         })
       }
@@ -212,10 +214,7 @@ export default function Dashboard() {
               {accountLoading ? (
                 <span className="text-muted-foreground">Syncing…</span>
               ) : account?.balance != null ? (
-                <>
-                  <span className="mr-2 text-sm text-muted-foreground">{account.currency || ""}</span>
-                  {account.balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </>
+                formatMoney(account.balance, accountCurrency)
               ) : (
                 <span className="text-amber-400">Unavailable</span>
               )}
@@ -357,7 +356,7 @@ export default function Dashboard() {
               </div>
 
               <div className="space-y-3">
-                <Label htmlFor="stake" className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Stake Amount (USD)</Label>
+                <Label htmlFor="stake" className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Stake ({accountCurrency})</Label>
                 <div className="relative">
                   <Input 
                     id="stake" 
@@ -367,7 +366,7 @@ export default function Dashboard() {
                     {...register("stake")}
                     data-testid="input-stake"
                   />
-                  <DollarSign className="absolute left-4 top-5 h-6 w-6 text-muted-foreground" />
+                  <Coins className="absolute left-4 top-5 h-6 w-6 text-muted-foreground" />
                 </div>
                 {errors.stake && <p className="text-xs text-destructive mt-1">{errors.stake.message}</p>}
               </div>
@@ -430,3 +429,8 @@ function ToolLink({ href, icon, title, text }: { href: string; icon: React.React
 function ActivityIcon() { return <TrendingUp className="h-4 w-4" /> }
 function BotIcon() { return <ShieldAlert className="h-4 w-4" /> }
 function LayersIcon() { return <BarChart3 className="h-4 w-4" /> }
+
+function shortError(error: unknown, fallback: string) {
+  if (!(error instanceof Error) || !error.message) return fallback
+  return error.message.replace(/^HTTP \d+[^:]*:\s*/, "").trim() || fallback
+}

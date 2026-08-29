@@ -152,12 +152,41 @@ function metrics(candles: Array<{ epoch: number; close: number }>) {
   };
 }
 
+const fallbackMarketSymbols = [
+  "R_10", "R_25", "R_50", "R_75", "R_100",
+  "1HZ10V", "1HZ25V", "1HZ50V", "1HZ75V", "1HZ100V",
+  "1HZ150V", "1HZ250V",
+  "frxAUDUSD", "frxEURUSD", "frxGBPUSD", "frxUSDJPY",
+];
+
 router.get("/market/symbols", async (_req, res) => {
-  try { const body = await cachedMarket("symbols", async () => { const data = await publicDeriv({ active_symbols: "brief" }); return { symbols: (data.active_symbols || []).map((s: any) => ({ symbol: s.symbol, displayName: s.display_name, market: s.market, submarket: s.submarket })) }; }); return res.json(body); }
-  catch (e) { return fail(res, 502, "Market symbols unavailable", e instanceof Error ? e.message : undefined); }
+  try {
+    const body = await cachedMarket("symbols", async () => {
+      const data = await publicDeriv({ active_symbols: "brief" });
+      const symbols = (data.active_symbols || []).map((s: any) => ({
+        symbol: s.symbol,
+        displayName: s.display_name,
+        market: s.market,
+        submarket: s.submarket,
+      }));
+      return {
+        symbols: symbols.length
+          ? symbols
+          : fallbackMarketSymbols.map((symbol) => ({
+            symbol,
+            displayName: symbol,
+            market: symbol.startsWith("frx") ? "forex" : "synthetic_index",
+            submarket: symbol.startsWith("frx") ? "major_pairs" : "volatility",
+          })),
+      };
+    });
+    return res.json(body);
+  } catch (e) {
+    return fail(res, 502, "Market symbols unavailable", e instanceof Error ? e.message : undefined);
+  }
 });
 router.get("/market/ticker/:symbol", async (req, res) => {
-  const symbol = string(req.params.symbol, 30); if (!symbol || !/^[A-Z0-9_]+$/.test(symbol)) return fail(res, 400, "Invalid symbol");
+  const symbol = string(req.params.symbol, 30); if (!symbol || !/^[A-Za-z0-9_]+$/.test(symbol)) return fail(res, 400, "Invalid symbol");
   try { const body = await cachedMarket(`ticker:${symbol}`, async () => {
     const data = await publicDeriv({ ticks_history: symbol, style: "ticks", count: 1, end: "latest" });
     const quote = Number(data.history?.prices?.at?.(-1));
@@ -171,7 +200,7 @@ router.get("/market/ticker/:symbol", async (req, res) => {
 });
 router.get("/market/candles/:symbol", async (req, res) => {
   const symbol = string(req.params.symbol, 30), granularity = Number(req.query.granularity || 300), count = Number(req.query.count || 100);
-  if (!symbol || !/^[A-Z0-9_]+$/.test(symbol) || ![60, 120, 300, 600, 900, 1800, 3600, 7200, 14400, 28800, 86400].includes(granularity) || !Number.isInteger(count) || count < 30 || count > 500) return fail(res, 400, "Invalid candle parameters");
+  if (!symbol || !/^[A-Za-z0-9_]+$/.test(symbol) || ![60, 120, 300, 600, 900, 1800, 3600, 7200, 14400, 28800, 86400].includes(granularity) || !Number.isInteger(count) || count < 30 || count > 500) return fail(res, 400, "Invalid candle parameters");
   try { return res.json(await cachedMarket(`candles:${symbol}:${granularity}:${count}`, async () => {
     const data = await publicDeriv({ ticks_history: symbol, style: "candles", granularity, count, end: "latest" });
     const rows = Array.isArray(data.candles) ? data.candles.map((c: any) => ({ epoch: Number(c.epoch), open: Number(c.open), high: Number(c.high), low: Number(c.low), close: Number(c.close) })).filter((c: any) => Object.values(c).every(Number.isFinite)) : [];
@@ -186,7 +215,7 @@ router.post("/market/analyze", async (req, res) => {
   const auth = await authenticated(req, res);
   if (!auth) return;
   const symbol = string(req.body?.symbol, 30);
-  if (!symbol || !/^[A-Z0-9_]+$/.test(symbol)) return fail(res, 400, "Invalid symbol");
+  if (!symbol || !/^[A-Za-z0-9_]+$/.test(symbol)) return fail(res, 400, "Invalid symbol");
   try {
     const data = await publicDeriv({ ticks_history: symbol, style: "candles", granularity: 60, count: 60, end: "latest" });
     const candles = Array.isArray(data.candles)
@@ -249,8 +278,8 @@ router.patch("/templates/:id", async (req, res) => { const auth = await authenti
 router.post("/templates/:id/archive", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const [item] = await db.update(botTemplates).set({ archivedAt: new Date(), updatedAt: new Date() }).where(and(eq(botTemplates.id, req.params.id), eq(botTemplates.ownerKey, auth.key))).returning(); return item ? res.json(item) : fail(res, 404, "Template not found"); });
 
 router.get("/bots", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; return res.json({ bots: await db.select().from(bots).where(and(eq(bots.ownerKey, auth.key), isNull(bots.archivedAt))).orderBy(desc(bots.createdAt)) }); });
-router.post("/bots", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const name = string(req.body?.name), symbol = string(req.body?.symbol, 30); const parsed = dryRunStrategySchema.safeParse(req.body?.config); if (!name || !symbol || !/^[A-Z0-9_]+$/.test(symbol) || !parsed.success) return fail(res, 400, "Invalid bot dry-run strategy"); let templateId: string | null = null; if (req.body?.templateId !== undefined && req.body.templateId !== null && req.body.templateId !== "") { if (!uuidSchema.safeParse(req.body.templateId).success) return fail(res, 400, "Invalid template ID"); const [template] = await db.select({ id: botTemplates.id }).from(botTemplates).where(and(eq(botTemplates.id, req.body.templateId), eq(botTemplates.ownerKey, auth.key), isNull(botTemplates.archivedAt))).limit(1); if (!template) return fail(res, 404, "Template not found"); templateId = template.id; } const [bot] = await db.insert(bots).values({ ownerKey: auth.key, name, symbol, config: parsed.data, templateId }).returning(); return res.status(201).json(bot); });
-router.patch("/bots/:id", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const name = req.body?.name === undefined ? undefined : string(req.body.name); const symbol = req.body?.symbol === undefined ? undefined : string(req.body.symbol, 30); const config = req.body?.config === undefined ? undefined : dryRunStrategySchema.safeParse(req.body.config); if ((req.body?.name !== undefined && !name) || (req.body?.symbol !== undefined && (!symbol || !/^[A-Z0-9_]+$/.test(symbol))) || (config && !config.success)) return fail(res, 400, "Invalid bot update"); const [bot] = await db.update(bots).set({ ...(name ? { name } : {}), ...(symbol ? { symbol } : {}), ...(config?.success ? { config: config.data } : {}), updatedAt: new Date() }).where(and(eq(bots.id, req.params.id), eq(bots.ownerKey, auth.key))).returning(); return bot ? res.json(bot) : fail(res, 404, "Bot not found"); });
+router.post("/bots", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const name = string(req.body?.name), symbol = string(req.body?.symbol, 30); const parsed = dryRunStrategySchema.safeParse(req.body?.config); if (!name || !symbol || !/^[A-Za-z0-9_]+$/.test(symbol) || !parsed.success) return fail(res, 400, "Invalid bot dry-run strategy"); let templateId: string | null = null; if (req.body?.templateId !== undefined && req.body.templateId !== null && req.body.templateId !== "") { if (!uuidSchema.safeParse(req.body.templateId).success) return fail(res, 400, "Invalid template ID"); const [template] = await db.select({ id: botTemplates.id }).from(botTemplates).where(and(eq(botTemplates.id, req.body.templateId), eq(botTemplates.ownerKey, auth.key), isNull(botTemplates.archivedAt))).limit(1); if (!template) return fail(res, 404, "Template not found"); templateId = template.id; } const [bot] = await db.insert(bots).values({ ownerKey: auth.key, name, symbol, config: parsed.data, templateId }).returning(); return res.status(201).json(bot); });
+router.patch("/bots/:id", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const name = req.body?.name === undefined ? undefined : string(req.body.name); const symbol = req.body?.symbol === undefined ? undefined : string(req.body.symbol, 30); const config = req.body?.config === undefined ? undefined : dryRunStrategySchema.safeParse(req.body.config); if ((req.body?.name !== undefined && !name) || (req.body?.symbol !== undefined && (!symbol || !/^[A-Za-z0-9_]+$/.test(symbol))) || (config && !config.success)) return fail(res, 400, "Invalid bot update"); const [bot] = await db.update(bots).set({ ...(name ? { name } : {}), ...(symbol ? { symbol } : {}), ...(config?.success ? { config: config.data } : {}), updatedAt: new Date() }).where(and(eq(bots.id, req.params.id), eq(bots.ownerKey, auth.key))).returning(); return bot ? res.json(bot) : fail(res, 404, "Bot not found"); });
 router.get("/bots/:id/runs", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const botId = String(req.params.id); const [bot] = await db.select({ id: bots.id }).from(bots).where(and(eq(bots.id, botId), eq(bots.ownerKey, auth.key))).limit(1); if (!bot) return fail(res, 404, "Bot not found"); const runs = await db.select().from(botRuns).where(and(eq(botRuns.botId, bot.id), eq(botRuns.ownerKey, auth.key))).orderBy(desc(botRuns.startedAt)); return res.json({ botId: bot.id, runs, trading: { enabled: process.env.TRADING_ENABLED === "true", liveEnabled: process.env.TRADING_LIVE_ENABLED === "true", demoOnly: process.env.TRADING_DEMO_ONLY !== "false" } }); });
 router.post(["/bots/:id/start", "/bots/:id/pause", "/bots/:id/stop", "/bots/:id/archive"], async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const action = req.path.split("/").at(-1)!; const [current] = await db.select().from(bots).where(and(eq(bots.id, String(req.params.id)), eq(bots.ownerKey, auth.key))).limit(1); if (!current) return fail(res, 404, "Bot not found"); const transitions: Record<string, string[]> = { start: ["draft", "paused", "stopped"], pause: ["observing"], stop: ["draft", "observing", "paused"], archive: ["draft", "observing", "paused", "stopped"] }; if (!transitions[action]?.includes(current.status)) return fail(res, 409, "Invalid bot lifecycle transition", `Cannot ${action} a ${current.status} bot.`); const status = action === "start" ? "observing" : action === "pause" ? "paused" : action === "stop" ? "stopped" : "archived"; const [bot] = await db.update(bots).set({ status, ...(action === "archive" ? { archivedAt: new Date() } : {}), updatedAt: new Date() }).where(and(eq(bots.id, current.id), eq(bots.ownerKey, auth.key))).returning(); await db.insert(botEvents).values({ ownerKey: auth.key, botId: bot.id, type: `lifecycle.${action}`, payload: { status } }); return res.json({ bot, capability: action === "start" ? "observation_only" : "state_persisted", note: action === "start" ? "This deployment has no long-running autonomous worker. Use run-once for a persisted dry-run evaluation." : "Vercel does not provide a long-running bot worker." }); });
 router.post("/bots/:id/run-once", async (req, res) => {

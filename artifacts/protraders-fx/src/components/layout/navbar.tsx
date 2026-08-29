@@ -17,7 +17,7 @@ export function Navbar() {
     { path: "/dashboard", label: "Workspace", icon: LayoutDashboard, show: session?.authenticated },
     { path: "/readiness", label: "Preflight", icon: ShieldCheck, show: !!session?.authenticated },
     { path: "/activity", label: "Activity", icon: Activity, show: !!session?.authenticated },
-    { path: "/about", label: "About", icon: UserRound, show: !!session?.authenticated },
+    { path: "/about", label: "About", icon: UserRound, show: true },
     { path: "/markets", label: "Markets", icon: BarChart3, show: session?.authenticated },
     { path: "/bots", label: "Bots", icon: Bot, show: session?.authenticated },
     { path: "/snapshots", label: "Snapshots", icon: Camera, show: session?.authenticated },

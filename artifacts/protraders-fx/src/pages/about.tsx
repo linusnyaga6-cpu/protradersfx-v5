@@ -44,7 +44,7 @@ export default function About() {
     <div className="relative overflow-hidden">
       <section className="border-b bg-secondary/35 px-4 py-16 md:px-8 md:py-24">
         <div className="mx-auto max-w-5xl">
-          <Badge variant="outline" className="border-primary/25 bg-primary/5 text-primary">About the author</Badge>
+          <Badge variant="outline" className="border-primary/25 bg-primary/5 text-primary">About & credits</Badge>
           <div className="mt-7 grid gap-10 lg:grid-cols-[1.2fr_.8fr] lg:items-end">
             <div>
               <h1 className="max-w-3xl text-4xl font-bold tracking-tight md:text-6xl">
@@ -112,6 +112,16 @@ export default function About() {
           <Button asChild variant="secondary" className="shrink-0 gap-2">
             <Link href="/readiness">View the safety model <ArrowRight className="h-4 w-4" /></Link>
           </Button>
+        </div>
+      </section>
+
+      <section className="border-t px-4 py-10 md:px-8">
+        <div className="mx-auto flex max-w-5xl flex-col gap-2 rounded-xl border bg-card p-6 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[.22em] text-primary">Copyright</div>
+            <p className="mt-2 text-sm text-muted-foreground">Copyright © 2026 Linus Nyaga Ndambiri. All rights reserved.</p>
+          </div>
+          <p className="text-sm font-medium text-foreground">Site identifier: Issay-KE</p>
         </div>
       </section>
     </div>

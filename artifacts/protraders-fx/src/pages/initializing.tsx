@@ -34,7 +34,7 @@ export default function Initializing() {
         <div className="mt-5 text-xs font-semibold uppercase tracking-[.24em] text-primary">Secure initialization</div>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight">{failed ? "Account sync needs attention" : account.data?.loginid ? "Workspace ready" : "Connecting your trading workspace"}</h1>
         <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-muted-foreground">
-          {failed ? "Your Deriv login returned, but the live account profile could not be verified in time. Reconnect to refresh authorization." : "Verifying the encrypted session, active account, currency, and real-time balance before opening the terminal."}
+          {failed ? "Account data was not verified. Reconnect and try again." : "Checking your account, currency, and balance."}
         </p>
         <div className="mt-7 space-y-3 text-left text-sm">
           <Status label="Encrypted session" ready={!!session.data?.authenticated} />
