@@ -208,7 +208,7 @@ export default function BulkTrader() {
               <p className="text-xs text-muted-foreground">Runs are sequential and stop at the count entered here.</p>
             </div>
             {account.data?.accountType !== "demo" && <p className="text-xs text-destructive">Bulk Trader requires the protected Deriv demo account.</p>}
-            {!validSetup && <p className="text-xs text-destructive">Enter a positive stake within the controlled limit and a whole-number run count from 1 to 100.</p>}
+            {!validSetup && <p className="text-xs text-destructive">Enter a valid stake amount within the controlled limit and a whole-number run count from 1 to 100.</p>}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setSetupOpen(false)}>Cancel</Button>

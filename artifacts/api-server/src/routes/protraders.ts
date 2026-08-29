@@ -643,7 +643,7 @@ router.post("/trades/preview", async (req, res) => {
   const previewErrors = [
     !contractType ? "Choose a supported Deriv contract type." : "",
     !/^[A-Z0-9_]+$/.test(symbol) ? "Choose a valid market symbol." : "",
-    !Number.isFinite(stake) || stake <= 0 ? "Stake must be greater than 0." : "",
+    !Number.isFinite(stake) || stake <= 0 ? "Enter a valid stake amount." : "",
     stake > maxStake ? `Stake cannot exceed ${maxStake}.` : "",
     !Number.isInteger(duration) || duration < 1 ? "Duration must be at least 1 tick." : "",
     duration > maxDuration ? `Duration cannot exceed ${maxDuration} ticks.` : "",
@@ -727,7 +727,7 @@ router.post("/trades", async (req, res) => {
   const validationErrors = [
     !contractType ? "Choose a supported Deriv contract type." : "",
     !/^([A-Z0-9_]+)$/.test(symbol) ? "Choose a valid symbol." : "",
-    !Number.isFinite(stake) || stake <= 0 ? "Stake must be greater than 0." : "",
+    !Number.isFinite(stake) || stake <= 0 ? "Enter a valid stake amount." : "",
     stake > maxStake ? `Stake cannot exceed ${maxStake}.` : "",
     !Number.isInteger(duration) || duration < 1 ? "Duration must be at least 1 tick." : "",
     duration > maxDuration ? `Duration cannot exceed ${maxDuration} ticks.` : "",

@@ -326,16 +326,16 @@ function BotBuilder({ bot, accountCurrency, onUpdate }: { bot: any, accountCurre
     if (!symbol.trim() || !/^[A-Z0-9_]+$/.test(symbol)) errs.symbol = "Choose a valid Deriv symbol";
     if (!availableTypes.includes(contractType)) errs.contractType = "This contract is not currently offered for the selected symbol";
     const stakeNum = Number(stake);
-    if (isNaN(stakeNum) || stakeNum <= 0) errs.stake = "Stake must be positive";
-    const durationNum = Number(duration);
-    if (isNaN(durationNum) || durationNum < 1 || !Number.isInteger(durationNum)) errs.duration = "Duration must be positive integer";
+     if (isNaN(stakeNum) || stakeNum <= 0) errs.stake = "Stake must be a valid amount";
+     const durationNum = Number(duration);
+     if (isNaN(durationNum) || durationNum < 1 || !Number.isInteger(durationNum)) errs.duration = "Duration must be a valid whole number";
     const runCountNum = Number(runCount);
     if (!Number.isInteger(runCountNum) || runCountNum < 1 || runCountNum > 10) errs.runCount = "Runs must be a whole number from 1 to 10";
     const takeProfitNum = Number(takeProfit);
-    if (!Number.isFinite(takeProfitNum) || takeProfitNum <= 0) errs.takeProfit = "Take profit must be positive";
+     if (!Number.isFinite(takeProfitNum) || takeProfitNum <= 0) errs.takeProfit = "Take profit must be a valid amount";
     const capNum = Number(riskCap);
-    if (isNaN(capNum) || capNum <= 0) errs.riskCap = "Risk cap must be positive";
-    if (!Number.isFinite(Number(stopLoss)) || Number(stopLoss) <= 0) errs.stopLoss = "Stop loss must be positive";
+     if (isNaN(capNum) || capNum <= 0) errs.riskCap = "Risk cap must be a valid amount";
+     if (!Number.isFinite(Number(stopLoss)) || Number(stopLoss) <= 0) errs.stopLoss = "Stop loss must be a valid amount";
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
