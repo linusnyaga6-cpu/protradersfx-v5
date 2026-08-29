@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { BarChart3, Bot, Search } from "lucide-react"
 import { useLocation } from "wouter"
-import { ALL_MARKET_SYMBOLS } from "@/lib/markets"
+import { useDerivMarkets } from "@/hooks/use-deriv-markets"
 import {
   CommandDialog,
   CommandEmpty,
@@ -14,8 +14,6 @@ import {
 } from "@/components/ui/command"
 import { Button } from "@/components/ui/button"
 
-const markets = ALL_MARKET_SYMBOLS
-
 const pages = [
   { label: "Analysis Tools", hint: "Live quotes and movement", href: "/analysis", icon: BarChart3 },
   { label: "Markets", hint: "Quotes, charts, and instruments", href: "/markets", icon: BarChart3 },
@@ -26,6 +24,7 @@ const pages = [
 export function GlobalSearch() {
   const [, navigate] = useLocation()
   const [open, setOpen] = useState(false)
+  const marketQuery = useDerivMarkets()
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -72,10 +71,11 @@ export function GlobalSearch() {
           </CommandGroup>
           <CommandSeparator />
           <CommandGroup heading="Markets">
-            {markets.map(symbol => (
-              <CommandItem key={symbol} value={symbol} onSelect={() => go("/markets")}>
+            {marketQuery.markets.map(market => (
+              <CommandItem key={market.symbol} value={`${market.displayName} ${market.symbol}`} onSelect={() => go("/markets")}>
                 <BarChart3 className="text-primary/70 mr-2" />
-                <span className="font-mono">{symbol}</span>
+                <span>{market.displayName}</span>
+                <span className="ml-2 font-mono text-xs text-muted-foreground">{market.symbol}</span>
                 <span className="ml-auto text-xs text-muted-foreground">Open market</span>
               </CommandItem>
             ))}

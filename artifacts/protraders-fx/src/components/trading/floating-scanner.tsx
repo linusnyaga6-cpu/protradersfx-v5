@@ -13,9 +13,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { formatVolatility } from "@/lib/format"
-import { ALL_MARKET_SYMBOLS } from "@/lib/markets"
-
-const symbols = ALL_MARKET_SYMBOLS
+import { DEFAULT_MARKET_SYMBOL, marketLabel } from "@/lib/markets"
+import { useDerivMarkets } from "@/hooks/use-deriv-markets"
 
 type ScannerResult = {
   symbol: string
@@ -30,7 +29,12 @@ type ScannerResult = {
 export function FloatingScanner() {
   const { data: session } = useGetSessionStatus({ query: { queryKey: getGetSessionStatusQueryKey() } })
   const [open, setOpen] = useState(false)
-  const [symbol, setSymbol] = useState("R_100")
+  const [symbol, setSymbol] = useState(DEFAULT_MARKET_SYMBOL)
+  const marketQuery = useDerivMarkets()
+  const scannerMarkets = marketQuery.volatilityMarkets.length ? marketQuery.volatilityMarkets : marketQuery.markets
+  useEffect(() => {
+    if (scannerMarkets.length && !scannerMarkets.some(item => item.symbol === symbol)) setSymbol(marketQuery.defaultSymbol)
+  }, [scannerMarkets, marketQuery.defaultSymbol, symbol])
   const [position, setPosition] = useState(() => {
     if (typeof window === "undefined") return { x: 0, y: 0 }
     try {
@@ -44,7 +48,7 @@ export function FloatingScanner() {
   const [error, setError] = useState("")
   const drag = useRef<{ x: number; y: number; startX: number; startY: number } | null>(null)
   const analyzeMarket = useAnalyzeMarket()
-  const ticker = useGetMarketTicker(symbol, { query: { queryKey: getGetMarketTickerQueryKey(symbol), enabled: !!session?.authenticated && open, refetchInterval: 5000 } })
+  const ticker = useGetMarketTicker(symbol, { query: { queryKey: getGetMarketTickerQueryKey(symbol), enabled: !!session?.authenticated && open, refetchInterval: 15000 } })
   const candleParams = { count: 60, granularity: 60 }
   const candles = useGetMarketCandles(symbol, candleParams, { query: { queryKey: getGetMarketCandlesQueryKey(symbol, candleParams), enabled: !!session?.authenticated && open, staleTime: 30000 } })
 
@@ -140,7 +144,7 @@ export function FloatingScanner() {
         <div className="flex gap-2">
           <Select value={symbol} onValueChange={(value) => { setSymbol(value); setResult(null); setError("") }}>
             <SelectTrigger className="bg-background/70"><SelectValue /></SelectTrigger>
-            <SelectContent>{symbols.map(item => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
+            <SelectContent>{scannerMarkets.map(item => <SelectItem key={item.symbol} value={item.symbol}>{marketLabel(item, item.symbol)}</SelectItem>)}</SelectContent>
           </Select>
           <Button onClick={analyze} disabled={analyzeMarket.isPending || ticker.isLoading || candles.isLoading} data-testid="button-run-scanner">
             {analyzeMarket.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
@@ -181,7 +185,7 @@ export function FloatingScanner() {
                  <div className="flex flex-wrap justify-end gap-2">
                  <Button size="sm" variant="outline" onClick={() => {
                    const direction = result.analysis.bias === "bullish" ? "CALL" : result.analysis.bias === "bearish" ? "PUT" : "CALL"
-                   window.location.href = `/dashboard?symbol=${encodeURIComponent(symbol)}&direction=${direction}&source=ai_assisted`
+                    window.location.href = `/bulk-trade?symbol=${encodeURIComponent(symbol)}&contract=${direction}&source=ai_assisted`
                  }} data-testid="button-review-ai-trade">
                    Review order <ArrowRight className="ml-1 h-3.5 w-3.5" />
                  </Button>

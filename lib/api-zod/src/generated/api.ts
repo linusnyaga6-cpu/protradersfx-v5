@@ -121,6 +121,9 @@ export const GetAccountResponse = zod.object({
 /**
  * @summary Open a controlled Deriv trade
  */
+export const createTradeBodyBarrierRegExp = new RegExp('^[0-9]$');
+export const createTradeBodyStopLossExclusiveMin = 0;
+
 export const createTradeBodyStakeExclusiveMin = 0;
 
 
@@ -130,7 +133,9 @@ export const createTradeBodyRequestLabelMax = 120;
 
 export const CreateTradeBody = zod.object({
   "symbol": zod.string(),
-  "contract_type": zod.enum(['CALL', 'PUT']),
+  "contract_type": zod.enum(['CALL', 'PUT', 'DIGITOVER', 'DIGITUNDER', 'DIGITEVEN', 'DIGITODD']),
+  "barrier": zod.string().regex(createTradeBodyBarrierRegExp).optional().describe('Required for digit over and digit under contracts.'),
+  "stop_loss": zod.number().gt(createTradeBodyStopLossExclusiveMin).optional(),
   "stake": zod.number().gt(createTradeBodyStakeExclusiveMin),
   "duration": zod.number().min(1),
   "source": zod.enum(['manual', 'bulk', 'ai_assisted', 'bot_assisted']).optional(),
@@ -144,7 +149,9 @@ export const CreateTradeResponse = zod.object({
   "contractId": zod.string().nullable(),
   "transactionId": zod.string().nullable(),
   "status": zod.string(),
-  "netProfit": zod.number().nullable()
+  "netProfit": zod.number().nullable(),
+  "stopLossApplied": zod.boolean().nullable(),
+  "stopLossMessage": zod.string().nullable()
 })
 
 
@@ -178,6 +185,16 @@ export const RefreshTransactionResponse = zod.record(zod.string(), zod.unknown()
  * @summary List active Deriv market symbols
  */
 export const ListMarketSymbolsResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * @summary List Deriv contract types available for a symbol
+ */
+export const GetMarketContractsParams = zod.object({
+  "symbol": zod.coerce.string()
+})
+
+export const GetMarketContractsResponse = zod.record(zod.string(), zod.unknown())
 
 
 /**
@@ -270,6 +287,13 @@ export const createBotBodyNameMax = 160;
 
 export const createBotBodySymbolMax = 30;
 
+export const createBotBodyConfigBarrierRegExp = new RegExp('^[0-9]$');
+export const createBotBodyConfigStopLossExclusiveMin = 0;
+export const createBotBodyConfigStopLossMax = 10000;
+
+export const createBotBodyConfigRunCountMax = 10;
+export const createBotBodyConfigRunCountMultipleOf = 1;
+
 export const createBotBodyConfigStakeExclusiveMin = 0;
 export const createBotBodyConfigStakeMax = 10000;
 
@@ -291,6 +315,10 @@ export const CreateBotBody = zod.object({
   "indicator": zod.enum(['ema', 'rsi', 'macd']),
   "direction": zod.enum(['CALL', 'PUT', 'BOTH']),
   "mode": zod.enum(['market_observer', 'recovery_guard']).optional(),
+  "contractType": zod.enum(['CALL', 'PUT', 'DIGITOVER', 'DIGITUNDER', 'DIGITEVEN', 'DIGITODD']).optional(),
+  "barrier": zod.string().regex(createBotBodyConfigBarrierRegExp).optional(),
+  "stopLoss": zod.number().gt(createBotBodyConfigStopLossExclusiveMin).max(createBotBodyConfigStopLossMax).optional(),
+  "runCount": zod.number().min(1).max(createBotBodyConfigRunCountMax).multipleOf(createBotBodyConfigRunCountMultipleOf).optional(),
   "stake": zod.number().gt(createBotBodyConfigStakeExclusiveMin).max(createBotBodyConfigStakeMax),
   "duration": zod.number().min(1).max(createBotBodyConfigDurationMax).multipleOf(createBotBodyConfigDurationMultipleOf),
   "riskCap": zod.number().gt(createBotBodyConfigRiskCapExclusiveMin).max(createBotBodyConfigRiskCapMax),
@@ -313,6 +341,13 @@ export const updateBotBodyNameMax = 160;
 
 export const updateBotBodySymbolMax = 30;
 
+export const updateBotBodyConfigBarrierRegExp = new RegExp('^[0-9]$');
+export const updateBotBodyConfigStopLossExclusiveMin = 0;
+export const updateBotBodyConfigStopLossMax = 10000;
+
+export const updateBotBodyConfigRunCountMax = 10;
+export const updateBotBodyConfigRunCountMultipleOf = 1;
+
 export const updateBotBodyConfigStakeExclusiveMin = 0;
 export const updateBotBodyConfigStakeMax = 10000;
 
@@ -333,6 +368,10 @@ export const UpdateBotBody = zod.object({
   "indicator": zod.enum(['ema', 'rsi', 'macd']),
   "direction": zod.enum(['CALL', 'PUT', 'BOTH']),
   "mode": zod.enum(['market_observer', 'recovery_guard']).optional(),
+  "contractType": zod.enum(['CALL', 'PUT', 'DIGITOVER', 'DIGITUNDER', 'DIGITEVEN', 'DIGITODD']).optional(),
+  "barrier": zod.string().regex(updateBotBodyConfigBarrierRegExp).optional(),
+  "stopLoss": zod.number().gt(updateBotBodyConfigStopLossExclusiveMin).max(updateBotBodyConfigStopLossMax).optional(),
+  "runCount": zod.number().min(1).max(updateBotBodyConfigRunCountMax).multipleOf(updateBotBodyConfigRunCountMultipleOf).optional(),
   "stake": zod.number().gt(updateBotBodyConfigStakeExclusiveMin).max(updateBotBodyConfigStakeMax),
   "duration": zod.number().min(1).max(updateBotBodyConfigDurationMax).multipleOf(updateBotBodyConfigDurationMultipleOf),
   "riskCap": zod.number().gt(updateBotBodyConfigRiskCapExclusiveMin).max(updateBotBodyConfigRiskCapMax),

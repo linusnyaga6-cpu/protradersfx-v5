@@ -1,16 +1,18 @@
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { Layers3, Loader2 } from "lucide-react"
 import {
   getGetAccountQueryKey,
   getGetMarketCandlesQueryKey,
   getGetMarketTickerQueryKey,
+  getGetMarketContractsQueryKey,
   getGetProtradersPreflightQueryKey,
   getGetSessionStatusQueryKey,
   useCreateTrade,
   useGetAccount,
   useGetMarketCandles,
   useGetMarketTicker,
+  useGetMarketContracts,
   useGetProtradersPreflight,
   useGetSessionStatus,
 } from "@workspace/api-client-react"
@@ -21,10 +23,15 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { AccountStrip } from "@/components/trading/account-strip"
 import { formatMoney, formatVolatility } from "@/lib/format"
-import { ALL_MARKET_SYMBOLS } from "@/lib/markets"
+import { CONTRACT_LABELS, DEFAULT_MARKET_SYMBOL, marketLabel } from "@/lib/markets"
+import { useDerivMarkets } from "@/hooks/use-deriv-markets"
 
 export default function BulkTrade() {
-  const [selectedMarket, setSelectedMarket] = useState("R_100")
+  const requested = typeof window === "undefined" ? null : new URLSearchParams(window.location.search)
+  const [selectedMarket, setSelectedMarket] = useState(requested?.get("symbol") || DEFAULT_MARKET_SYMBOL)
+  const [contractType, setContractType] = useState(requested?.get("contract") || "DIGITOVER")
+  const [barrier, setBarrier] = useState("5")
+  const [stopLoss, setStopLoss] = useState("1")
   const [stake, setStake] = useState("10")
   const [duration, setDuration] = useState("5")
   const [batchSize, setBatchSize] = useState("3")
@@ -32,6 +39,20 @@ export default function BulkTrade() {
   const [isRunning, setIsRunning] = useState(false)
   const createTrade = useCreateTrade()
   const queryClient = useQueryClient()
+  const marketQuery = useDerivMarkets()
+  const marketGroups = useMemo(() => {
+    const groups = new Map<string, typeof marketQuery.markets>()
+    for (const market of marketQuery.markets) {
+      const key = market.submarketDisplayName || market.marketDisplayName || "Deriv markets"
+      groups.set(key, [...(groups.get(key) || []), market])
+    }
+    return [...groups.entries()]
+  }, [marketQuery.markets])
+  useEffect(() => {
+    if (marketQuery.markets.length && !marketQuery.markets.some(item => item.symbol === selectedMarket)) {
+      setSelectedMarket(marketQuery.defaultSymbol)
+    }
+  }, [marketQuery.markets, marketQuery.defaultSymbol, selectedMarket])
   const { data: session } = useGetSessionStatus({ query: { queryKey: getGetSessionStatusQueryKey() } })
   const preflight = useGetProtradersPreflight({ query: { queryKey: getGetProtradersPreflightQueryKey() } })
   const account = useGetAccount({
@@ -43,14 +64,28 @@ export default function BulkTrade() {
   })
   const accountCurrency = account.data?.currency || "USD"
   const canRun = Boolean(session?.authenticated && account.data?.accountType === "demo" && preflight.data?.tradingEnabled && preflight.data?.demoOnly)
-  const ticker = useGetMarketTicker(selectedMarket, { query: { queryKey: getGetMarketTickerQueryKey(selectedMarket), refetchInterval: 5000 } })
+  const ticker = useGetMarketTicker(selectedMarket, { query: { queryKey: getGetMarketTickerQueryKey(selectedMarket), refetchInterval: 15000 } })
   const candles = useGetMarketCandles(selectedMarket, { count: 60, granularity: 60 }, { query: { queryKey: getGetMarketCandlesQueryKey(selectedMarket, { count: 60, granularity: 60 }), refetchInterval: 30000 } })
   const marketData = candles.data as any
   const marketQuote = (ticker.data as any)?.quote ?? (ticker.data as any)?.price
   const marketOffline = ticker.isError || (ticker.data as any)?.available === false
+  const contracts = useGetMarketContracts(selectedMarket, {
+    query: {
+      queryKey: getGetMarketContractsQueryKey(selectedMarket),
+      enabled: Boolean(selectedMarket),
+      staleTime: 60_000,
+    },
+  })
+  const availableTypes = Array.isArray((contracts.data as any)?.availableContractTypes)
+    ? (contracts.data as any).availableContractTypes.filter((item: string) => CONTRACT_LABELS[item])
+    : []
+  useEffect(() => {
+    if (availableTypes.length && !availableTypes.includes(contractType)) setContractType(availableTypes[0])
+  }, [availableTypes.join("|"), contractType])
+  const needsBarrier = Boolean(CONTRACT_LABELS[contractType]?.needsBarrier)
 
   const requestedBatchSize = Math.min(10, Math.max(1, Math.floor(Number(batchSize) || 0)))
-  const validOrder = Number(stake) > 0 && Number(duration) > 0 && Number.isInteger(Number(duration)) && Number.isInteger(Number(batchSize)) && Number(batchSize) >= 1 && Number(batchSize) <= 10
+  const validOrder = Number(stake) > 0 && Number(stopLoss) > 0 && Number(duration) > 0 && Number.isInteger(Number(duration)) && Number.isInteger(Number(batchSize)) && Number(batchSize) >= 1 && Number(batchSize) <= 10 && availableTypes.includes(contractType) && (!needsBarrier || /^[0-9]$/.test(barrier))
   const executeBatch = async () => {
     if (!canRun || !validOrder || isRunning) return
     const count = requestedBatchSize
@@ -71,7 +106,9 @@ export default function BulkTrade() {
         const result = await createTrade.mutateAsync({
           data: {
             symbol: selectedMarket,
-            contract_type: "CALL",
+            contract_type: contractType,
+            ...(needsBarrier ? { barrier } : {}),
+            stop_loss: Number(stopLoss),
             stake: Number(stake),
             duration: Number(duration),
             source: "bulk",
@@ -119,19 +156,25 @@ export default function BulkTrade() {
            <CardContent className="space-y-4 p-5">
                <div className="space-y-2">
                  <Label htmlFor="bulk-market">Market</Label>
-                 <select id="bulk-market" value={selectedMarket} onChange={event => setSelectedMarket(event.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 font-mono text-sm" data-testid="select-bulk-market">
-                   {ALL_MARKET_SYMBOLS.map(symbol => <option key={symbol} value={symbol}>{symbol}</option>)}
+                  <select id="bulk-market" value={selectedMarket} onChange={event => setSelectedMarket(event.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" data-testid="select-bulk-market">
+                    {marketGroups.map(([group, markets]) => (
+                      <optgroup key={group} label={group}>
+                        {markets.map(market => <option key={market.symbol} value={market.symbol}>{marketLabel(market, market.symbol)}</option>)}
+                      </optgroup>
+                    ))}
                  </select>
+                  {marketQuery.isLoading && <p className="text-xs text-muted-foreground">Loading active markets from Deriv…</p>}
+                  {marketQuery.isError && <p className="text-xs text-destructive">Deriv market discovery is unavailable.</p>}
                </div>
                <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4">
-                <div><div className="text-[10px] uppercase tracking-[.2em] text-muted-foreground">Live market to review</div><div className="mt-1 font-mono text-2xl font-semibold">{selectedMarket}</div></div>
+                 <div><div className="text-[10px] uppercase tracking-[.2em] text-muted-foreground">Live market to review</div><div className="mt-1 text-xl font-semibold">{marketLabel(marketQuery.markets.find(item => item.symbol === selectedMarket), selectedMarket)}</div></div>
                <Badge variant={marketOffline ? "destructive" : "success"}>{marketOffline ? "OFFLINE" : "LIVE"}</Badge>
              </div>
              <div className="grid grid-cols-2 gap-2">
                <MarketMetric label="Quote" value={marketQuote == null ? "Unavailable" : String(marketQuote)} />
                <MarketMetric label="Volatility" value={marketData?.indicators ? formatVolatility(marketData.indicators.volatilityLevel, marketData.indicators.volatilityPct) : "Unavailable"} />
              </div>
-              <p className="text-xs leading-5 text-muted-foreground">All supported markets are available for review. Select one market per sequential batch; “live” reflects the current Deriv response, not a guaranteed outcome.</p>
+               <p className="text-xs leading-5 text-muted-foreground">All standard and 1-second volatility families are listed. Quotes, candles, contract types, and every order are validated live by Deriv for the selected symbol.</p>
           </CardContent>
         </Card>
 
@@ -139,8 +182,35 @@ export default function BulkTrade() {
           <CardHeader className="border-b bg-secondary/10"><CardTitle className="text-lg">Order</CardTitle></CardHeader>
           <CardContent className="space-y-4 p-5">
             <div className="space-y-2">
+              <Label>Trading type</Label>
+              <div className="grid grid-cols-2 gap-2" data-testid="contract-type-grid">
+                {availableTypes.map((type: string) => (
+                  <Button key={type} type="button" variant={contractType === type ? "default" : "outline"} onClick={() => setContractType(type)} data-testid={`button-contract-${type}`}>
+                    {CONTRACT_LABELS[type]?.action || type}
+                  </Button>
+                ))}
+              </div>
+              {contracts.isLoading && <p className="text-xs text-muted-foreground">Checking contracts offered by Deriv…</p>}
+              {!contracts.isLoading && !availableTypes.length && <p className="text-xs text-destructive">No supported contracts are currently offered for this symbol.</p>}
+            </div>
+            {needsBarrier && (
+              <div className="space-y-2">
+                <Label>Digit barrier</Label>
+                <div className="grid grid-cols-5 gap-2">
+                  {Array.from({ length: 10 }, (_, digit) => String(digit)).map(digit => (
+                    <Button key={digit} type="button" size="sm" variant={barrier === digit ? "default" : "outline"} onClick={() => setBarrier(digit)} data-testid={`button-barrier-${digit}`}>{digit}</Button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="space-y-2">
               <Label htmlFor="bulk-stake">Stake ({accountCurrency})</Label>
               <Input id="bulk-stake" type="number" min="0.01" step="0.01" value={stake} onChange={event => setStake(event.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bulk-stop-loss">Stop loss ({accountCurrency})</Label>
+              <Input id="bulk-stop-loss" type="number" min="0.01" step="0.01" value={stopLoss} onChange={event => setStopLoss(event.target.value)} />
+              <p className="text-xs leading-5 text-muted-foreground">Applied to each accepted contract through Deriv’s contract-update API. Any provider rejection is shown in the result.</p>
             </div>
              <div className="space-y-2">
               <Label htmlFor="bulk-duration">Duration</Label>
@@ -153,10 +223,12 @@ export default function BulkTrade() {
              </div>
             <div className="rounded-lg bg-secondary/40 p-3 text-sm">
                 <div className="flex justify-between"><span className="text-muted-foreground">Market</span><span className="font-mono">{selectedMarket}</span></div>
+                <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Type</span><span>{CONTRACT_LABELS[contractType]?.action || contractType}{needsBarrier ? ` ${barrier}` : ""}</span></div>
                 <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Entries</span><span>{requestedBatchSize}</span></div>
+                <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Stop loss / entry</span><span>{formatMoney(Number(stopLoss || 0), accountCurrency)}</span></div>
                 <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Total stake</span><span>{formatMoney(Number(stake || 0) * requestedBatchSize, accountCurrency)}</span></div>
             </div>
-              {!validOrder && <p className="text-xs text-destructive">Enter a positive stake, whole-number duration, and at least one batch entry.</p>}
+              {!validOrder && <p className="text-xs text-destructive">Choose an available Deriv contract and enter valid stake, stop loss, duration, and batch size.</p>}
               <Button className="w-full" onClick={executeBatch} disabled={!canRun || !validOrder || isRunning || marketOffline} data-testid="button-execute-bulk">
                {isRunning && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isRunning ? "Running reviewed batch..." : "Run reviewed batch"}

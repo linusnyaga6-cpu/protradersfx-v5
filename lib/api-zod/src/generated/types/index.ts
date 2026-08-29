@@ -12,6 +12,7 @@ export * from './analytics';
 export * from './botInput';
 export * from './botPatchInput';
 export * from './dryRunStrategy';
+export * from './dryRunStrategyContractType';
 export * from './dryRunStrategyDirection';
 export * from './dryRunStrategyExecution';
 export * from './dryRunStrategyIndicator';

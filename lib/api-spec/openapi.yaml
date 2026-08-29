@@ -218,6 +218,15 @@ paths:
       summary: List active Deriv market symbols
       responses:
         "200": { description: Active symbols, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }
+  /market/contracts/{symbol}:
+    get:
+      operationId: getMarketContracts
+      tags: [protraders]
+      summary: List Deriv contract types available for a symbol
+      parameters:
+        - { name: symbol, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Available Deriv contract types, content: { application/json: { schema: { $ref: "#/components/schemas/WorkspaceData" } } } }
   /market/ticker/{symbol}:
     get:
       operationId: getMarketTicker
@@ -315,6 +324,10 @@ components:
         indicator: { type: string, enum: [ema, rsi, macd] }
         direction: { type: string, enum: [CALL, PUT, BOTH] }
         mode: { type: string, enum: [market_observer, recovery_guard] }
+        contractType: { type: string, enum: [CALL, PUT, DIGITOVER, DIGITUNDER, DIGITEVEN, DIGITODD] }
+        barrier: { type: string, pattern: "^[0-9]$" }
+        stopLoss: { type: number, exclusiveMinimum: 0, maximum: 10000 }
+        runCount: { type: number, minimum: 1, maximum: 10, multipleOf: 1 }
         stake: { type: number, exclusiveMinimum: 0, maximum: 10000 }
         duration: { type: number, minimum: 1, maximum: 3600, multipleOf: 1 }
         riskCap: { type: number, exclusiveMinimum: 0, maximum: 100000 }
@@ -490,7 +503,14 @@ components:
           type: string
         contract_type:
           type: string
-          enum: [CALL, PUT]
+          enum: [CALL, PUT, DIGITOVER, DIGITUNDER, DIGITEVEN, DIGITODD]
+        barrier:
+          type: string
+          pattern: "^[0-9]$"
+          description: Required for digit over and digit under contracts.
+        stop_loss:
+          type: number
+          exclusiveMinimum: 0
         stake:
           type: number
           exclusiveMinimum: 0
@@ -527,6 +547,10 @@ components:
           type: string
         netProfit:
           type: ["number", "null"]
+        stopLossApplied:
+          type: ["boolean", "null"]
+        stopLossMessage:
+          type: ["string", "null"]
       required:
         - ok
         - message
@@ -534,4 +558,6 @@ components:
         - transactionId
         - status
         - netProfit
+        - stopLossApplied
+        - stopLossMessage
 

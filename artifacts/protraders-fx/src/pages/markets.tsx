@@ -10,14 +10,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AccountStrip } from "@/components/trading/account-strip"
 import { BotRunSummary } from "@/components/trading/bot-run-summary"
 import { formatVolatility } from "@/lib/format"
-import { ALL_MARKET_SYMBOLS } from "@/lib/markets"
+import { DEFAULT_MARKET_SYMBOL, marketLabel } from "@/lib/markets"
+import { useDerivMarkets } from "@/hooks/use-deriv-markets"
 
-const fallback = ALL_MARKET_SYMBOLS
 export default function Markets() {
-  const [symbol,setSymbol] = useState("R_100")
+  const [symbol,setSymbol] = useState(DEFAULT_MARKET_SYMBOL)
   const [marketSearch,setMarketSearch] = useState("")
-  const symbols = useListMarketSymbols({query:{queryKey:getListMarketSymbolsQueryKey(),staleTime:30000}})
-  const ticker = useGetMarketTicker(symbol,{query:{queryKey:getGetMarketTickerQueryKey(symbol),refetchInterval:3000}})
+  const marketQuery = useDerivMarkets()
+  const ticker = useGetMarketTicker(symbol,{query:{queryKey:getGetMarketTickerQueryKey(symbol),refetchInterval:15000}})
   const candles = useGetMarketCandles(symbol,{count:60,granularity:60},{query:{queryKey:getGetMarketCandlesQueryKey(symbol,{count:60,granularity:60}),staleTime:30000}})
   const account = useGetAccount({query:{queryKey:getGetAccountQueryKey(),refetchInterval:5000}})
   const bots = useListBots({query:{queryKey:getListBotsQueryKey(),refetchInterval:10000}})
@@ -28,8 +28,7 @@ export default function Markets() {
   }, [selectedBotId, botList])
   const botRuns = useListBotRuns(selectedBotId,{query:{queryKey:getListBotRunsQueryKey(selectedBotId),enabled:Boolean(selectedBotId),refetchInterval:5000}})
   const botRunRows = Array.isArray((botRuns.data as any)?.runs) ? (botRuns.data as any).runs : []
-  const providerSymbols = Array.isArray((symbols.data as any)?.symbols) ? (symbols.data as any).symbols : []
-  const list = providerSymbols.length ? providerSymbols : fallback
+  const list = marketQuery.markets
   const visibleSymbols = list.filter((item:any) => {
     const value = typeof item === "string" ? item : item.symbol
     return value?.toLowerCase().includes(marketSearch.toLowerCase())
@@ -41,7 +40,7 @@ export default function Markets() {
     <div className="grid gap-5 lg:grid-cols-[250px_1fr]">
        <Card><CardHeader><CardTitle className="text-sm uppercase tracking-widest text-muted-foreground">Instruments</CardTitle></CardHeader><CardContent className="space-y-2">
          <div className="relative mb-3"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground"/><Input aria-label="Search symbols" data-testid="input-symbol-search" className="pl-9" placeholder="Filter symbols" value={marketSearch} onChange={event => setMarketSearch(event.target.value)}/></div>
-         {visibleSymbols.length ? visibleSymbols.map((s:any) => { const value=typeof s==="string"?s:s.symbol; return <Button key={value} variant={value===symbol?"secondary":"ghost"} className="w-full justify-between" onClick={()=>setSymbol(value)} data-testid={`button-symbol-${value}`}><span>{value}</span><span className="font-mono text-xs text-muted-foreground">DERIV</span></Button>}) : <div className="px-2 py-5 text-center text-sm text-muted-foreground">No symbols found.</div>}
+          {marketQuery.isLoading ? <div className="px-2 py-5 text-center text-sm text-muted-foreground">Loading active markets from Deriv…</div> : visibleSymbols.length ? visibleSymbols.map((s:any) => { const value=s.symbol; return <Button key={value} variant={value===symbol?"secondary":"ghost"} className="w-full justify-between" onClick={()=>setSymbol(value)} data-testid={`button-symbol-${value}`}><span className="text-left"><span className="block">{s.displayName}</span><span className="font-mono text-[10px] text-muted-foreground">{value}</span></span><span className="font-mono text-xs text-muted-foreground">DERIV</span></Button>}) : <div className="px-2 py-5 text-center text-sm text-muted-foreground">{marketQuery.isError ? "Deriv market list unavailable." : "No symbols found."}</div>}
       </CardContent></Card>
       <div className="space-y-5">
          <Card className="overflow-hidden"><CardHeader className="flex-row items-center justify-between border-b bg-secondary/30"><div><CardTitle className="flex items-center gap-2 text-xl"><BarChart3 className="h-5 w-5 text-primary"/>{symbol}</CardTitle><p className="mt-1 text-xs text-muted-foreground">Synthetic index · live quote</p></div><Badge variant={tickerOffline?"destructive":"success"}><Radio className="mr-1 h-3 w-3"/>{tickerOffline?"OFFLINE":"LIVE"}</Badge></CardHeader><CardContent className="p-6"><div className="flex items-end gap-5"><div className="font-numeric text-5xl">{tick?.quote ?? tick?.price ?? "—"}</div><div className="pb-2 text-sm text-muted-foreground">{tickerOffline ? "Quote unavailable" : "last price"}</div></div><div className="mt-6 h-56 rounded-lg border bg-[linear-gradient(150deg,hsl(var(--secondary)),transparent)] p-3"><ChartGrid data={candle}/></div><div className="mt-3 grid grid-cols-4 gap-2 text-xs">{["open","high","low","close"].map(k=><div key={k} className="rounded bg-secondary/60 p-2"><div className="uppercase text-muted-foreground">{k}</div><div className="mt-1 font-numeric">{candle?.candles?.at?.(-1)?.[k]??"—"}</div></div>)}</div><div className="mt-4 flex justify-between text-xs text-muted-foreground"><span>Source: Deriv market endpoint · actual price scale</span><span>{candles.isLoading ? "Requesting history…" : candle ? `As of ${candle.asOf??"server timestamp"}` : "History unavailable"}</span></div></CardContent></Card>

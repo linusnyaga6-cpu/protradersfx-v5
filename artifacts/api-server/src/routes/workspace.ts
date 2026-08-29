@@ -8,7 +8,7 @@ import {
   analyses, botEvents, botRuns, bots, botTemplates, db, recoveryIncidents,
   riskAcknowledgements, snapshots,
 } from "@workspace/db";
-import { getSession, listDerivAccounts } from "./protraders";
+import { derivRequest, getSession, listDerivAccounts } from "./protraders";
 
 const router = Router();
 const RISK_VERSION = "2025-01";
@@ -30,6 +30,10 @@ const dryRunStrategySchema = z.object({
   indicator: z.enum(["ema", "rsi", "macd"]),
   direction: z.enum(["CALL", "PUT", "BOTH"]),
   mode: z.enum(["market_observer", "recovery_guard"]).optional(),
+  contractType: z.enum(["CALL", "PUT", "DIGITOVER", "DIGITUNDER", "DIGITEVEN", "DIGITODD"]).optional(),
+  barrier: z.string().regex(/^[0-9]$/).optional(),
+  stopLoss: z.number().positive().max(10_000).optional(),
+  runCount: z.number().int().min(1).max(10).optional(),
   stake: z.number().positive().max(10_000),
   duration: z.number().int().positive().max(3_600),
   riskCap: z.number().positive().max(100_000),
@@ -44,10 +48,35 @@ const builtIns = [
   { id: "recovery-guard", name: "Recovery Guard", description: "Checks current account and market freshness plus recent failed dry-runs, then returns a bounded monitor-or-pause review state.", strategy: { indicator: "rsi", direction: "BOTH", mode: "recovery_guard", stake: 1, duration: 5, riskCap: 5, notes: "If account or market data is stale, or a prior dry-run failed, pause and review logs. Never increase stake or retry an order.", execution: "dry_run" } },
 ];
 
+const standardVolatilityLevels = [10, 15, 25, 30, 50, 75, 90, 100];
+const oneSecondVolatilityLevels = [...standardVolatilityLevels, 150, 250];
+const configuredVolatilitySymbols = [
+  ...standardVolatilityLevels.map((level) => ({
+    symbol: `R_${level}`,
+    displayName: `Volatility ${level} Index`,
+    market: "synthetic_index",
+    marketDisplayName: "Derived",
+    submarket: "random_index",
+    submarketDisplayName: "Continuous Indices",
+    exchangeIsOpen: true,
+    discovered: false,
+  })),
+  ...oneSecondVolatilityLevels.map((level) => ({
+    symbol: `1HZ${level}V`,
+    displayName: `Volatility ${level} (1s) Index`,
+    market: "synthetic_index",
+    marketDisplayName: "Derived",
+    submarket: "random_index",
+    submarketDisplayName: "1-second Volatility Indices",
+    exchangeIsOpen: true,
+    discovered: false,
+  })),
+];
+
 function fail(res: Response, status: number, error: string, message?: string) {
   return res.status(status).json({ error, ...(message ? { message } : {}) });
 }
-router.use("/market", rateLimit({ windowMs: 60_000, max: 60, standardHeaders: true, legacyHeaders: false }));
+router.use("/market", rateLimit({ windowMs: 60_000, max: 240, standardHeaders: true, legacyHeaders: false }));
 async function cachedMarket<T>(key: string, loader: () => Promise<T>) {
   const current = marketCache.get(key);
   if (current && current.expiresAt > Date.now()) return current.value as T;
@@ -152,41 +181,68 @@ function metrics(candles: Array<{ epoch: number; close: number }>) {
   };
 }
 
-const fallbackMarketSymbols = [
-  "R_10", "R_25", "R_50", "R_75", "R_100",
-  "1HZ10V", "1HZ25V", "1HZ50V", "1HZ75V", "1HZ100V",
-  "1HZ150V", "1HZ250V",
-  "frxAUDUSD", "frxEURUSD", "frxGBPUSD", "frxUSDJPY",
-];
-
 router.get("/market/symbols", async (_req, res) => {
   try {
     const body = await cachedMarket("symbols", async () => {
-      const data = await publicDeriv({ active_symbols: "brief" });
+      const data = await publicDeriv({ active_symbols: "full" });
       const providerSymbols = (data.active_symbols || []).map((s: any) => ({
         symbol: s.symbol,
         displayName: s.display_name,
         market: s.market,
+        marketDisplayName: s.market_display_name,
         submarket: s.submarket,
+        submarketDisplayName: s.submarket_display_name,
+        exchangeIsOpen: s.exchange_is_open !== 0,
+        pip: s.pip,
         discovered: true,
-      }));
-      const knownSymbols = new Set(providerSymbols.map((item: any) => item.symbol));
-      const configuredSymbols = fallbackMarketSymbols
-        .filter((symbol) => !knownSymbols.has(symbol))
-        .map((symbol) => ({
-          symbol,
-          displayName: symbol,
-          market: symbol.startsWith("frx") ? "forex" : "synthetic_index",
-          submarket: symbol.startsWith("frx") ? "major_pairs" : "volatility",
-          discovered: false,
-        }));
-      return {
-        symbols: [...providerSymbols, ...configuredSymbols],
-      };
+      })).filter((item: any) => typeof item.symbol === "string" && item.symbol.length > 0);
+      if (!providerSymbols.length) {
+        return {
+          symbols: configuredVolatilitySymbols,
+          source: "configured-volatility-catalog",
+          discoveryAvailable: false,
+          message: "Deriv active-symbol discovery returned no rows. Quotes, candles, contracts, and orders remain provider-validated per symbol.",
+        };
+      }
+      return { symbols: providerSymbols, source: "deriv-active-symbols", discoveryAvailable: true };
     });
     return res.json(body);
   } catch (e) {
     return fail(res, 502, "Market symbols unavailable", e instanceof Error ? e.message : undefined);
+  }
+});
+router.get("/market/contracts/:symbol", async (req, res) => {
+  const symbol = string(req.params.symbol, 30);
+  if (!symbol || !/^[A-Za-z0-9_]+$/.test(symbol)) return fail(res, 400, "Invalid symbol");
+  try {
+    const body = await cachedMarket(`contracts:${symbol}`, async () => {
+      const session = await getSession(req, res);
+      if (!session) throw new Error("Connect a Deriv account to check trading types.");
+      const data = await derivRequest(session.accessToken, { contracts_for: symbol }, session.accountId);
+      const available = Array.isArray(data.contracts_for?.available) ? data.contracts_for.available : [];
+      const supported = new Set(["CALL", "PUT", "DIGITOVER", "DIGITUNDER", "DIGITEVEN", "DIGITODD"]);
+      const contracts = available
+        .filter((item: any) => supported.has(String(item.contract_type)))
+        .map((item: any) => ({
+          contractType: String(item.contract_type),
+          contractDisplay: item.contract_display || item.contract_type,
+          category: item.contract_category || null,
+          categoryDisplay: item.contract_category_display || null,
+          barrierCategory: item.barrier_category || null,
+          barriers: Number.isInteger(Number(item.barriers)) ? Number(item.barriers) : null,
+          minContractDuration: item.min_contract_duration || null,
+          maxContractDuration: item.max_contract_duration || null,
+        }));
+      return {
+        symbol,
+        contracts,
+        availableContractTypes: [...new Set(contracts.map((item: any) => item.contractType))],
+        source: "authenticated-deriv-contracts-for",
+      };
+    });
+    return res.json(body);
+  } catch (error) {
+    return fail(res, 502, "Contract availability unavailable", error instanceof Error ? error.message : undefined);
   }
 });
 router.get("/market/ticker/:symbol", async (req, res) => {

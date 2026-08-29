@@ -112,7 +112,9 @@ export function TransactionLedger({ compact = false, accountBalance, accountCurr
                         <span>{row.source?.replace("_", " ") || "manual"}</span>
                         <span>Stake {money(row.stake, currency)}</span>
                         {row.contractId && <span className="font-mono">#{row.contractId}</span>}
+                        {(row.metadata as any)?.stopLoss != null && <span>Stop loss {money((row.metadata as any).stopLoss, currency)} · {(row.metadata as any).stopLossApplied === true ? "applied" : (row.metadata as any).stopLossApplied === false ? "rejected" : "requested"}</span>}
                       </div>
+                      {row.status !== "pending" && <div className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-primary">Binary tool closed · end session</div>}
                     </div>
                   </div>
                   <div className="text-left sm:text-right">

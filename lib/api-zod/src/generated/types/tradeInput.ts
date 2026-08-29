@@ -12,6 +12,13 @@ import type { TradeInputSource } from './tradeInputSource';
 export interface TradeInput {
   symbol: string;
   contract_type: TradeInputContractType;
+  /**
+     * Required for digit over and digit under contracts.
+     * @pattern ^[0-9]$
+     */
+  barrier?: string;
+  /** @exclusiveMinimum 0 */
+  stop_loss?: number;
   /** @exclusiveMinimum 0 */
   stake: number;
   /** @minimum 1 */

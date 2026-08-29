@@ -1196,6 +1196,83 @@ export function useListMarketSymbols<TData = Awaited<ReturnType<typeof listMarke
 
 
 
+export const getGetMarketContractsUrl = (symbol: string,) => {
+
+
+
+
+  return `/api/market/contracts/${symbol}`
+}
+
+/**
+ * @summary List Deriv contract types available for a symbol
+ */
+export const getMarketContracts = async (symbol: string, options?: Parameters<typeof customFetch>[1]): Promise<WorkspaceData> => {
+
+  return customFetch<WorkspaceData>(getGetMarketContractsUrl(symbol),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMarketContractsQueryKey = (symbol: string,) => {
+    return [
+    `/api/market/contracts/${symbol}`
+    ] as const;
+    }
+
+
+export const getGetMarketContractsQueryOptions = <TData = Awaited<ReturnType<typeof getMarketContracts>>, TError = ErrorType<unknown>>(symbol: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMarketContracts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMarketContractsQueryKey(symbol);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMarketContracts>>> = ({ signal }) => getMarketContracts(symbol, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: symbol !== null && symbol !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMarketContracts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMarketContractsQueryResult = NonNullable<Awaited<ReturnType<typeof getMarketContracts>>>
+export type GetMarketContractsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List Deriv contract types available for a symbol
+ */
+
+export function useGetMarketContracts<TData = Awaited<ReturnType<typeof getMarketContracts>>, TError = ErrorType<unknown>>(
+ symbol: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMarketContracts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMarketContractsQueryOptions(symbol,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getGetMarketTickerUrl = (symbol: string,) => {
 
 

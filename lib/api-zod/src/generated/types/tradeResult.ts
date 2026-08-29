@@ -16,4 +16,8 @@ export interface TradeResult {
   status: string;
   /** @nullable */
   netProfit: number | null;
+  /** @nullable */
+  stopLossApplied: boolean | null;
+  /** @nullable */
+  stopLossMessage: string | null;
 }

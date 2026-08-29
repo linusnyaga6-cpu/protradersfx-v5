@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Activity, ArrowRight, BarChart3, RefreshCw, Radio } from "lucide-react"
 import { Link } from "wouter"
 import {
@@ -11,15 +11,18 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatVolatility } from "@/lib/format"
-import { ALL_MARKET_SYMBOLS } from "@/lib/markets"
-
-const symbols = ALL_MARKET_SYMBOLS
+import { DEFAULT_MARKET_SYMBOL, marketLabel } from "@/lib/markets"
+import { useDerivMarkets } from "@/hooks/use-deriv-markets"
 
 export default function Analysis() {
-  const [selectedSymbol, setSelectedSymbol] = useState("R_100")
+  const [selectedSymbol, setSelectedSymbol] = useState(DEFAULT_MARKET_SYMBOL)
+  const marketQuery = useDerivMarkets()
+  useEffect(() => {
+    if (marketQuery.markets.length && !marketQuery.markets.some(item => item.symbol === selectedSymbol)) setSelectedSymbol(marketQuery.defaultSymbol)
+  }, [marketQuery.markets, marketQuery.defaultSymbol, selectedSymbol])
   const [granularity, setGranularity] = useState(300)
   const ticker = useGetMarketTicker(selectedSymbol, {
-    query: { queryKey: getGetMarketTickerQueryKey(selectedSymbol), refetchInterval: 5000 },
+    query: { queryKey: getGetMarketTickerQueryKey(selectedSymbol), refetchInterval: 15000 },
   })
   const candleParams = { count: 60, granularity }
   const candles = useGetMarketCandles(selectedSymbol, candleParams, {
@@ -54,7 +57,7 @@ export default function Analysis() {
       <main className="mx-auto max-w-6xl space-y-6 px-5 py-10 md:px-10 md:py-14">
         <div className="grid gap-3 sm:grid-cols-3">
           <InfoTile label="Source" value="Deriv live endpoint" />
-          <InfoTile label="Refresh" value={ticker.isFetching ? "Syncing" : "Every 5 seconds"} />
+          <InfoTile label="Refresh" value={ticker.isFetching ? "Syncing" : "Every 15 seconds"} />
           <InfoTile label="Mode" value="Advisory only" />
         </div>
 
@@ -62,18 +65,20 @@ export default function Analysis() {
           <Card>
             <CardHeader className="border-b bg-secondary/20"><CardTitle className="text-base">Markets</CardTitle></CardHeader>
             <CardContent className="space-y-2 p-3">
-              {symbols.map(symbol => (
+              {marketQuery.markets.map(market => (
                 <button
-                  key={symbol}
+                  key={market.symbol}
                   type="button"
-                  onClick={() => setSelectedSymbol(symbol)}
-                  className={`flex w-full items-center justify-between rounded-lg px-3 py-3 text-left text-sm transition-colors ${selectedSymbol === symbol ? "bg-primary/10 text-foreground ring-1 ring-primary/25" : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"}`}
-                  data-testid={`button-analysis-symbol-${symbol}`}
+                  onClick={() => setSelectedSymbol(market.symbol)}
+                  className={`flex w-full items-center justify-between rounded-lg px-3 py-3 text-left text-sm transition-colors ${selectedSymbol === market.symbol ? "bg-primary/10 text-foreground ring-1 ring-primary/25" : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"}`}
+                  data-testid={`button-analysis-symbol-${market.symbol}`}
                 >
-                  <span className="font-mono">{symbol}</span>
-                  {selectedSymbol === symbol && <Radio className="h-3.5 w-3.5 text-primary" />}
+                  <span><span className="block text-left">{market.displayName}</span><span className="font-mono text-[10px] text-muted-foreground">{market.symbol}</span></span>
+                  {selectedSymbol === market.symbol && <Radio className="h-3.5 w-3.5 text-primary" />}
                 </button>
               ))}
+              {marketQuery.isLoading && <div className="p-3 text-xs text-muted-foreground">Loading markets from Deriv…</div>}
+              {marketQuery.isError && <div className="p-3 text-xs text-destructive">Deriv market discovery is unavailable.</div>}
             </CardContent>
           </Card>
 

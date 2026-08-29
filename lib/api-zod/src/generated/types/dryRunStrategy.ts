@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { DryRunStrategyContractType } from './dryRunStrategyContractType';
 import type { DryRunStrategyDirection } from './dryRunStrategyDirection';
 import type { DryRunStrategyExecution } from './dryRunStrategyExecution';
 import type { DryRunStrategyIndicator } from './dryRunStrategyIndicator';
@@ -14,6 +15,19 @@ export interface DryRunStrategy {
   indicator: DryRunStrategyIndicator;
   direction: DryRunStrategyDirection;
   mode?: DryRunStrategyMode;
+  contractType?: DryRunStrategyContractType;
+  /** @pattern ^[0-9]$ */
+  barrier?: string;
+  /**
+     * @maximum 10000
+     * @exclusiveMinimum 0
+     */
+  stopLoss?: number;
+  /**
+     * @minimum 1
+     * @maximum 10
+     */
+  runCount?: number;
   /**
      * @maximum 10000
      * @exclusiveMinimum 0

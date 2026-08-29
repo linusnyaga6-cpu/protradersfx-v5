@@ -42,6 +42,18 @@ export const DryRunStrategyMode = {
   recovery_guard: 'recovery_guard',
 } as const;
 
+export type DryRunStrategyContractType = typeof DryRunStrategyContractType[keyof typeof DryRunStrategyContractType];
+
+
+export const DryRunStrategyContractType = {
+  CALL: 'CALL',
+  PUT: 'PUT',
+  DIGITOVER: 'DIGITOVER',
+  DIGITUNDER: 'DIGITUNDER',
+  DIGITEVEN: 'DIGITEVEN',
+  DIGITODD: 'DIGITODD',
+} as const;
+
 export type DryRunStrategyExecution = typeof DryRunStrategyExecution[keyof typeof DryRunStrategyExecution];
 
 
@@ -53,6 +65,19 @@ export interface DryRunStrategy {
   indicator: DryRunStrategyIndicator;
   direction: DryRunStrategyDirection;
   mode?: DryRunStrategyMode;
+  contractType?: DryRunStrategyContractType;
+  /** @pattern ^[0-9]$ */
+  barrier?: string;
+  /**
+     * @maximum 10000
+     * @exclusiveMinimum 0
+     */
+  stopLoss?: number;
+  /**
+     * @minimum 1
+     * @maximum 10
+     */
+  runCount?: number;
   /**
      * @maximum 10000
      * @exclusiveMinimum 0
@@ -187,6 +212,10 @@ export type TradeInputContractType = typeof TradeInputContractType[keyof typeof 
 export const TradeInputContractType = {
   CALL: 'CALL',
   PUT: 'PUT',
+  DIGITOVER: 'DIGITOVER',
+  DIGITUNDER: 'DIGITUNDER',
+  DIGITEVEN: 'DIGITEVEN',
+  DIGITODD: 'DIGITODD',
 } as const;
 
 export type TradeInputSource = typeof TradeInputSource[keyof typeof TradeInputSource];
@@ -212,6 +241,13 @@ export const TradeInputLiveConfirmation = {
 export interface TradeInput {
   symbol: string;
   contract_type: TradeInputContractType;
+  /**
+     * Required for digit over and digit under contracts.
+     * @pattern ^[0-9]$
+     */
+  barrier?: string;
+  /** @exclusiveMinimum 0 */
+  stop_loss?: number;
   /** @exclusiveMinimum 0 */
   stake: number;
   /** @minimum 1 */
@@ -233,6 +269,10 @@ export interface TradeResult {
   status: string;
   /** @nullable */
   netProfit: number | null;
+  /** @nullable */
+  stopLossApplied: boolean | null;
+  /** @nullable */
+  stopLossMessage: string | null;
 }
 
 export type GetMarketCandlesParams = {

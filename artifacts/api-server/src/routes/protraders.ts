@@ -55,6 +55,8 @@ const maxStake = positiveNumber(process.env.TRADING_MAX_STAKE, 10);
 const maxDuration = positiveInteger(process.env.TRADING_MAX_DURATION, 3600);
 const riskAcknowledgementVersion = "2025-01";
 const liveConfirmationToken = "CONFIRM_LIVE_TRADE";
+const supportedContractTypes = new Set(["CALL", "PUT", "DIGITOVER", "DIGITUNDER", "DIGITEVEN", "DIGITODD"]);
+const barrierContractTypes = new Set(["DIGITOVER", "DIGITUNDER"]);
 const allowedSymbols = new Set(
   String(process.env.TRADING_ALLOWED_SYMBOLS || "")
     .split(",")
@@ -332,7 +334,7 @@ function beginOAuth(mode: "login" | "signup", res: Response, targetAccount?: "de
 
 router.use(rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 180,
+  max: 1_500,
   standardHeaders: true,
   legacyHeaders: false,
 }));
@@ -655,24 +657,28 @@ router.post("/trades", async (req, res) => {
   if (!session) return errorResponse(res, 401, "Not authenticated");
 
   const symbol = String(req.body?.symbol || "R_100");
-  const contractType = ["CALL", "PUT"].includes(req.body?.contract_type)
-    ? req.body.contract_type as "CALL" | "PUT"
+  const contractType = supportedContractTypes.has(String(req.body?.contract_type))
+    ? String(req.body.contract_type)
     : null;
   const stake = Number(req.body?.stake);
   const duration = Number(req.body?.duration);
+  const barrier = req.body?.barrier === undefined ? undefined : String(req.body.barrier);
+  const stopLoss = req.body?.stop_loss === undefined ? undefined : Number(req.body.stop_loss);
   const validationErrors = [
-    !contractType ? "Choose CALL or PUT." : "",
+    !contractType ? "Choose a supported Deriv contract type." : "",
     !/^([A-Z0-9_]+)$/.test(symbol) ? "Choose a valid symbol." : "",
     allowedSymbols.size > 0 && !allowedSymbols.has(symbol) ? "That symbol is not allowed." : "",
     !Number.isFinite(stake) || stake <= 0 ? "Stake must be greater than 0." : "",
     stake > maxStake ? `Stake cannot exceed ${maxStake}.` : "",
     !Number.isInteger(duration) || duration < 1 ? "Duration must be at least 1 tick." : "",
     duration > maxDuration ? `Duration cannot exceed ${maxDuration} ticks.` : "",
+    contractType && barrierContractTypes.has(contractType) && !/^[0-9]$/.test(barrier || "") ? "Choose a digit barrier from 0 to 9." : "",
+    stopLoss !== undefined && (!Number.isFinite(stopLoss) || stopLoss <= 0) ? "Stop loss must be greater than 0." : "",
   ].filter(Boolean);
   if (validationErrors.length) {
     return errorResponse(res, 400, "Invalid trade parameters", validationErrors.join(" "));
   }
-  const validatedContractType = contractType as "CALL" | "PUT";
+  const validatedContractType = contractType as string;
 
   try {
     const accounts = await listDerivAccounts(session.accessToken);
@@ -718,6 +724,15 @@ router.post("/trades", async (req, res) => {
     const currency = account.currency;
     if (!currency) return errorResponse(res, 502, "Account currency unavailable");
 
+    const availability = await derivRequest(session.accessToken, { contracts_for: symbol }, session.accountId);
+    const availableContractTypes = new Set(
+      (Array.isArray(availability.contracts_for?.available) ? availability.contracts_for.available : [])
+        .map((item: any) => String(item.contract_type)),
+    );
+    if (!availableContractTypes.has(validatedContractType)) {
+      return errorResponse(res, 400, "Contract unavailable", `${validatedContractType} is not offered by Deriv for ${symbol}.`);
+    }
+
     const proposal = await derivRequest(session.accessToken, {
       proposal: 1,
       amount: stake,
@@ -727,6 +742,7 @@ router.post("/trades", async (req, res) => {
       duration,
       duration_unit: "t",
       symbol,
+      ...(barrierContractTypes.has(validatedContractType) ? { barrier } : {}),
     }, session.accountId);
     if (!proposal.proposal?.id) {
       return errorResponse(res, 502, "Deriv did not return a proposal");
@@ -736,6 +752,22 @@ router.post("/trades", async (req, res) => {
       price: stake,
     }, session.accountId);
     if (buy.error) return errorResponse(res, 502, "Trade request failed", buy.error.message);
+    const contractId = buy.buy?.contract_id ? Number(buy.buy.contract_id) : null;
+    let stopLossApplied: boolean | null = null;
+    let stopLossMessage: string | null = null;
+    if (stopLoss !== undefined && contractId) {
+      try {
+        await derivRequest(session.accessToken, {
+          contract_update: 1,
+          contract_id: contractId,
+          limit_order: { stop_loss: stopLoss },
+        }, session.accountId);
+        stopLossApplied = true;
+      } catch (error) {
+        stopLossApplied = false;
+        stopLossMessage = error instanceof Error ? error.message : "Deriv rejected the stop loss";
+      }
+    }
     const transaction = await db.insert(transactions).values({
       ownerKey: ownerKeyFor(loginId),
       source: ["manual", "bulk", "ai_assisted", "bot_assisted"].includes(String(req.body?.source))
@@ -748,20 +780,26 @@ router.post("/trades", async (req, res) => {
       stake: String(stake),
       currency,
       duration: String(duration),
-      contractId: buy.buy?.contract_id ? String(buy.buy.contract_id) : null,
+      contractId: contractId ? String(contractId) : null,
       status: "pending",
       metadata: {
         proposalId: proposal.proposal?.id || null,
+        barrier: barrierContractTypes.has(validatedContractType) ? barrier : null,
+        stopLoss: stopLoss ?? null,
+        stopLossApplied,
+        stopLossMessage,
         requestLabel: String(req.body?.request_label || "").slice(0, 120) || null,
       },
     }).returning();
     return res.json({
       ok: true,
-      message: `Trade opened on ${symbol}. Contract ${buy.buy?.contract_id || "created"}.`,
-      contractId: buy.buy?.contract_id || null,
+      message: `Trade opened on ${symbol}. Contract ${contractId || "created"}.${stopLossApplied === false ? " Stop loss was rejected by Deriv; review the open contract." : stopLossApplied ? " Stop loss applied." : ""}`,
+      contractId: contractId ? String(contractId) : null,
       transactionId: transaction[0]?.id || null,
       status: "pending",
       netProfit: null,
+      stopLossApplied,
+      stopLossMessage,
     });
   } catch (error) {
     return errorResponse(

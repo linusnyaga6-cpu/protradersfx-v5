@@ -3,9 +3,8 @@ import { Activity, ArrowDownRight, ArrowRight, BarChart3, BookOpen, Bot, Check, 
 import { Link } from "wouter"
 import { useGetMarketCandles, getGetMarketCandlesQueryKey, useGetMarketTicker, getGetMarketTickerQueryKey, useGetSessionStatus, getGetSessionStatusQueryKey, useTrackEvent } from "@workspace/api-client-react"
 import { Skeleton } from "@/components/ui/skeleton"
-import { VOLATILITY_SYMBOLS } from "@/lib/markets"
-
-const tickerSymbols = VOLATILITY_SYMBOLS
+import { DEFAULT_MARKET_SYMBOL, marketLabel } from "@/lib/markets"
+import { useDerivMarkets } from "@/hooks/use-deriv-markets"
 
 const toolCards = [
   { title: "Analysis Tools", eyebrow: "Context", description: "Inspect live quotes, candles, and advisory signals before you decide.", href: "/analysis", icon: Activity },
@@ -30,9 +29,9 @@ export default function Home() {
     query: { queryKey: getGetSessionStatusQueryKey() },
   })
   const trackEvent = useTrackEvent()
-  const pulseTicker = useGetMarketTicker("R_100", { query: { queryKey: getGetMarketTickerQueryKey("R_100"), staleTime: 30000, refetchInterval: 5000 } })
-  const pulseCandles = useGetMarketCandles("R_100", { count: 36, granularity: 60 }, {
-    query: { queryKey: getGetMarketCandlesQueryKey("R_100", { count: 36, granularity: 60 }), staleTime: 30000, refetchInterval: 30000 },
+  const pulseTicker = useGetMarketTicker(DEFAULT_MARKET_SYMBOL, { query: { queryKey: getGetMarketTickerQueryKey(DEFAULT_MARKET_SYMBOL), staleTime: 30000, refetchInterval: 15000 } })
+  const pulseCandles = useGetMarketCandles(DEFAULT_MARKET_SYMBOL, { count: 36, granularity: 60 }, {
+    query: { queryKey: getGetMarketCandlesQueryKey(DEFAULT_MARKET_SYMBOL, { count: 36, granularity: 60 }), staleTime: 30000, refetchInterval: 30000 },
   })
   const pulseData = pulseCandles.data as any
   const pulseCloses = Array.isArray(pulseData?.candles) ? pulseData.candles.map((point: any) => Number(point.close)).filter(Number.isFinite) : []
@@ -90,12 +89,12 @@ export default function Home() {
               <div className="absolute -inset-5 rounded-[2rem] border border-primary/10 bg-primary/[.025] blur-sm" />
               <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-card/80 shadow-2xl shadow-black/20 backdrop-blur">
                 <div className="flex items-center justify-between border-b border-white/[.08] px-5 py-4">
-                  <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-primary" /><span className="font-mono text-[10px] uppercase tracking-[.2em] text-muted-foreground">Market pulse / R_100</span></div>
+                   <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-primary" /><span className="font-mono text-[10px] uppercase tracking-[.2em] text-muted-foreground">Market pulse / {DEFAULT_MARKET_SYMBOL}</span></div>
                   <span className="rounded-full bg-primary/10 px-2 py-1 font-mono text-[10px] text-primary">LIVE</span>
                 </div>
                 <div className="p-5 md:p-7">
                   <div className="flex items-end justify-between">
-                     <div><div className="font-mono text-xs text-muted-foreground">Volatility Index 100</div><div className="mt-2 font-display text-4xl font-bold tracking-tight text-foreground">{pulsePrice ?? "—"}</div></div>
+                      <div><div className="font-mono text-xs text-muted-foreground">Deriv active market</div><div className="mt-2 font-display text-4xl font-bold tracking-tight text-foreground">{pulsePrice ?? "—"}</div></div>
                      <div className="text-right"><div className="font-mono text-xs text-primary">{pulseChange == null ? "LIVE" : `${pulseChange >= 0 ? "+" : ""}${pulseChange.toFixed(2)}%`}</div><div className="mt-1 text-[10px] text-muted-foreground">{pulseChange == null ? "live quote" : "last 36 candles"}</div></div>
                   </div>
                   <div className="relative mt-8 h-40 overflow-hidden rounded-xl border border-white/[.07] bg-background/70">
@@ -171,8 +170,9 @@ export default function Home() {
 }
 
 function MarketTicker() {
-  const liveQuote = useGetMarketTicker("R_100", { query: { queryKey: getGetMarketTickerQueryKey("R_100"), staleTime: 60000, refetchInterval: 60000 } })
-  return <div className="relative z-20 flex w-full items-center justify-center overflow-hidden border-b border-white/[.07] bg-card/60 py-2.5 font-mono text-[10px] shadow-sm" aria-label="Live market ticker"><div className="flex min-w-max items-center gap-7 px-4">{tickerSymbols.map((symbol, index) => { const value = index === 0 ? ((liveQuote.data as any)?.quote ?? (liveQuote.data as any)?.price) : undefined; const unavailable = index === 0 && ((liveQuote.data as any)?.available === false || liveQuote.isError); return <div key={symbol} className="flex items-center gap-2"><Radio className={`h-3 w-3 ${unavailable ? "text-accent" : "text-primary/75"}`} /><span className="text-muted-foreground">{symbol}</span><span className={unavailable ? "text-accent" : "font-medium text-foreground"}>{unavailable ? "offline" : value ?? (index === 0 ? "—" : "watch")}</span></div> })}</div></div>
+  const marketQuery = useDerivMarkets()
+  const liveQuote = useGetMarketTicker(marketQuery.defaultSymbol, { query: { queryKey: getGetMarketTickerQueryKey(marketQuery.defaultSymbol), staleTime: 60000, refetchInterval: 60000 } })
+  return <div className="relative z-20 flex w-full items-center justify-center overflow-hidden border-b border-white/[.07] bg-card/60 py-2.5 font-mono text-[10px] shadow-sm" aria-label="Live market ticker"><div className="flex min-w-max items-center gap-7 px-4">{marketQuery.markets.map((market, index) => { const value = index === 0 ? ((liveQuote.data as any)?.quote ?? (liveQuote.data as any)?.price) : undefined; const unavailable = index === 0 && ((liveQuote.data as any)?.available === false || liveQuote.isError); return <div key={market.symbol} className="flex items-center gap-2"><Radio className={`h-3 w-3 ${unavailable ? "text-accent" : "text-primary/75"}`} /><span className="text-muted-foreground">{market.displayName || market.symbol}</span><span className="text-muted-foreground/70">{market.symbol}</span><span className={unavailable ? "text-accent" : "font-medium text-foreground"}>{unavailable ? "offline" : value ?? (index === 0 ? "—" : "watch")}</span></div> })}</div></div>
 }
 
 function PulseChart({ candles }: { candles?: any[] }) {
