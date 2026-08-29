@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { ArrowRight, BarChart3, Code2, HeartPulse, LineChart, ShieldCheck } from "lucide-react"
+import { BarChart3, Code2, HeartPulse, LineChart, ShieldCheck } from "lucide-react"
 import { Link } from "wouter"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -105,13 +105,10 @@ export default function About() {
             <h2 className="mt-3 text-3xl font-semibold tracking-tight">Trading tools should clarify, not pressure.</h2>
             <p className="mt-4 leading-7 text-sidebar-foreground/65">
               ProTraders FX is an independent project. It is designed to make market
-              data, readiness, and controlled actions visible in one place—not to
+              data and controlled actions visible in one place—not to
               promise returns or replace personal judgment.
             </p>
           </div>
-          <Button asChild variant="secondary" className="shrink-0 gap-2">
-            <Link href="/readiness">View the safety model <ArrowRight className="h-4 w-4" /></Link>
-          </Button>
         </div>
       </section>
 

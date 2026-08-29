@@ -8,6 +8,8 @@ import { formatMoney } from "@/lib/format"
 
 type TransactionLedgerProps = {
   compact?: boolean
+  accountBalance?: number | null
+  accountCurrency?: string | null
 }
 
 function money(value: unknown, currency = "USD") {
@@ -20,7 +22,7 @@ function statusVariant(status: string) {
   return "outline" as const
 }
 
-export function TransactionLedger({ compact = false }: TransactionLedgerProps) {
+export function TransactionLedger({ compact = false, accountBalance, accountCurrency }: TransactionLedgerProps) {
   const query = useListTransactions({
     query: {
       queryKey: getListTransactionsQueryKey(),
@@ -46,15 +48,19 @@ export function TransactionLedger({ compact = false }: TransactionLedgerProps) {
     }
   }, [pendingIds])
 
-  const summary = useMemo(() => rows.reduce((acc: { net: number; staked: number; settled: number }, row: any) => {
+  const summary = useMemo(() => rows.reduce((acc: { net: number; staked: number; runs: number; wins: number; losses: number }, row: any) => {
     const net = Number(row.netProfit)
     const stake = Number(row.stake)
     return {
       net: acc.net + (Number.isFinite(net) ? net : 0),
       staked: acc.staked + (Number.isFinite(stake) ? stake : 0),
-      settled: acc.settled + (["won", "lost", "settled"].includes(row.status) ? 1 : 0),
+      runs: acc.runs + 1,
+      wins: acc.wins + (row.status === "won" ? 1 : 0),
+      losses: acc.losses + (row.status === "lost" ? 1 : 0),
     }
-  }, { net: 0, staked: 0, settled: 0 }), [rows])
+  }, { net: 0, staked: 0, runs: 0, wins: 0, losses: 0 }), [rows])
+  const summaryCurrency = accountCurrency || rows.find((row: any) => row.currency)?.currency || "USD"
+  const signedNet = `${summary.net >= 0 ? "+" : "-"}${formatMoney(Math.abs(summary.net), summaryCurrency)}`
 
   return (
     <Card className={compact ? "shadow-sm" : "shadow-md"} data-testid="card-transaction-ledger">
@@ -62,9 +68,9 @@ export function TransactionLedger({ compact = false }: TransactionLedgerProps) {
         <div className="flex items-start justify-between gap-4">
           <div>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <ReceiptText className="h-5 w-5 text-primary" /> Transactions & P/L
+              <ReceiptText className="h-5 w-5 text-primary" /> Transactions
             </CardTitle>
-            <p className="mt-1 text-xs text-muted-foreground">Deriv settlement status, stake, payout, and net profit.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Account results and settlement history.</p>
           </div>
           <Button size="icon" variant="ghost" onClick={() => query.refetch()} disabled={query.isFetching} aria-label="Refresh transactions">
             <RefreshCw className={query.isFetching ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
@@ -72,10 +78,12 @@ export function TransactionLedger({ compact = false }: TransactionLedgerProps) {
         </div>
       </CardHeader>
       <CardContent className="space-y-4 pt-5">
-        <div className="grid grid-cols-3 gap-2">
-          <Summary label="Net profit" value={`${summary.net >= 0 ? "+" : ""}${summary.net.toFixed(2)}`} positive={summary.net >= 0} />
-          <Summary label="Settled" value={String(summary.settled)} />
-          <Summary label="Staked" value={summary.staked.toFixed(2)} />
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+          <Summary label="Cumulative P/L" value={signedNet} positive={summary.net >= 0} />
+          <Summary label="Runs" value={String(summary.runs)} />
+          <Summary label="Wins" value={String(summary.wins)} positive={summary.wins > 0} />
+          <Summary label="Losses" value={String(summary.losses)} positive={summary.losses === 0} />
+          <Summary label="Balance" value={accountBalance == null ? "—" : formatMoney(accountBalance, summaryCurrency)} />
         </div>
         {query.isLoading ? (
           <div className="h-24 animate-pulse rounded-lg bg-muted/40" />

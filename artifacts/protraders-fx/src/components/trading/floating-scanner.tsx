@@ -139,7 +139,7 @@ export function FloatingScanner() {
         {error && <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">{error}</div>}
         {!result && !error && (
           <div className="rounded-xl border border-dashed border-white/10 p-5 text-center text-sm text-muted-foreground">
-            Select a market and run a fresh advisory scan.
+            Scan the selected market.
           </div>
         )}
         {result && (
@@ -162,12 +162,19 @@ export function FloatingScanner() {
                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Observed volatility</div>
                    <div className="mt-1 font-mono text-sm">{formatVolatility(result.indicators.volatilityLevel, result.indicators.volatilityPct)}</div>
                  </div>
+                 <div className="flex flex-wrap justify-end gap-2">
                  <Button size="sm" variant="outline" onClick={() => {
                    const direction = result.analysis.bias === "bullish" ? "CALL" : result.analysis.bias === "bearish" ? "PUT" : "CALL"
                    window.location.href = `/dashboard?symbol=${encodeURIComponent(symbol)}&direction=${direction}&source=ai_assisted`
                  }} data-testid="button-review-ai-trade">
                    Review order <ArrowRight className="ml-1 h-3.5 w-3.5" />
                  </Button>
+                 <Button size="sm" variant="outline" onClick={() => {
+                   window.location.href = `/bots?symbol=${encodeURIComponent(symbol)}`
+                 }} data-testid="button-run-ai-bot">
+                   Run bot
+                 </Button>
+                 </div>
                </div>
              </div>
             <ul className="space-y-2 text-xs text-muted-foreground">

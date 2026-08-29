@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { BarChart3, Bot, Search, ShieldCheck } from "lucide-react"
+import { BarChart3, Bot, Search } from "lucide-react"
 import { useLocation } from "wouter"
 import {
   CommandDialog,
@@ -19,7 +19,6 @@ const pages = [
   { label: "Markets", hint: "Quotes, charts, and instruments", href: "/markets", icon: BarChart3 },
   { label: "Bots", hint: "Templates and visual builder", href: "/bots", icon: Bot },
   { label: "Bulk Trade", hint: "Review a multi-market batch", href: "/bulk-trade", icon: BarChart3 },
-  { label: "Readiness", hint: "Connection and system checks", href: "/readiness", icon: ShieldCheck },
 ]
 
 export function GlobalSearch() {

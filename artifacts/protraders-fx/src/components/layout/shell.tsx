@@ -1,13 +1,13 @@
 import { ReactNode, useState } from "react"
 import { Link, useLocation } from "wouter"
-import { Activity, BarChart3, Bot, Camera, ChevronRight, CircleAlert, LayoutDashboard, LogOut, Settings2 } from "lucide-react"
+import { Activity, BarChart3, Bot, ChevronRight, CircleAlert, LayoutDashboard, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { endSession } from "@/lib/logout"
 
 const links = [
   ["/dashboard","Overview",LayoutDashboard],["/markets","Markets",BarChart3],["/bots","Bots",Bot],
-  ["/snapshots","Snapshots",Camera],["/recovery","Recovery",CircleAlert],["/readiness","Readiness",Settings2],["/activity","Activity",Activity],
+  ["/recovery","Recovery",CircleAlert],["/activity","Activity",Activity],
 ] as const
 export function Shell({ children }: { children: ReactNode }) {
   const [path] = useLocation()

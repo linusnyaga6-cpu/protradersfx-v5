@@ -20,7 +20,6 @@ export function Footer() {
           <div className="text-xs font-mono font-semibold uppercase tracking-widest text-muted-foreground/60">Explore</div>
           <div className="mt-5 flex flex-col items-start gap-3 text-sm text-muted-foreground">
             <Link href="/about" className="transition-colors hover:text-foreground">About the author</Link>
-            <Link href="/readiness" className="transition-colors hover:text-foreground">System readiness</Link>
             <a href="https://www.traderscheme.com/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground">
               Public reference <ArrowUpRight className="h-3.5 w-3.5 opacity-70" />
             </a>

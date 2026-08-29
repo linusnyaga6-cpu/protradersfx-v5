@@ -1,10 +1,7 @@
 import { useEffect } from "react"
-import { ArrowRight, ShieldCheck, TerminalSquare, TrendingUp, Lock, Zap, Radio, Activity, BarChart3, Bot, Camera, CircleAlert, Settings2 } from "lucide-react"
+import { ArrowRight, TerminalSquare, Radio, Activity, BarChart3, Bot, CircleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { 
-  useGetProtradersPreflight,
-  getGetProtradersPreflightQueryKey,
+import {
   useGetSessionStatus,
   getGetSessionStatusQueryKey,
   useTrackEvent,
@@ -15,9 +12,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Link } from "wouter"
 
 export default function Home() {
-  const { data: preflight, isLoading: loadingPreflight } = useGetProtradersPreflight({
-    query: { queryKey: getGetProtradersPreflightQueryKey() }
-  })
   const { data: session, isLoading: loadingSession } = useGetSessionStatus({
     query: { queryKey: getGetSessionStatusQueryKey() }
   })
@@ -120,91 +114,6 @@ export default function Home() {
         </div>
       </section></>}
 
-      {/* Deployment Status Section */}
-      {session?.authenticated && <section className="bg-background py-24 px-6 relative overflow-hidden">
-        {/* Subtle bottom glow */}
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-64 bg-primary/5 blur-[100px] pointer-events-none rounded-t-full" />
-        
-        <div className="container mx-auto max-w-5xl relative z-10">
-          <div className="flex flex-col md:flex-row items-end justify-between gap-8 mb-12 border-b border-white/5 pb-8">
-            <div>
-              <h2 className="text-3xl font-bold tracking-tight mb-2 text-foreground/90">System Telemetry</h2>
-              <p className="text-muted-foreground text-sm">Live endpoint checks and environment readiness.</p>
-            </div>
-            <Button variant="outline" size="sm" asChild className="border-white/10 hover:bg-white/5 font-mono text-xs tracking-wide" data-testid="link-readiness">
-              <Link href="/readiness" className="gap-2">
-                <Activity className="h-3.5 w-3.5" />
-                View diagnostics
-              </Link>
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="flex items-center justify-between p-5 rounded-xl border border-white/5 bg-card/40">
-              <div className="flex items-center gap-4">
-                <div className="p-2.5 rounded-lg bg-primary/10">
-                  <Lock className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-foreground/80">OAuth Tunnel</div>
-                  <div className="text-xs text-muted-foreground mt-0.5 font-mono">auth_config</div>
-                </div>
-              </div>
-              <div>
-                {loadingPreflight ? (
-                  <Skeleton className="h-6 w-16 bg-white/5" />
-                ) : (
-                  <Badge variant="outline" className={preflight?.oauthClientConfigured ? "border-success/30 text-success bg-success/10" : "border-destructive/30 text-destructive bg-destructive/10"}>
-                    {preflight?.oauthClientConfigured ? "VERIFIED" : "PENDING"}
-                  </Badge>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between p-5 rounded-xl border border-white/5 bg-card/40">
-              <div className="flex items-center gap-4">
-                <div className="p-2.5 rounded-lg bg-primary/10">
-                  <TrendingUp className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-foreground/80">Trading Engine</div>
-                  <div className="text-xs text-muted-foreground mt-0.5 font-mono">exec_state</div>
-                </div>
-              </div>
-              <div>
-                {loadingPreflight ? (
-                  <Skeleton className="h-6 w-16 bg-white/5" />
-                ) : (
-                  <Badge variant="outline" className={preflight?.tradingEnabled ? "border-success/30 text-success bg-success/10" : "border-destructive/30 text-destructive bg-destructive/10"}>
-                    {preflight?.tradingEnabled ? "ONLINE" : "DISABLED"}
-                  </Badge>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between p-5 rounded-xl border border-white/5 bg-card/40">
-              <div className="flex items-center gap-4">
-                <div className="p-2.5 rounded-lg bg-primary/10">
-                  <Zap className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-foreground/80">Environment</div>
-                  <div className="text-xs text-muted-foreground mt-0.5 font-mono">op_mode</div>
-                </div>
-              </div>
-              <div>
-                {loadingPreflight ? (
-                  <Skeleton className="h-6 w-16 bg-white/5" />
-                ) : (
-                  <Badge variant="outline" className={preflight?.executionMode === "BOTH" ? "border-success/30 text-success bg-success/10" : "border-amber-500/30 text-amber-500 bg-amber-500/10"}>
-                    {preflight?.executionMode || "CHECKING"}
-                  </Badge>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>}
     </div>
   )
 }
@@ -212,14 +121,11 @@ export default function Home() {
 const tickerSymbols = ["R_100", "R_75", "R_50", "R_25", "1HZ100V", "BOOM_500"]
 
 const toolCards = [
-  { title: "Manual Trade", eyebrow: "Execution", description: "Set one controlled trade with visible limits.", href: "/dashboard", icon: TrendingUp },
   { title: "AI Scanner", eyebrow: "Analysis", description: "Inspect quotes, candles, and transparent advisory signals.", href: "/markets", icon: Activity },
   { title: "Bulk Trade", eyebrow: "Review queue", description: "Build a multi-market batch for review before action.", href: "/bulk-trade", icon: BarChart3 },
   { title: "Free Bots", eyebrow: "Observation", description: "Start with no-cost dry-run templates and a visual builder.", href: "/bots", icon: Bot },
   { title: "Recovery Bot", eyebrow: "Guardrails", description: "Build a bounded pause-and-review recovery observer.", href: "/bots", icon: CircleAlert },
   { title: "Recovery", eyebrow: "Advisory", description: "Review incidents and request a human-reviewed explanation.", href: "/recovery", icon: CircleAlert },
-  { title: "Snapshots", eyebrow: "Checkpoints", description: "Capture server-verified account context before changes.", href: "/snapshots", icon: Camera },
-  { title: "Readiness", eyebrow: "System", description: "Check OAuth, trading gates, and environment status.", href: "/readiness", icon: Settings2 },
 ]
 
 function MarketTicker() {

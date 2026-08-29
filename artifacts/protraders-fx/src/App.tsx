@@ -9,11 +9,9 @@ import { Footer } from '@/components/layout/footer';
 import Home from '@/pages/home';
 import About from '@/pages/about';
 import Dashboard from '@/pages/dashboard';
-import Readiness from '@/pages/readiness';
 import Activity from '@/pages/activity';
 import Markets from '@/pages/markets';
 import Bots from '@/pages/bots';
-import Snapshots from '@/pages/snapshots';
 import Recovery from '@/pages/recovery';
 import BulkTrade from '@/pages/bulk-trade';
 import Initializing from '@/pages/initializing';
@@ -40,11 +38,9 @@ function Router() {
             <Route path="/initializing" component={Initializing} />
             <Route path="/about" component={About} />
             <Route path="/dashboard" component={DashboardRoute} />
-            <Route path="/readiness" component={Readiness} />
             <Route path="/activity" component={Activity} />
             <Route path="/markets" component={MarketsRoute} />
             <Route path="/bots" component={BotsRoute} />
-            <Route path="/snapshots" component={SnapshotsRoute} />
             <Route path="/recovery" component={RecoveryRoute} />
             <Route path="/bulk-trade" component={BulkTradeRoute} />
             <Route component={NotFound} />
@@ -71,7 +67,7 @@ function ProtectedPage({ page: Page }: { page: ComponentType }) {
           <div className="text-xs font-semibold uppercase tracking-[.24em] text-primary">Secure workspace</div>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight">Connect your Deriv account to continue</h1>
           <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
-            Connect Deriv to open markets, bots, snapshots, recovery, and demo trading.
+            Connect Deriv to open markets, bots, recovery, and demo trading.
           </p>
           <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
             <a className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground hover:bg-primary/90" href="/api/deriv/login">
@@ -107,7 +103,6 @@ function OAuthCallbackBridge() {
 const DashboardRoute = () => <ProtectedPage page={Dashboard} />;
 const MarketsRoute = () => <ProtectedPage page={Markets} />;
 const BotsRoute = () => <ProtectedPage page={Bots} />;
-const SnapshotsRoute = () => <ProtectedPage page={Snapshots} />;
 const RecoveryRoute = () => <ProtectedPage page={Recovery} />;
 const BulkTradeRoute = () => <ProtectedPage page={BulkTrade} />;
 
