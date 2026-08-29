@@ -22,7 +22,6 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { AccountStrip } from "@/components/trading/account-strip"
 import { formatMoney, formatVolatility } from "@/lib/format"
@@ -36,7 +35,6 @@ export default function BulkTrade() {
   const [barrier, setBarrier] = useState("5")
   const [stopLoss, setStopLoss] = useState("1")
   const [stake, setStake] = useState("1")
-  const [stakeAuthorized, setStakeAuthorized] = useState(false)
   const [runCount, setRunCount] = useState("1")
   const [takeProfit, setTakeProfit] = useState("1")
   const [completedRuns, setCompletedRuns] = useState(0)
@@ -111,7 +109,6 @@ export default function BulkTrade() {
   const needsBarrier = Boolean(CONTRACT_LABELS[contractType]?.needsBarrier)
   useEffect(() => {
     setProposal(null)
-    setStakeAuthorized(false)
     setCompletedRuns(0)
     setSequenceProfit(0)
     setAwaitingNextRun(false)
@@ -144,7 +141,7 @@ export default function BulkTrade() {
     request_label: `${selectedMarket} ${tradeSource === "ai_assisted" ? "scanner-assisted" : "manual"} order`,
   }
   const reviewOrder = async () => {
-    if (!canRun || !validOrder || !stakeAuthorized || previewTrade.isPending) return
+    if (!canRun || !validOrder || previewTrade.isPending) return
     setProposal(null)
     setCompletedRuns(0)
     setSequenceProfit(0)
@@ -154,7 +151,7 @@ export default function BulkTrade() {
     catch (error) { setResults([{ id: 0, symbol: selectedMarket, ok: false, status: "rejected", message: error instanceof Error ? error.message : "Proposal unavailable" }]) }
   }
   const executeOrder = async () => {
-    if (!canRun || !validOrder || !stakeAuthorized || isRunning || !proposal?.proposalToken) return
+    if (!canRun || !validOrder || isRunning || !proposal?.proposalToken) return
     setIsRunning(true)
     const runNumber = completedRuns + 1
     const resultId = runNumber - 1
@@ -300,11 +297,7 @@ export default function BulkTrade() {
             <div className="space-y-2">
               <Label htmlFor="bulk-stake">Stake ({accountCurrency})</Label>
               <Input id="bulk-stake" type="number" min="0.01" max={Number(preflight.data?.maxStake || 10)} step="0.01" value={stake} onChange={event => setStake(event.target.value)} />
-              <p className="text-xs text-muted-foreground">Maximum controlled stake: {formatMoney(Number(preflight.data?.maxStake || 10), accountCurrency)}.</p>
-              <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs leading-5">
-                <Checkbox checked={stakeAuthorized} onCheckedChange={(checked) => setStakeAuthorized(checked === true)} />
-                <span>I authorize this exact stake for the one order shown below. The provider proposal and final execution must match it.</span>
-              </label>
+              <p className="text-xs text-muted-foreground">Trader-entered amount, independent of the selected market and contract type. Maximum controlled stake: {formatMoney(Number(preflight.data?.maxStake || 10), accountCurrency)}.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="bulk-stop-loss">Stop loss ({accountCurrency})</Label>
@@ -352,9 +345,9 @@ export default function BulkTrade() {
                )}
                {awaitingNextRun ? <Button className="w-full" onClick={prepareNextRun} disabled={refreshTransaction.isPending || previewTrade.isPending || marketOffline} data-testid="button-check-next-run">
                  {refreshTransaction.isPending ? "Checking Deriv settlement..." : "Check settlement and prepare next run"}
-               </Button> : !proposal && !sequenceStopped ? <Button className="w-full" onClick={reviewOrder} disabled={!canRun || !validOrder || !stakeAuthorized || previewTrade.isPending || marketOffline} data-testid="button-review-order">
+               </Button> : !proposal && !sequenceStopped ? <Button className="w-full" onClick={reviewOrder} disabled={!canRun || !validOrder || previewTrade.isPending || marketOffline} data-testid="button-review-order">
                  {previewTrade.isPending ? "Requesting Deriv proposal..." : "Review Deriv proposal"}
-               </Button> : proposal ? <Button className="w-full" onClick={executeOrder} disabled={!canRun || !validOrder || !stakeAuthorized || isRunning || marketOffline} data-testid="button-execute-order">
+               </Button> : proposal ? <Button className="w-full" onClick={executeOrder} disabled={!canRun || !validOrder || isRunning || marketOffline} data-testid="button-execute-order">
                {isRunning && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                  {isRunning ? `Submitting run ${completedRuns + 1}...` : `Confirm and place run ${completedRuns + 1} of ${totalRuns}`}
                </Button> : <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs leading-5 text-muted-foreground">Sequence complete or stopped at the take-profit target. Start a new reviewed sequence to place another run.</div>}

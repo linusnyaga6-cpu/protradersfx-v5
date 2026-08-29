@@ -807,7 +807,7 @@ router.post("/trades", async (req, res) => {
     }
     const buy = await derivRequest(session.accessToken, {
       buy: proposal.proposal.id,
-      price: reviewed.askPrice,
+      parameters: { price: reviewed.askPrice },
     }, session.accountId);
     if (buy.error) return errorResponse(res, 502, "Trade request failed", buy.error.message);
     const contractId = buy.buy?.contract_id ? Number(buy.buy.contract_id) : null;
