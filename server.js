@@ -11,13 +11,6 @@ app.disable("x-powered-by");
 app.use(express.json({ limit: "20kb" }));
 app.use(express.urlencoded({ extended: false, limit: "20kb" }));
 
-/*
-
-* ProTraders FX
-* Frontend files are stored in the repository root.
-* Vercel runs server.js as the serverless entry point.
-  */
-
 const ROOT = __dirname;
 
 /* --------------------------------------------------
@@ -79,13 +72,13 @@ res.status(200).json({
 productionBaseUrl: baseUrl,
 redirectUri: baseUrl + "/oauth/callback",
 https: baseUrl.startsWith("https://"),
-oauthClientConfigured:
-Boolean(
+oauthClientConfigured: Boolean(
 process.env.DERIV_CLIENT_ID ||
 process.env.DERIV_PUBLIC_APP_ID
 ),
-sessionSecretConfigured:
-Boolean(process.env.SESSION_SECRET)
+sessionSecretConfigured: Boolean(
+process.env.SESSION_SECRET
+)
 });
 });
 
@@ -121,7 +114,9 @@ return res.sendFile(ico);
 }
 
 if (fs.existsSync(svg)) {
-return res.type("image/svg+xml").sendFile(svg);
+return res
+.type("image/svg+xml")
+.sendFile(svg);
 }
 
 return res.status(204).end();
@@ -178,18 +173,12 @@ return res.status(500).send(
 STATIC FRONTEND FILES
 -------------------------------------------------- */
 
-/*
-
-* IMPORTANT:
-* The project stores frontend assets in the repository
-* root rather than /public.
-  */
-  app.use(
-  express.static(ROOT, {
-  index: false,
-  dotfiles: "ignore"
-  })
-  );
+app.use(
+express.static(ROOT, {
+index: false,
+dotfiles: "ignore"
+})
+);
 
 /* --------------------------------------------------
 COMMON HTML ROUTES
@@ -222,6 +211,60 @@ return res.status(404).send(
 ```
 
 });
+});
+
+/* --------------------------------------------------
+HTML FILE ALIASES
+-------------------------------------------------- */
+
+app.get("/privacy.html", function (req, res) {
+const file = path.join(ROOT, "privacy.html");
+
+if (fs.existsSync(file)) {
+return res.sendFile(file);
+}
+
+return res.status(404).send("privacy.html not found");
+});
+
+app.get("/terms.html", function (req, res) {
+const file = path.join(ROOT, "terms.html");
+
+if (fs.existsSync(file)) {
+return res.sendFile(file);
+}
+
+return res.status(404).send("terms.html not found");
+});
+
+app.get("/signals.html", function (req, res) {
+const file = path.join(ROOT, "signals.html");
+
+if (fs.existsSync(file)) {
+return res.sendFile(file);
+}
+
+return res.status(404).send("signals.html not found");
+});
+
+app.get("/marketplace.html", function (req, res) {
+const file = path.join(ROOT, "marketplace.html");
+
+if (fs.existsSync(file)) {
+return res.sendFile(file);
+}
+
+return res.status(404).send("marketplace.html not found");
+});
+
+app.get("/course.html", function (req, res) {
+const file = path.join(ROOT, "course.html");
+
+if (fs.existsSync(file)) {
+return res.sendFile(file);
+}
+
+return res.status(404).send("course.html not found");
 });
 
 /* --------------------------------------------------
