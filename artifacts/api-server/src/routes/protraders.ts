@@ -591,6 +591,90 @@ export async function derivRequest(
   return derivRequestOnce(wsUrl, payload);
 }
 
+async function derivProposalAndBuy(
+  accessToken: string,
+  proposalPayload: Record<string, unknown>,
+  reviewedAskPrice: number,
+  accountId?: string,
+) {
+  const accounts = await listDerivAccounts(accessToken);
+  const account = chooseAccount(accounts, undefined, accountId);
+  if (!account?.account_id) throw new Error("No Deriv options account was returned");
+  const otp = await derivRestRequest<{ data?: { url?: string } }>(
+    accessToken,
+    `/trading/v1/options/accounts/${encodeURIComponent(account.account_id)}/otp`,
+    { method: "POST", body: "{}" },
+  );
+  const wsUrl = otp.data?.url;
+  if (!wsUrl) throw new Error("Deriv did not return an authenticated WebSocket URL");
+
+  return new Promise<any>((resolve, reject) => {
+    const socket = new WebSocket(wsUrl);
+    let settled = false;
+    let purchaseRequested = false;
+    const timer = setTimeout(() => {
+      try {
+        socket.close();
+      } catch {}
+      if (!settled) {
+        settled = true;
+        reject(new Error("Deriv proposal purchase timeout"));
+      }
+    }, 12_000);
+
+    const finish = (callback: (value: any) => void, value: any) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try {
+        socket.close();
+      } catch {}
+      callback(value);
+    };
+
+    socket.on("open", () => socket.send(JSON.stringify(proposalPayload)));
+    socket.on("message", (raw: RawData) => {
+      let data: any;
+      try {
+        data = JSON.parse(raw.toString());
+      } catch {
+        return;
+      }
+      if (data.error) {
+        const code = typeof data.error.code === "string" ? data.error.code : "DerivError";
+        finish(reject, new Error(`[${code}] ${data.error.message || "Deriv API error"}`));
+        return;
+      }
+      if (data.msg_type === "proposal" && !purchaseRequested) {
+        const proposalId = data.proposal?.id;
+        const currentAskPrice = Number(data.proposal?.ask_price);
+        if (!proposalId || !Number.isFinite(currentAskPrice) || currentAskPrice <= 0) {
+          finish(reject, new Error("Deriv did not return a purchasable proposal"));
+          return;
+        }
+        if (currentAskPrice > reviewedAskPrice) {
+          finish(reject, new Error("The Deriv price increased after review. Review the updated proposal before running the trade."));
+          return;
+        }
+        purchaseRequested = true;
+        socket.send(JSON.stringify({ buy: proposalId, price: reviewedAskPrice }));
+        return;
+      }
+      if (data.msg_type === "buy" && purchaseRequested) {
+        finish(resolve, data);
+      }
+    });
+    socket.on("error", (error: Error) => finish(reject, error));
+    socket.on("close", () => {
+      clearTimeout(timer);
+      if (!settled) {
+        settled = true;
+        reject(new Error("Deriv closed the trading connection before confirming the purchase"));
+      }
+    });
+  });
+}
+
 router.get("/account", async (req, res) => {
   const session = await getSession(req, res);
   if (!session) return errorResponse(res, 401, "Not authenticated");
@@ -816,14 +900,17 @@ router.post("/trades", async (req, res) => {
       proposalId: reviewed.id,
     }).onConflictDoNothing().returning({ nonce: consumedTradeProposals.nonce });
     if (!consumed.length) return errorResponse(res, 409, "Proposal already used", "This proposal has already been submitted. Review a fresh proposal before another order.");
-    const proposal: any = { proposal: { id: reviewed.id } };
-    if (!proposal.proposal?.id) {
-      return errorResponse(res, 502, "Deriv did not return a proposal");
-    }
-    const buy = await derivRequest(session.accessToken, {
-      buy: proposal.proposal.id,
-      price: reviewed.askPrice,
-    }, session.accountId);
+    const buy = await derivProposalAndBuy(session.accessToken, {
+      proposal: 1,
+      amount: stake,
+      basis: "stake",
+      contract_type: validatedContractType,
+      currency,
+      duration,
+      duration_unit: "t",
+      underlying_symbol: symbol,
+      ...(barrierContractTypes.has(validatedContractType) ? { barrier } : {}),
+    }, reviewed.askPrice, session.accountId);
     if (buy.error) return errorResponse(res, 502, "Trade request failed", buy.error.message);
     const contractId = buy.buy?.contract_id ? Number(buy.buy.contract_id) : null;
     if (!contractId || !Number.isFinite(contractId)) {
@@ -856,10 +943,10 @@ router.post("/trades", async (req, res) => {
       stake: String(stake),
       currency,
       duration: String(duration),
-       contractId: String(contractId),
+      contractId: String(contractId),
       status: "pending",
       metadata: {
-        proposalId: proposal.proposal?.id || null,
+        proposalId: buy.echo_req?.buy || reviewed.id,
         barrier: barrierContractTypes.has(validatedContractType) ? barrier : null,
         stopLoss: stopLoss ?? null,
         stopLossApplied,

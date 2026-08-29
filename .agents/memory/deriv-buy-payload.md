@@ -1,10 +1,10 @@
 ---
-name: Deriv proposal purchase payload
-description: Required request shape when purchasing a Deriv proposal over an OAuth OTP WebSocket.
+name: Deriv proposal purchase flow
+description: Connection and payload requirements when purchasing a Deriv proposal over an OAuth OTP WebSocket.
 ---
 
-When purchasing with a proposal ID over Deriv's OAuth OTP WebSocket, send `buy` and `price` as top-level request fields. The `parameters` object is for direct contract-parameter purchases, not the proposal-ID flow.
+Create the execution-time proposal and buy it on the same OAuth OTP WebSocket connection. Send `buy` and `price` as top-level request fields; the `parameters` object is for direct contract-parameter purchases, not the proposal-ID flow. Retain the signed preview review as the maximum approved price, and require another review if the fresh execution price increases.
 
-**Why:** Deriv accepts proposal previews but rejects the subsequent purchase when the reviewed ask price is nested under `parameters`, causing every execution path to fail at the shared buy boundary.
+**Why:** Deriv can accept a proposal preview but reject a purchase made on a separate short-lived authenticated connection. It also rejects proposal-ID purchases when the reviewed ask price is nested under `parameters`.
 
-**How to apply:** Keep Instant Trade, scanner-assisted trades, and Bots on the shared server purchase endpoint, and verify the current official Buy Contract schema before changing its payload.
+**How to apply:** Keep manual, bulk, AI-assisted, and bot sessions on the shared server purchase endpoint. Generate a fresh matching proposal and purchase it before closing that connection while preserving single-use review approval.

@@ -26,6 +26,17 @@ const initialState: TradingRunSessionState = {
 
 const wait = (milliseconds: number) => new Promise(resolve => window.setTimeout(resolve, milliseconds))
 
+function providerErrorMessage(error: unknown) {
+  const failure = error as {
+    response?: { data?: { error?: string; message?: string } }
+    message?: string
+  }
+  const providerError = failure?.response?.data?.error
+  const providerMessage = failure?.response?.data?.message
+  if (providerError && providerMessage) return `${providerError}: ${providerMessage}`
+  return providerMessage || providerError || failure?.message || "Trading session stopped because the provider response was unavailable."
+}
+
 export function useTradingRunSession(storageKey: string, onChange?: () => void) {
   const preview = usePreviewTrade()
   const trade = useCreateTrade()
@@ -124,7 +135,7 @@ export function useTradingRunSession(storageKey: string, onChange?: () => void) 
         commit({ status: stopRequested.current ? "stopped" : "completed", message: stopRequested.current ? "Bot stopped after the current contract settled. No new order was submitted." : "Run plan completed." })
       }
     } catch (error) {
-      commit({ status: "failed", message: error instanceof Error ? error.message : "Trading session stopped because the provider response was unavailable." })
+      commit({ status: "failed", message: providerErrorMessage(error) })
     } finally {
       onChange?.()
     }
