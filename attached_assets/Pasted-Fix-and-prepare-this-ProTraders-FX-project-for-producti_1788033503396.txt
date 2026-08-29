@@ -1,0 +1,44 @@
+Fix and prepare this ProTraders FX project for production deployment on Vercel.
+
+The website must NOT depend on Replit hosting, Replit credits, Replit database, or a Replit-only runtime to remain online.
+
+Use the existing project and make the following work correctly:
+
+1. The root `/` must load the ProTraders FX website without a 500 error.
+2. `/health` must return HTTP 200 with a simple JSON response confirming the server is healthy.
+3. All frontend assets must load correctly, including favicon, CSS, JavaScript, images, and SVG files.
+4. All API routes used by the frontend must work on Vercel.
+5. Fix `/api/deriv/login` so it does not return 404.
+6. Fix the Deriv OAuth flow and callback so the login process works correctly with the configured Vercel environment variables.
+7. Do not hard-code or expose any API keys, OAuth secrets, tokens, client secrets, or SESSION_SECRET.
+8. Do not write persistent files to `/var/task` or any Vercel read-only filesystem.
+9. Remove any dependency on a local `data` directory for runtime persistence. Use an appropriate Vercel-compatible approach or make the feature optional if persistence is not required.
+10. Make sure `vercel.json`, `package.json`, and `server.js` are compatible with the current Vercel deployment.
+11. Do not create redirect loops.
+12. Do not change the domain or branding. The website must remain PROTRADERS FX.
+13. Preserve the existing trading interface and Deriv functionality. Do not replace the trading application with a demo page or static placeholder.
+14. Make the application production-ready for GitHub → Vercel deployment.
+
+Before making changes, inspect the entire project and identify the actual cause of the current Vercel failures.
+
+Then make the required corrections.
+
+After making the corrections, test the application locally as much as possible and verify that these routes are implemented:
+
+/
+/health
+/api/config
+/api/track
+/api/analytics
+/api/deriv/signup
+/api/deriv/login
+/oauth/callback
+
+Finally, give me:
+
+* the files you changed
+* the exact reason for the previous Vercel failure
+* confirmation that the project no longer requires Replit hosting or Replit credits
+* the exact GitHub commit/update I should deploy to Vercel
+
+Do NOT merely tell me what to change. Actually fix the project files.

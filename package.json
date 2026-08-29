@@ -1,21 +1,21 @@
 {
-"name": "protraders-fx",
-"version": "1.0.0",
-"private": true,
-"main": "server.js",
-"scripts": {
-"start": "node server.js"
-},
-"engines": {
-"node": "22.x"
-},
-"dependencies": {
-"cookie-parser": "^1.4.7",
-"cors": "^2.8.5",
-"dotenv": "^16.6.1",
-"express": "^5.1.0",
-"express-rate-limit": "^8.0.1",
-"helmet": "^8.1.0",
-"ws": "^8.18.3"
-}
+  "name": "workspace",
+  "version": "0.0.0",
+  "license": "MIT",
+  "packageManager": "pnpm@10.26.1",
+  "engines": {
+    "node": ">=20 <25"
+  },
+  "scripts": {
+    "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
+    "build": "pnpm run typecheck && pnpm -r --if-present run build",
+    "vercel-build": "pnpm --filter @workspace/protraders-fx run build",
+    "typecheck:libs": "tsc --build",
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+  },
+  "private": true,
+  "devDependencies": {
+    "prettier": "^3.9.6",
+    "typescript": "~5.9.3"
+  }
 }
