@@ -46,7 +46,7 @@ export default function Home() {
         <div className="container relative z-10 max-w-4xl mx-auto px-6 space-y-8 mt-[-4rem]">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-mono uppercase tracking-widest mb-2 shadow-[0_0_20px_rgba(var(--primary),0.1)]">
             <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-             Trade like a pro.
+             Built for focused execution
           </div>
           
            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight text-foreground balance-text">
@@ -63,7 +63,7 @@ export default function Home() {
             ) : session?.authenticated ? (
               <Button size="xl" asChild className="gap-2 group shadow-[0_0_30px_rgba(var(--primary),0.2)] hover:shadow-[0_0_40px_rgba(var(--primary),0.3)] transition-shadow bg-primary text-primary-foreground border-transparent" data-testid="hero-dashboard-btn">
                 <Link href="/dashboard">
-                   Trade like a pro
+                   Open terminal
                   <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </Button>
