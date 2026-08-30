@@ -139,8 +139,9 @@ function safeErrorMessage(error: unknown) {
 
 function isConsumedProposalConflict(error: unknown) {
   const databaseError = error as { code?: string; constraint?: string; message?: string };
-  return databaseError?.code === "23505"
-    && /consumed[_\s-]?trade[_\s-]?proposals|nonce/i.test(`${databaseError.constraint || ""} ${databaseError.message || ""}`);
+  const details = `${databaseError?.constraint || ""} ${databaseError?.message || ""}`;
+  return (databaseError?.code === "23505" || /duplicate key value violates unique constraint/i.test(details))
+    && /consumed[_\s-]?trade[_\s-]?proposals|nonce/i.test(details);
 }
 
 function encodingKey() {

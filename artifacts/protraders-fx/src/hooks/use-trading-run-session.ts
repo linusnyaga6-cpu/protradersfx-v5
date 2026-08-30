@@ -47,6 +47,22 @@ const initialState: TradingRunSessionState = {
   netProfit: 0, message: "", results: [],
 }
 
+function normalizeSavedState(value: unknown): TradingRunSessionState | null {
+  if (!value || typeof value !== "object") return null
+  const saved = value as Partial<TradingRunSessionState>
+  if (typeof saved.id !== "string" || !saved.status || saved.status === "idle") return null
+  const message = typeof saved.message === "string" ? saved.message : ""
+  const isLegacyProposalError = /consumed[_\s-]?trade[_\s-]?proposals|duplicate key value violates unique constraint|insert into/i.test(message)
+  return {
+    ...initialState,
+    ...saved,
+    message: isLegacyProposalError
+      ? "The previous proposal was already used. Start again to request a fresh proposal."
+      : message,
+    results: Array.isArray(saved.results) ? saved.results : [],
+  } as TradingRunSessionState
+}
+
 const wait = (milliseconds: number) => new Promise(resolve => window.setTimeout(resolve, milliseconds))
 
 function providerErrorMessage(error: unknown) {
@@ -89,10 +105,10 @@ export function useTradingRunSession(storageKey: string, onChange?: () => void) 
 
   useEffect(() => {
     try {
-      const saved = JSON.parse(window.localStorage.getItem(storageKey) || "null")
-      if (saved?.id && ["running", "stopping"].includes(saved.status)) {
+      const saved = normalizeSavedState(JSON.parse(window.localStorage.getItem(storageKey) || "null"))
+      if (saved && ["running", "stopping"].includes(saved.status)) {
         commit({ ...saved, status: "stopped", message: "Session interrupted by reload. No new order was started." })
-      } else if (saved?.id && saved.status && saved.status !== "idle") {
+      } else if (saved) {
         stateRef.current = saved
         setState(saved)
       }
