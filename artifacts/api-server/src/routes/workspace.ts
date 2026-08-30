@@ -117,10 +117,7 @@ async function owner(req: Request, res: Response) {
   const session = await getSession(req, res);
   if (!session) return null;
   const accounts = await listDerivAccounts(session.accessToken);
-  const account = accounts.find((item) => item.account_id === session.accountId) ||
-    accounts.find((item) => item.account_type === "demo") ||
-    accounts.find((item) => item.status === "active") ||
-    accounts[0];
+  const account = accounts.find((item) => item.account_id === session.accountId);
   const loginId = String(account?.account_id || "");
   if (!loginId) throw new Error("Authenticated Deriv login ID unavailable");
   return { session, key: crypto.createHash("sha256").update(`protraders-owner:${loginId}`).digest("hex") };
@@ -525,10 +522,7 @@ router.post("/bots/:id/run-once", async (req, res) => {
           .orderBy(desc(botRuns.startedAt))
           .limit(6),
       ]);
-      const account = accounts.find((item) => item.account_id === auth.session.accountId) ||
-        accounts.find((item) => item.account_type === "demo") ||
-        accounts.find((item) => item.status === "active") ||
-        accounts[0];
+      const account = accounts.find((item) => item.account_id === auth.session.accountId);
       if (!account?.account_id || !Number.isFinite(Number(account.balance))) throw new Error("Authoritative account data unavailable");
       const candles = Array.isArray(marketData.candles)
         ? marketData.candles.map((c: any) => ({ epoch: Number(c.epoch), close: Number(c.close) })).filter((c: any) => Number.isFinite(c.epoch) && Number.isFinite(c.close))
@@ -580,7 +574,7 @@ router.post("/bots/:id/run-once", async (req, res) => {
 });
 
 router.get("/snapshots", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; return res.json({ snapshots: await db.select().from(snapshots).where(eq(snapshots.ownerKey, auth.key)).orderBy(desc(snapshots.createdAt)) }); });
-router.post("/snapshots", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const label = string(req.body?.label); if (!label) return fail(res, 400, "Invalid snapshot"); try { const accounts = await listDerivAccounts(auth.session.accessToken); const account = accounts.find((item) => item.account_id === auth.session.accountId) || accounts.find((item) => item.account_type === "demo") || accounts.find((item) => item.status === "active") || accounts[0]; if (!account?.account_id || !Number.isFinite(Number(account.balance))) return fail(res, 502, "Account snapshot unavailable"); const clientContext = req.body?.clientContext; if (clientContext !== undefined && (typeof clientContext !== "object" || Array.isArray(clientContext))) return fail(res, 400, "Invalid non-authoritative client context"); const data = { authoritativeAccount: { loginid: String(account.account_id), balance: Number(account.balance), currency: account.currency ?? null, capturedAt: new Date().toISOString() }, ...(clientContext ? { nonAuthoritativeClientContext: clientContext } : {}) }; const [item] = await db.insert(snapshots).values({ ownerKey: auth.key, label, data }).returning(); return res.status(201).json(item); } catch (e) { return fail(res, 502, "Account snapshot unavailable", e instanceof Error ? e.message : undefined); } });
+router.post("/snapshots", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const label = string(req.body?.label); if (!label) return fail(res, 400, "Invalid snapshot"); try { const accounts = await listDerivAccounts(auth.session.accessToken); const account = accounts.find((item) => item.account_id === auth.session.accountId); if (!account?.account_id || !Number.isFinite(Number(account.balance))) return fail(res, 502, "Account snapshot unavailable"); const clientContext = req.body?.clientContext; if (clientContext !== undefined && (typeof clientContext !== "object" || Array.isArray(clientContext))) return fail(res, 400, "Invalid non-authoritative client context"); const data = { authoritativeAccount: { loginid: String(account.account_id), balance: Number(account.balance), currency: account.currency ?? null, capturedAt: new Date().toISOString() }, ...(clientContext ? { nonAuthoritativeClientContext: clientContext } : {}) }; const [item] = await db.insert(snapshots).values({ ownerKey: auth.key, label, data }).returning(); return res.status(201).json(item); } catch (e) { return fail(res, 502, "Account snapshot unavailable", e instanceof Error ? e.message : undefined); } });
 router.get("/snapshots/:id", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const [item] = await db.select().from(snapshots).where(and(eq(snapshots.id, req.params.id), eq(snapshots.ownerKey, auth.key))); return item ? res.json(item) : fail(res, 404, "Snapshot not found"); });
 router.get("/risk-acknowledgements/status", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const [item] = await db.select().from(riskAcknowledgements).where(and(eq(riskAcknowledgements.ownerKey, auth.key), eq(riskAcknowledgements.version, RISK_VERSION))).orderBy(desc(riskAcknowledgements.acceptedAt)); return res.json({ version: RISK_VERSION, accepted: Boolean(item), acceptedAt: item?.acceptedAt ?? null }); });
 router.post("/risk-acknowledgements/accept", async (req, res) => { const auth = await authenticated(req, res); if (!auth) return; const version = string(req.body?.version, 40); if (version !== RISK_VERSION) return fail(res, 400, "Unsupported risk acknowledgement version"); const [item] = await db.insert(riskAcknowledgements).values({ ownerKey: auth.key, version }).returning(); return res.status(201).json(item); });
