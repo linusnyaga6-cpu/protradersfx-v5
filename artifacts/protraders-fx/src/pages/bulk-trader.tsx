@@ -80,14 +80,27 @@ export default function BulkTrader() {
   const validSetup = Number.isInteger(totalRuns) && totalRuns >= 1 && totalRuns <= 100
     && Number.isFinite(availableBalance) && availableBalance > 0
     && Number.isFinite(stakeValue) && stakeValue > 0 && stakeValue < availableBalance
-  const accountCanTrade = account.data?.accountType === "real"
+  const selectedAccountType = account.data?.accountType
+  const accountSessionLabel = selectedAccountType === "real"
+    ? "real-account"
+    : selectedAccountType === "demo"
+      ? "demo-account"
+      : "selected-account"
+  const accountBadgeLabel = selectedAccountType === "real"
+    ? "Real-account gates"
+    : selectedAccountType === "demo"
+      ? "Demo-account gates"
+      : "Select account"
+  const accountCanTrade = selectedAccountType === "real"
     ? preflight.data?.readyForRealTrading
-    : account.data?.accountType === "demo" && preflight.data?.tradingEnabled
-  const accountGateMessage = account.data?.accountType === "real"
+    : selectedAccountType === "demo" && preflight.data?.tradingEnabled
+  const accountGateMessage = !selectedAccountType
+    ? "Select a Demo or Real account before running Bulk Trader."
+    : selectedAccountType === "real"
     ? preflight.data && !preflight.data.readyForRealTrading
       ? "Bulk Trader requires the reviewed real-trading gate and selected real account."
       : ""
-    : account.data?.accountType === "demo"
+    : selectedAccountType === "demo"
       ? preflight.data && !preflight.data.tradingEnabled
         ? "Bulk Trader requires enabled Demo trading."
         : ""
@@ -163,7 +176,7 @@ export default function BulkTrader() {
         : "Market scan has not returned yet."
 
   return (
-        <Workspace title="Bulk Trader" eyebrow="Fast, bounded execution" description={`Choose a stake and run count. Bulk Trader scans live Deriv markets and executes one bounded ${account.data?.accountType === "real" ? "real-account" : "demo"} session.`}>
+        <Workspace title="Bulk Trader" eyebrow="Fast, bounded execution" description={`Choose a stake and run count. Bulk Trader scans live Deriv markets and executes one bounded ${accountSessionLabel} session.`}>
       <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} />
 
       <div className="overflow-hidden rounded-2xl border border-primary/20 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/.18),transparent_38%),linear-gradient(135deg,hsl(var(--card)),hsl(var(--secondary)/.45))] shadow-[0_18px_60px_rgba(0,0,0,.16)]">
@@ -172,7 +185,7 @@ export default function BulkTrader() {
             <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
             Live Deriv market scan
           </div>
-          <Badge variant="outline" className="border-primary/30 bg-background/40"><ShieldCheck className="mr-1 h-3 w-3 text-primary" />{account.data?.accountType === "real" ? "Real-account gates" : "Demo-first"}</Badge>
+          <Badge variant="outline" className="border-primary/30 bg-background/40"><ShieldCheck className="mr-1 h-3 w-3 text-primary" />{accountBadgeLabel}</Badge>
         </div>
         <div className="grid gap-8 px-5 py-10 md:grid-cols-[1.1fr_.9fr] md:px-10">
           <div className="flex flex-col justify-center">
