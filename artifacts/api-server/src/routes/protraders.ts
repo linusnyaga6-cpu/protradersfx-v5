@@ -412,16 +412,13 @@ router.post("/track", async (req, res) => {
   if (!clientActivityTypes.has(type)) {
     return errorResponse(res, 400, "Unsupported activity event");
   }
-  const persisted = await recordActivity({
+  await recordActivity({
     eventType: type,
     req,
     path: req.body?.path,
     visitorId: req.body?.visitorId,
     metadata: req.body?.metadata,
   });
-  if (!persisted) {
-    return errorResponse(res, 503, "Analytics unavailable", "Configure DATABASE_URL or POSTGRES_URL for persistent activity tracking.");
-  }
   return res.status(204).end();
 });
 
