@@ -398,7 +398,7 @@ router.get("/preflight", (_req, res) => {
         : liveTradingEnabled
           ? "BOTH"
           : "LIVE LOCKED",
-    readyForControlledLiveTest: deploymentReady,
+    readyForControlledLiveTest: deploymentReady && databaseConfigured,
     readyForRealTrading: realTradingReady,
   });
 });
