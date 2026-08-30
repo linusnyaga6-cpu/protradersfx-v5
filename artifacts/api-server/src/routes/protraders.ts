@@ -72,7 +72,6 @@ const deploymentReady = Boolean(
   clientId &&
   affiliateToken &&
   sessionSecret &&
-  publicAppId &&
   frontendConfigured,
 );
 const realTradingReady = Boolean(
