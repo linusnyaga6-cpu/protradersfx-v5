@@ -134,8 +134,13 @@ export function useTradingRunSession(storageKey: string, onChange?: () => void) 
       }
       executionOrder = { ...order, live_confirmation: "CONFIRM_LIVE_TRADE" }
     }
+    // A retry is a new reviewed session. Clear the previous result/token state
+    // before requesting a new provider proposal; never replay an old proposal.
     stopRequested.current = false
     cancelled.current = false
+    stateRef.current = initialState
+    setState(initialState)
+    try { window.localStorage.removeItem(storageKey) } catch { /* storage is optional */ }
     const sessionId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`
     commit({ ...initialState, id: sessionId, status: "running", totalRuns, message: `${sessionLabel(executionOrder.source)} started. Requesting the first Deriv proposal…` })
     try {

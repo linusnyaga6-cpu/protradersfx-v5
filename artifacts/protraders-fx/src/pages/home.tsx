@@ -44,7 +44,7 @@ export default function Home() {
                 <Radio className="h-3 w-3" /> Deriv Workspace
               </div>
               <h1 className="font-display text-5xl font-semibold leading-[1.05] tracking-tight text-foreground sm:text-6xl lg:text-7xl">
-                Trade with <br /><span className="text-primary/90">context.</span>
+                 TRADE LIKE A <br /><span className="text-primary/90">PRO.</span>
               </h1>
               <p className="mt-6 max-w-lg text-base leading-relaxed text-muted-foreground sm:text-lg">
                 A technical workspace for Deriv traders. Analyze live market structures, practice with bounded demo accounts, and deploy bot strategies—without the noise.

@@ -137,6 +137,12 @@ function safeErrorMessage(error: unknown) {
     .replace(/(access[_-]?token|refresh[_-]?token|authorization|cookie)=?[^\s,;]+/gi, "$1=[redacted]");
 }
 
+function isConsumedProposalConflict(error: unknown) {
+  const databaseError = error as { code?: string; constraint?: string; message?: string };
+  return databaseError?.code === "23505"
+    && /consumed[_\s-]?trade[_\s-]?proposals|nonce/i.test(`${databaseError.constraint || ""} ${databaseError.message || ""}`);
+}
+
 function encodingKey() {
   if (!sessionSecret) throw new Error("SESSION_SECRET is not configured");
   return crypto.createHash("sha256").update(sessionSecret).digest();
@@ -1121,11 +1127,19 @@ router.post("/trades", async (req, res) => {
       && reviewed?.sessionId === sessionId && reviewed?.expiresAt > Date.now();
     if (!matches || !reviewed?.id || !reviewed?.nonce || !Number.isFinite(reviewed?.askPrice) || reviewed.askPrice <= 0) return errorResponse(res, 409, "Proposal expired or changed", "Review the current order again before execution.");
     executionStage = "proposal_review";
-    const consumed = await db.insert(consumedTradeProposals).values({
-      nonce: reviewed.nonce,
-      ownerKey: ownerKeyFor(account.account_id || loginId),
-      proposalId: reviewed.id,
-    }).onConflictDoNothing().returning({ nonce: consumedTradeProposals.nonce });
+    let consumed: Array<{ nonce: string }>;
+    try {
+      consumed = await db.insert(consumedTradeProposals).values({
+        nonce: reviewed.nonce,
+        ownerKey: ownerKeyFor(account.account_id || loginId),
+        proposalId: reviewed.id,
+      }).onConflictDoNothing({ target: consumedTradeProposals.nonce }).returning({ nonce: consumedTradeProposals.nonce });
+    } catch (error) {
+      if (isConsumedProposalConflict(error)) {
+        return errorResponse(res, 409, "Proposal already used", "Request a fresh Deriv proposal before running this session again.");
+      }
+      throw error;
+    }
     if (!consumed.length) return errorResponse(res, 409, "Proposal already used", "This proposal has already been submitted. Review a fresh proposal before another order.");
     if (reviewed.source === "bot_assisted") {
       const [plan] = await db.select().from(botRuns).where(and(
