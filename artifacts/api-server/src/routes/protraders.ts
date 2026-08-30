@@ -137,6 +137,49 @@ function safeErrorMessage(error: unknown) {
     .replace(/(access[_-]?token|refresh[_-]?token|authorization|cookie)=?[^\s,;]+/gi, "$1=[redacted]");
 }
 
+function proposalReviewDatabaseDiagnostic(error: unknown) {
+  let cause = error && typeof error === "object" && "cause" in error
+    ? (error as { cause?: unknown }).cause
+    : undefined;
+  let depth = 0;
+
+  while (cause && typeof cause === "object" && depth < 4) {
+    const candidate = cause as {
+      code?: unknown;
+      constraint?: unknown;
+      message?: unknown;
+      cause?: unknown;
+    };
+    const code = typeof candidate.code === "string" && /^[0-9A-Z]{5}$/i.test(candidate.code)
+      ? candidate.code
+      : "UNKNOWN";
+    const constraint = typeof candidate.constraint === "string" && /^[a-zA-Z0-9_]{1,128}$/.test(candidate.constraint)
+      ? candidate.constraint
+      : null;
+    const rawMessage = typeof candidate.message === "string" ? candidate.message.split(/\r?\n/, 1)[0] : "";
+    const message = (/failed query|parameters?:/i.test(rawMessage)
+      ? "PostgreSQL operation failed"
+      : rawMessage
+          .replace(/postgres(?:ql)?:\/\/\S+/gi, "[redacted]")
+          .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/gi, "[redacted]")
+          .replace(/\b[0-9a-f]{32,}\b/gi, "[redacted]")
+          .replace(/\b(nonce|owner_key|proposal_id)\s*[=:]\s*[^\s,;]+/gi, "$1=[redacted]")
+          .slice(0, 240)) || "PostgreSQL operation failed";
+
+    if (code !== "UNKNOWN" || constraint || (rawMessage && !candidate.cause)) {
+      return { code, constraint, message };
+    }
+    cause = candidate.cause;
+    depth += 1;
+  }
+
+  return {
+    code: "UNKNOWN",
+    constraint: null,
+    message: "PostgreSQL error details unavailable",
+  };
+}
+
 function isConsumedProposalConflict(error: unknown) {
   const databaseError = error as { code?: string; constraint?: string; message?: string };
   const details = `${databaseError?.constraint || ""} ${databaseError?.message || ""}`;
@@ -1136,10 +1179,19 @@ router.post("/trades", async (req, res) => {
         proposalId: reviewed.id,
       }).onConflictDoNothing({ target: consumedTradeProposals.nonce }).returning({ nonce: consumedTradeProposals.nonce });
     } catch (error) {
+      req.log?.warn(
+        proposalReviewDatabaseDiagnostic(error),
+        "proposal review database insert failed",
+      );
       if (isConsumedProposalConflict(error)) {
         return errorResponse(res, 409, "Proposal already used", "Request a fresh Deriv proposal before running this session again.");
       }
-      throw error;
+      return errorResponse(
+        res,
+        502,
+        "Trade request failed",
+        "Proposal review could not be recorded. No purchase request was sent.",
+      );
     }
     if (!consumed.length) return errorResponse(res, 409, "Proposal already used", "This proposal has already been submitted. Review a fresh proposal before another order.");
     if (reviewed.source === "bot_assisted") {
