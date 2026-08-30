@@ -74,7 +74,7 @@ function ProtectedPage({ page: Page }: { page: ComponentType }) {
           <div className="text-xs font-semibold uppercase tracking-[.24em] text-primary">Secure workspace</div>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight">Connect your Deriv account to continue</h1>
           <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
-            Connect Deriv to open markets, bots, recovery, and demo trading.
+             Connect Deriv to open markets, bots, recovery, and trading.
           </p>
           <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
             <a className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground hover:bg-primary/90" href="/api/deriv/login">
