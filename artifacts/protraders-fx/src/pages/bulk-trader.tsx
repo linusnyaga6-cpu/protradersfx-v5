@@ -83,6 +83,15 @@ export default function BulkTrader() {
   const accountCanTrade = account.data?.accountType === "real"
     ? preflight.data?.readyForRealTrading
     : account.data?.accountType === "demo" && preflight.data?.tradingEnabled
+  const accountGateMessage = account.data?.accountType === "real"
+    ? preflight.data && !preflight.data.readyForRealTrading
+      ? "Bulk Trader requires the reviewed real-trading gate and selected real account."
+      : ""
+    : account.data?.accountType === "demo"
+      ? preflight.data && !preflight.data.tradingEnabled
+        ? "Bulk Trader requires enabled Demo trading."
+        : ""
+      : ""
   const canRun = Boolean(
     accountCanTrade
     && validSetup
@@ -240,7 +249,7 @@ export default function BulkTrader() {
               <Input id="quick-bulk-runs" type="number" min="1" max="100" step="1" value={runCount} onChange={event => setRunCount(event.target.value)} data-testid="input-bulk-runs" />
               <p className="text-xs text-muted-foreground">Runs are sequential and stop at the count entered here.</p>
             </div>
-            {account.data?.accountType !== "demo" && <p className="text-xs text-destructive">Bulk Trader requires the protected Deriv demo account.</p>}
+            {accountGateMessage && <p className="text-xs text-destructive">{accountGateMessage}</p>}
             {!validSetup && <p className="text-xs text-destructive">Enter a stake below the available account balance and a whole-number run count from 1 to 100.</p>}
             {usingFallback && <p className="text-xs text-amber-600">{scannedSymbol} did not return usable contracts, so this run will use the verified fallback market {fallbackSymbol}.</p>}
             {!contractReady && !contracts.isLoading && !fallbackContracts.isLoading && <p className="text-xs text-amber-600">A supported Deriv contract is not currently verified. Run the scan again before starting.</p>}
