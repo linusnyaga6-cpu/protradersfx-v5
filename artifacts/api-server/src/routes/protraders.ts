@@ -283,11 +283,9 @@ export async function listDerivAccounts(accessToken: string) {
 }
 
 function chooseAccount(accounts: DerivOptionsAccount[], target?: "demo" | "real", accountId?: string) {
-  return accounts.find((account) => account.account_id === accountId) ||
-    (target ? accounts.find((account) => account.account_type === target) : undefined) ||
-    accounts.find((account) => account.account_type === "demo") ||
-    accounts.find((account) => account.status === "active") ||
-    accounts[0];
+  if (accountId) return accounts.find((account) => account.account_id === accountId);
+  if (target) return accounts.find((account) => account.account_type === target);
+  return accounts.find((account) => account.status === "active") || accounts[0];
 }
 
 function oauthRequest(mode: "login" | "signup", targetAccount?: "demo" | "real") {
