@@ -70,21 +70,21 @@ export function TransactionLedger({ compact = false, accountBalance, accountCurr
       : formatSignedMoney(summary.net, summaryCurrency)
 
   return (
-    <Card className={compact ? "shadow-sm" : "shadow-md"} data-testid="card-transaction-ledger">
-      <CardHeader className="border-b bg-secondary/10">
+    <Card className={compact ? "shadow-sm" : "shadow-[0_12px_40px_hsl(215_40%_20%/.06)]"} data-testid="card-transaction-ledger">
+      <CardHeader className="border-b border-border/80 bg-card px-5 py-4 md:px-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <CardTitle className="flex items-center gap-2 text-lg">
+            <CardTitle className="flex items-center gap-2 text-base">
               <ReceiptText className="h-5 w-5 text-primary" /> Transactions
             </CardTitle>
-            <p className="mt-1 text-xs text-muted-foreground">Account results and settlement history.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Recent orders and settlement status.</p>
           </div>
           <Button size="icon" variant="ghost" onClick={() => query.refetch()} disabled={query.isFetching} aria-label="Refresh transactions">
             <RefreshCw className={query.isFetching ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4 pt-5">
+      <CardContent className="space-y-4 p-4 md:p-5">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
           <Summary label="Cumulative P/L" value={signedNet} positive={summary.settled > 0 ? summary.net >= 0 : undefined} />
           <Summary label="Runs" value={String(summary.runs)} />
@@ -103,6 +103,7 @@ export function TransactionLedger({ compact = false, accountBalance, accountCurr
             {rows.slice(0, compact ? 5 : 12).map((row: any) => {
               const net = Number(row.netProfit)
               const currency = row.currency || "USD"
+              const metadata = row.metadata && typeof row.metadata === "object" ? row.metadata : {}
               return (
                 <div key={row.id} className="grid gap-2 p-3 sm:grid-cols-[1fr_auto] sm:items-center">
                   <div className="flex min-w-0 items-center gap-3">
@@ -119,7 +120,18 @@ export function TransactionLedger({ compact = false, accountBalance, accountCurr
                         <span>{row.source?.replace("_", " ") || "manual"}</span>
                         <span>Stake {money(row.stake, currency)}</span>
                         {row.contractId && <span className="font-mono">#{row.contractId}</span>}
-                        {(row.metadata as any)?.stopLoss != null && <span>Stop loss {money((row.metadata as any).stopLoss, currency)} · {(row.metadata as any).stopLossApplied === true ? "applied" : (row.metadata as any).stopLossApplied === false ? "rejected" : "requested"}</span>}
+                        {metadata.stopLoss != null && <span>Stop loss {money(metadata.stopLoss, currency)} · {metadata.stopLossApplied === true ? "applied" : metadata.stopLossApplied === false ? "rejected" : "requested"}</span>}
+                      </div>
+                      <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-5">
+                        <ReceiptMetric label="Type" value={row.contractType || "—"} />
+                        <ReceiptMetric label="Entry spot" value={formatSpot(metadata.entrySpot)} />
+                        <ReceiptMetric label="Exit spot" value={formatSpot(metadata.exitSpot)} />
+                        <ReceiptMetric label="Buy price" value={metadata.buyPrice == null ? "—" : money(metadata.buyPrice, currency)} />
+                        <ReceiptMetric
+                          label="P/L"
+                          value={isSettledStatus(row.status) && Number.isFinite(net) ? formatSignedMoney(net, currency) : "Pending"}
+                          positive={isSettledStatus(row.status) && Number.isFinite(net) ? net >= 0 : undefined}
+                        />
                       </div>
                       {row.status !== "pending" && <div className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-primary">Binary tool closed · end session</div>}
                     </div>
@@ -152,9 +164,23 @@ export function TransactionLedger({ compact = false, accountBalance, accountCurr
 
 function Summary({ label, value, positive }: { label: string; value: string; positive?: boolean }) {
   return (
-    <div className="rounded-lg border bg-secondary/30 p-3">
+    <div className="rounded-lg border border-border/80 bg-secondary/35 p-3">
       <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
       <div className={`mt-1 font-mono text-sm font-semibold ${positive === undefined ? "" : positive ? "text-success" : "text-destructive"}`}>{value}</div>
     </div>
   )
+}
+
+function ReceiptMetric({ label, value, positive }: { label: string; value: string; positive?: boolean }) {
+  return (
+    <div className="rounded-md border border-border/70 bg-secondary/25 p-2">
+      <div className="text-[8px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className={`mt-1 truncate font-mono text-[10px] font-semibold ${positive === undefined ? "" : positive ? "text-success" : "text-destructive"}`}>{value}</div>
+    </div>
+  )
+}
+
+function formatSpot(value: unknown) {
+  const spot = Number(value)
+  return !Number.isFinite(spot) ? "—" : spot.toFixed(5).replace(/0+$/, "").replace(/\.$/, "")
 }

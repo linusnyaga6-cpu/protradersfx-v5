@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { Activity, Bot, CircleAlert, Layers3, RefreshCw } from "lucide-react"
+import { Activity, Bot, CircleAlert, Layers3, RefreshCw, ShieldCheck, TrendingUp } from "lucide-react"
 import { Link, useLocation } from "wouter"
 import {
   getGetAccountQueryKey,
@@ -47,15 +47,16 @@ export default function Dashboard() {
   if (!session?.authenticated) return null
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-5 p-4 md:p-8">
+    <div className="mx-auto w-full max-w-6xl space-y-6 p-4 md:p-8">
       <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} />
 
-      <div className="flex items-end justify-between gap-3">
+      <div className="flex items-end justify-between gap-3 border-b border-border/80 pb-5">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-[.22em] text-primary">Overview</div>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Account activity</h1>
+          <div className="text-[10px] font-semibold uppercase tracking-[.22em] text-primary">Workspace / Overview</div>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight md:text-4xl">Trading dashboard</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Live account context and recent execution.</p>
         </div>
-        <Button variant="ghost" size="icon" onClick={() => account.refetch()} disabled={account.isFetching} aria-label="Refresh account">
+        <Button variant="outline" size="icon" className="bg-card" onClick={() => account.refetch()} disabled={account.isFetching} aria-label="Refresh account" data-testid="button-refresh-account">
           <RefreshCw className={account.isFetching ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
         </Button>
       </div>
@@ -70,22 +71,36 @@ export default function Dashboard() {
       )}
 
        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <ActionCard href="/bulk-trade" icon={<Layers3 className="h-4 w-4" />} title="Bulk Trader" featured />
-         <ActionCard href="/create-bot" icon={<Activity className="h-4 w-4" />} title="Manual Trader" />
-         <ActionCard href="/bots" icon={<Bot className="h-4 w-4" />} title="Bots" />
-         <ActionCard href="/markets" icon={<Activity className="h-4 w-4" />} title="Markets" />
-         <ActionCard href="/activity" icon={<Activity className="h-4 w-4" />} title="Activity" />
-         <ActionCard href="/recovery" icon={<CircleAlert className="h-4 w-4" />} title="Recovery" />
+         <ActionCard href="/create-bot" icon={<Activity className="h-4 w-4" />} title="Manual Trader" featured />
+          <ActionCard href="/bulk-trade" icon={<Layers3 className="h-4 w-4" />} title="Bulk Trader" />
+          <ActionCard href="/markets" icon={<TrendingUp className="h-4 w-4" />} title="Markets" />
+          <ActionCard href="/bots" icon={<Bot className="h-4 w-4" />} title="Bots" />
+          <ActionCard href="/activity" icon={<Activity className="h-4 w-4" />} title="Activity" />
+          <ActionCard href="/recovery" icon={<CircleAlert className="h-4 w-4" />} title="Recovery" />
       </div>
 
-      <TransactionLedger accountBalance={account.data?.balance} accountCurrency={account.data?.currency} />
+       <div className="grid gap-5 lg:grid-cols-[1fr_260px]">
+         <TransactionLedger accountBalance={account.data?.balance} accountCurrency={account.data?.currency} />
+         <Card className="h-fit border-primary/20 bg-primary/5">
+           <CardContent className="space-y-4 p-5">
+             <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.2em] text-primary">
+               <ShieldCheck className="h-4 w-4" /> Execution guard
+             </div>
+             <div>
+               <div className="text-sm font-semibold">Review before entry</div>
+               <p className="mt-1 text-xs leading-5 text-muted-foreground">Every order stays bounded to the selected account and plan.</p>
+             </div>
+             <Link href="/analysis" className="inline-flex text-xs font-semibold text-primary hover:underline" data-testid="link-dashboard-analysis">Open market analysis <span className="ml-1">→</span></Link>
+           </CardContent>
+         </Card>
+       </div>
     </div>
   )
 }
 
 function ActionCard({ href, icon, title, featured }: { href: string; icon: React.ReactNode; title: string; featured?: boolean }) {
   return (
-    <Link href={href} className={`group flex items-center gap-3 rounded-xl border p-4 transition-colors hover:border-primary/60 hover:bg-card ${featured ? "border-primary/45 bg-primary/10 shadow-[0_8px_30px_rgba(190,240,40,.08)]" : "bg-card/60"}`}>
+    <Link href={href} className={`group flex items-center gap-3 rounded-xl border p-4 transition-colors hover:border-primary/60 hover:bg-card ${featured ? "border-primary/45 bg-primary/10 shadow-[0_8px_30px_hsl(174_69%_35%/.08)]" : "border-border bg-card/60"}`} data-testid={`link-dashboard-${title.toLowerCase().replace(/\s+/g, "-")}`}>
       <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary">{icon}</span>
       <span className="font-medium">{title}</span>
       <span className="ml-auto text-muted-foreground transition-transform group-hover:translate-x-1">→</span>

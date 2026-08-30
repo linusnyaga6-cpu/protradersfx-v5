@@ -51,14 +51,14 @@ export function GlobalSearch() {
       <Button
         variant="outline"
         size="sm"
-        className="h-9 gap-2 border-white/10 bg-white/5 px-3 text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+         className="h-9 gap-2 border-border bg-card px-3 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
         onClick={() => setOpen(true)}
         aria-label="Search ProTraders FX"
         data-testid="button-global-search"
       >
         <Search className="h-4 w-4" />
         <span className="hidden sm:inline">Search</span>
-        <CommandShortcut className="hidden border-l border-white/10 pl-2 text-[10px] sm:inline font-mono text-muted-foreground/80">⌘K</CommandShortcut>
+         <CommandShortcut className="hidden border-l border-border pl-2 font-mono text-[10px] text-muted-foreground/80 sm:inline">⌘K</CommandShortcut>
       </Button>
       <CommandDialog open={open} onOpenChange={setOpen}>
         <CommandInput placeholder="Search markets, bots, or tools..." />

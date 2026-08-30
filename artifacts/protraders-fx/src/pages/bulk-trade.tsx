@@ -21,6 +21,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { AccountStrip } from "@/components/trading/account-strip"
+import { DigitRail } from "@/components/trading/digit-rail"
+import { TradingTabs } from "@/components/trading/trading-tabs"
 import { formatMoney, formatSignedMoney, formatVolatility } from "@/lib/format"
 import { CONTRACT_LABELS, DEFAULT_MARKET_SYMBOL, SUPPORTED_VOLATILITY_SYMBOLS, marketLabel } from "@/lib/markets"
 import { useDerivMarkets } from "@/hooks/use-deriv-markets"
@@ -87,6 +89,8 @@ export default function BulkTrade() {
   const candles = useGetMarketCandles(selectedMarket, { count: 60, granularity: 60 }, { query: { queryKey: getGetMarketCandlesQueryKey(selectedMarket, { count: 60, granularity: 60 }), refetchInterval: 30000 } })
   const marketData = candles.data as any
   const marketQuote = (ticker.data as any)?.quote ?? (ticker.data as any)?.price
+  const quoteDigits = String(marketQuote ?? "").replace(/\D/g, "")
+  const liveLastDigit = quoteDigits ? Number(quoteDigits.at(-1)) : null
   const marketOffline = ticker.isError || (ticker.data as any)?.available === false
   const contracts = useGetMarketContracts(selectedMarket, {
     query: {
@@ -132,6 +136,8 @@ export default function BulkTrade() {
     && (!needsBarrier || /^[0-9]$/.test(barrier))
   const validOrder = validInputs && availableTypes.includes(contractType)
   const orderData = {
+    account_id: String(account.data?.loginid || ""),
+    account_type: account.data?.accountType,
     symbol: selectedMarket, contract_type: contractType,
     ...(needsBarrier ? { barrier } : {}), stop_loss: Number(stopLoss),
     stake: Number(stake), duration: Number(duration), source: tradeSource,
@@ -139,13 +145,14 @@ export default function BulkTrade() {
   }
   return (
     <div className="mx-auto w-full max-w-6xl space-y-5 p-4 md:p-8">
-      <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} />
+      <TradingTabs active="manual" />
+      <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} switchingDisabled={runSession.isBusy} />
 
        <div className="flex items-end justify-between gap-3">
         <div>
            <div className="text-xs font-semibold uppercase tracking-[.22em] text-primary">Manual execution</div>
            <h1 className="mt-1 text-3xl font-semibold tracking-tight">Manual Trader</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Review the market, order details, and run limit before starting a controlled {accountSessionLabel} session.</p>
+             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Review market, order, and run limits for this {accountSessionLabel}.</p>
         </div>
       </div>
 
@@ -176,7 +183,8 @@ export default function BulkTrade() {
                <MarketMetric label="Quote" value={marketQuote == null ? "Unavailable" : String(marketQuote)} />
                <MarketMetric label="Volatility" value={marketData?.indicators ? formatVolatility(marketData.indicators.volatilityLevel, marketData.indicators.volatilityPct) : "Unavailable"} />
              </div>
-               <p className="text-xs leading-5 text-muted-foreground">Focused market universe: standard and 1-second Volatility 10, 25, 50, 75, and 100. Quotes, candles, contract types, and every order are validated live by Deriv.</p>
+              <DigitRail activeDigit={liveLastDigit} selectedDigit={needsBarrier ? Number(barrier) : null} />
+                   <p className="text-xs leading-5 text-muted-foreground">Quotes, candles, contracts, and orders are validated live by Deriv.</p>
           </CardContent>
         </Card>
 
@@ -214,18 +222,18 @@ export default function BulkTrade() {
             <div className="space-y-2">
               <Label htmlFor="bulk-stop-loss">Stop loss ({accountCurrency})</Label>
               <Input id="bulk-stop-loss" type="number" min="0.01" step="0.01" value={stopLoss} onChange={event => setStopLoss(event.target.value)} />
-              <p className="text-xs leading-5 text-muted-foreground">Applied to each accepted contract through Deriv’s contract-update API. Any provider rejection is shown in the result.</p>
+               <p className="text-xs leading-5 text-muted-foreground">Applied to each accepted contract. Provider status appears in results.</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="bulk-run-count">Number of runs</Label>
                 <Input id="bulk-run-count" type="number" min="1" max="100" step="1" value={runCount} onChange={event => setRunCount(event.target.value)} />
-                   <p className="text-xs text-muted-foreground">Each run gets a fresh Deriv proposal before submission.</p>
+                    <p className="text-xs text-muted-foreground">Fresh proposal per run.</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="bulk-take-profit">Take-profit target ({accountCurrency})</Label>
                 <Input id="bulk-take-profit" type="number" min="0.01" step="0.01" value={takeProfit} onChange={event => setTakeProfit(event.target.value)} />
-                <p className="text-xs text-muted-foreground">Stops future runs after Deriv reports cumulative settled profit at or above this target.</p>
+                 <p className="text-xs text-muted-foreground">Stops when settled profit reaches target.</p>
               </div>
             </div>
              <div className="space-y-2">
@@ -234,7 +242,7 @@ export default function BulkTrade() {
                 {["1", "2", "3", "5"].map(ticks => <Button key={ticks} type="button" size="sm" variant={duration === ticks ? "default" : "outline"} onClick={() => setDuration(ticks)}>{ticks}</Button>)}
               </div>
               <Input id="bulk-duration" type="number" min="1" max={Number(preflight.data?.maxDuration || 3600)} step="1" value={duration} onChange={event => setDuration(event.target.value)} />
-              <p className="text-xs leading-5 text-muted-foreground">Reduce this before submitting. One tick is the shortest selectable duration; Deriv validates whether it is available for the chosen contract.</p>
+               <p className="text-xs leading-5 text-muted-foreground">Deriv validates duration for this contract.</p>
             </div>
             <div className="rounded-lg bg-secondary/40 p-3 text-sm">
                 <div className="flex justify-between"><span className="text-muted-foreground">Market</span><span className="font-mono">{selectedMarket}</span></div>
@@ -248,11 +256,12 @@ export default function BulkTrade() {
                   currency={accountCurrency}
                   onStart={() => runSession.start(orderData, totalRuns, targetProfit)}
                   onStop={runSession.stop}
+                  onReset={runSession.reset}
                   disabled={!canRun || !validOrder || marketOffline || runSession.isBusy}
                  label="Run Manual Trader"
                  runNoun="Manual Trader"
                 />
-                 <p className="text-[11px] leading-5 text-muted-foreground">One run starts at a time. The next order waits for provider settlement. Stopping prevents future entries.</p>
+                 <p className="text-[11px] leading-5 text-muted-foreground">Runs are sequential. Stop blocks future entries.</p>
           </CardContent>
         </Card>
       </div>

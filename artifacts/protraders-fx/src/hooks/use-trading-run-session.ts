@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { useCreateTrade, usePreviewTrade, useRefreshTransaction } from "@workspace/api-client-react"
+import {
+  acceptRiskAcknowledgement,
+  getRiskAcknowledgementStatus,
+  useCreateTrade,
+  usePreviewTrade,
+  useRefreshTransaction,
+} from "@workspace/api-client-react"
 
 export type TradingRunSessionState = {
   id: string | null
@@ -14,7 +20,11 @@ export type TradingRunSessionState = {
     run: number
     status: string
     symbol?: string
+    contractType?: string
     stake?: number | null
+    buyPrice?: number | null
+    entrySpot?: number | null
+    exitSpot?: number | null
     payout?: number | null
     outcome?: string | null
     netProfit?: number | null
@@ -24,6 +34,8 @@ export type TradingRunSessionState = {
 }
 
 export type RunSessionOrder = Record<string, unknown> & {
+  account_id: string
+  account_type?: "demo" | "real"
   symbol: string
   stake: number
   duration: number
@@ -39,17 +51,22 @@ const wait = (milliseconds: number) => new Promise(resolve => window.setTimeout(
 
 function providerErrorMessage(error: unknown) {
   const failure = error as {
+    data?: { error?: string; message?: string }
     response?: { data?: { error?: string; message?: string } }
+    status?: number
     message?: string
   }
-  const providerError = failure?.response?.data?.error
-  const providerMessage = failure?.response?.data?.message
+  const payload = failure?.data || failure?.response?.data
+  const providerError = payload?.error
+  const providerMessage = payload?.message
   if (providerError && providerMessage) return `${providerError}: ${providerMessage}`
-  return providerMessage || providerError || failure?.message || "Trading session stopped because the provider response was unavailable."
+  if (providerMessage || providerError) return providerMessage || providerError || ""
+  if (failure?.status && failure?.message) return `HTTP ${failure.status}: ${failure.message}`
+  return failure?.message || "Trading session stopped because the provider response was unavailable."
 }
 
 function sessionLabel(source: unknown) {
-  if (source === "bulk_trader") return "Bulk Trader"
+  if (source === "bulk") return "Bulk Trader"
   if (source === "bot_assisted") return "Bot"
   return "Manual Trader"
 }
@@ -89,20 +106,46 @@ export function useTradingRunSession(storageKey: string, onChange?: () => void) 
     commit({ status: "stopping", message: "Stop requested. The current Deriv contract will settle; no new order will start." })
   }, [commit])
 
-  const start = useCallback(async (order: RunSessionOrder, totalRuns: number, takeProfit: number) => {
+  const reset = useCallback(() => {
     if (stateRef.current.status === "running" || stateRef.current.status === "stopping") return
     stopRequested.current = false
     cancelled.current = false
+    stateRef.current = initialState
+    setState(initialState)
+    try { window.localStorage.removeItem(storageKey) } catch { /* storage is optional */ }
+  }, [storageKey])
+
+  const start = useCallback(async (order: RunSessionOrder, totalRuns: number, takeProfit: number, lossLimit = Number.POSITIVE_INFINITY) => {
+    if (stateRef.current.status === "running" || stateRef.current.status === "stopping") return
+    let executionOrder: RunSessionOrder = order
+    if (order.account_type === "real") {
+      const confirmed = window.confirm(
+        "Confirm real-money trading. Each run can lose its full stake. Start this bounded session on the selected Real account?",
+      )
+      if (!confirmed) return
+      try {
+        const acknowledgement = await getRiskAcknowledgementStatus() as any
+        if (!acknowledgement?.accepted) {
+          await acceptRiskAcknowledgement({ version: acknowledgement?.version } as any)
+        }
+      } catch (error) {
+        commit({ ...initialState, status: "failed", message: providerErrorMessage(error) })
+        return
+      }
+      executionOrder = { ...order, live_confirmation: "CONFIRM_LIVE_TRADE" }
+    }
+    stopRequested.current = false
+    cancelled.current = false
     const sessionId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`
-    commit({ ...initialState, id: sessionId, status: "running", totalRuns, message: `${sessionLabel(order.source)} started. Requesting the first Deriv proposal…` })
+    commit({ ...initialState, id: sessionId, status: "running", totalRuns, message: `${sessionLabel(executionOrder.source)} started. Requesting the first Deriv proposal…` })
     try {
       for (let index = 1; index <= totalRuns; index += 1) {
         if (stopRequested.current || cancelled.current) break
         commit({ currentRun: index, status: "running", message: `Requesting a fresh Deriv proposal for run ${index} of ${totalRuns}…` })
-        const proposal = await preview.mutateAsync({ data: { ...order, session_id: sessionId } as any }) as any
+        const proposal = await preview.mutateAsync({ data: { ...executionOrder, session_id: sessionId } as any }) as any
         if (stopRequested.current || cancelled.current) break
         commit({ message: `Submitting run ${index} of ${totalRuns} to Deriv…` })
-        const receipt = await trade.mutateAsync({ data: { ...order, session_id: sessionId, proposal_token: proposal.proposalToken } as any }) as any
+        const receipt = await trade.mutateAsync({ data: { ...executionOrder, session_id: sessionId, proposal_token: proposal.proposalToken } as any }) as any
         const resultId = `${sessionId}-${index}`
         if (!receipt?.ok || !receipt?.transactionId) {
           commit(current => ({
@@ -112,8 +155,9 @@ export function useTradingRunSession(storageKey: string, onChange?: () => void) 
               id: resultId,
               run: index,
               status: "rejected",
-              symbol: order.symbol,
-              stake: Number(order.stake),
+              symbol: executionOrder.symbol,
+              contractType: String(executionOrder.contract_type || ""),
+              stake: Number(executionOrder.stake),
               message: receipt?.message || "Deriv rejected the order.",
             }],
             message: receipt?.message || "Deriv rejected the order. Session stopped.",
@@ -127,8 +171,12 @@ export function useTradingRunSession(storageKey: string, onChange?: () => void) 
             id: resultId,
             run: index,
             status: "pending",
-            symbol: order.symbol,
-            stake: Number(order.stake),
+            symbol: executionOrder.symbol,
+            contractType: String(executionOrder.contract_type || receipt.contractType || ""),
+            stake: Number(executionOrder.stake),
+            buyPrice: Number.isFinite(Number(receipt.buyPrice)) ? Number(receipt.buyPrice) : null,
+            entrySpot: Number.isFinite(Number(receipt.entrySpot)) ? Number(receipt.entrySpot) : null,
+            exitSpot: null,
             transactionId: String(receipt.transactionId),
             message: `Contract ${receipt.contractId || receipt.transactionId} is open.`,
           }],
@@ -150,6 +198,9 @@ export function useTradingRunSession(storageKey: string, onChange?: () => void) 
         if (!settled) throw new Error("Settlement was not available before the session timed out.")
         const totalProfit = stateRef.current.netProfit + settled.profit
         const settledPayout = Number(settled.transaction.payout)
+        const settlementMetadata = settled.transaction.metadata && typeof settled.transaction.metadata === "object"
+          ? settled.transaction.metadata
+          : {}
         commit(current => ({
           ...current,
           completedRuns: index,
@@ -161,6 +212,9 @@ export function useTradingRunSession(storageKey: string, onChange?: () => void) 
             payout: Number.isFinite(settledPayout) ? settledPayout : null,
             outcome: String(settled.transaction.status),
             netProfit: settled.profit,
+            buyPrice: Number.isFinite(Number(settlementMetadata.buyPrice)) ? Number(settlementMetadata.buyPrice) : item.buyPrice ?? null,
+            entrySpot: Number.isFinite(Number(settlementMetadata.entrySpot)) ? Number(settlementMetadata.entrySpot) : item.entrySpot ?? null,
+            exitSpot: Number.isFinite(Number(settlementMetadata.exitSpot)) ? Number(settlementMetadata.exitSpot) : null,
             message: `Settled by Deriv with net profit ${settled.profit >= 0 ? "+" : ""}${settled.profit.toFixed(2)}.`,
           } : item),
         }))
@@ -168,6 +222,10 @@ export function useTradingRunSession(storageKey: string, onChange?: () => void) 
         if (stopRequested.current) break
         if (totalProfit >= takeProfit) {
           commit({ status: "completed", message: `Take-profit target reached at ${totalProfit.toFixed(2)}. No further run was submitted.` })
+          return
+        }
+        if (totalProfit <= -lossLimit) {
+          commit({ status: "completed", message: `Risk cap reached at ${Math.abs(totalProfit).toFixed(2)}. No further run was submitted.` })
           return
         }
       }
@@ -181,5 +239,5 @@ export function useTradingRunSession(storageKey: string, onChange?: () => void) 
     }
   }, [commit, onChange, preview, refresh, trade])
 
-  return { state, start, stop, isBusy: state.status === "running" || state.status === "stopping" }
+  return { state, start, stop, reset, isBusy: state.status === "running" || state.status === "stopping" }
 }

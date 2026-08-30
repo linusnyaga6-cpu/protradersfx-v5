@@ -2,8 +2,8 @@ import crypto from "node:crypto";
 import { Router, type Request, type Response } from "express";
 import rateLimit from "express-rate-limit";
 import WebSocket, { type RawData } from "ws";
-import { and, desc, eq } from "drizzle-orm";
-import { consumedTradeProposals, databaseConfigured, db, riskAcknowledgements, transactions } from "@workspace/db";
+import { and, desc, eq, lt, sql } from "drizzle-orm";
+import { botRuns, bots, consumedTradeProposals, databaseConfigured, db, riskAcknowledgements, transactions } from "@workspace/db";
 import { activitySummary, clientActivityTypes, recordActivity } from "../lib/activity-tracking";
 
 type SessionValue = {
@@ -128,6 +128,13 @@ function errorResponse(
   message?: string,
 ) {
   return res.status(status).json({ error, ...(message ? { message } : {}) });
+}
+
+function safeErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error || "Unknown error");
+  return message
+    .replace(/Bearer\s+[^\s]+/gi, "Bearer [redacted]")
+    .replace(/(access[_-]?token|refresh[_-]?token|authorization|cookie)=?[^\s,;]+/gi, "$1=[redacted]");
 }
 
 function encodingKey() {
@@ -285,7 +292,7 @@ export async function listDerivAccounts(accessToken: string) {
 function chooseAccount(accounts: DerivOptionsAccount[], target?: "demo" | "real", accountId?: string) {
   if (accountId) return accounts.find((account) => account.account_id === accountId);
   if (target) return accounts.find((account) => account.account_type === target);
-  return accounts.find((account) => account.status === "active") || accounts[0];
+  return undefined;
 }
 
 function oauthRequest(mode: "login" | "signup", targetAccount?: "demo" | "real") {
@@ -523,15 +530,15 @@ router.post("/transactions/:id/refresh", async (req, res) => {
 
   try {
     const accounts = await listDerivAccounts(session.accessToken);
-    const account = chooseAccount(accounts, undefined, session.accountId);
-    const loginId = String(account?.account_id || "");
-    if (!loginId) return errorResponse(res, 502, "Account identity unavailable");
-    const ownerKey = ownerKeyFor(loginId);
-    const [row] = await db.select().from(transactions).where(and(
-      eq(transactions.id, String(req.params.id)),
-      eq(transactions.ownerKey, ownerKey),
-    )).limit(1);
+    const [row] = await db.select().from(transactions)
+      .where(eq(transactions.id, String(req.params.id)))
+      .limit(1);
     if (!row) return errorResponse(res, 404, "Transaction not found");
+    const tradeAccount = accounts.find((account) => account.account_id === row.loginid);
+    if (!tradeAccount?.account_id || row.ownerKey !== ownerKeyFor(tradeAccount.account_id)) {
+      return errorResponse(res, 404, "Transaction not found");
+    }
+    const ownerKey = row.ownerKey;
     if (!row.contractId || row.status !== "pending") {
       return res.json({ transaction: row, refreshed: false });
     }
@@ -539,18 +546,29 @@ router.post("/transactions/:id/refresh", async (req, res) => {
     const contract = await derivRequest(session.accessToken, {
       proposal_open_contract: 1,
       contract_id: Number(row.contractId),
-    }, session.accountId);
+    }, tradeAccount.account_id);
     const openContract = contract.proposal_open_contract || {};
     const isSettled = Boolean(openContract.is_sold || ["won", "lost", "sold", "expired"].includes(String(openContract.status || "").toLowerCase()));
     if (!isSettled) return res.json({ transaction: row, refreshed: false });
 
     const payout = transactionNumber(openContract.payout);
     const profit = transactionNumber(openContract.profit);
+    const priorMetadata = row.metadata && typeof row.metadata === "object" ? row.metadata as Record<string, unknown> : {};
+    const buyPrice = transactionNumber(openContract.buy_price ?? priorMetadata.buyPrice ?? row.stake);
+    const entrySpot = transactionNumber(openContract.entry_spot ?? priorMetadata.entrySpot);
+    const exitSpot = transactionNumber(openContract.exit_spot ?? openContract.current_spot);
     const status = profit !== null ? (profit >= 0 ? "won" : "lost") : "settled";
     const [updated] = await db.update(transactions).set({
       payout: payout === null ? null : String(payout),
       netProfit: profit === null ? null : String(profit),
       status,
+      metadata: {
+        ...priorMetadata,
+        buyPrice,
+        entrySpot,
+        exitSpot,
+        providerStatus: openContract.status || null,
+      },
       settledAt: new Date(),
       updatedAt: new Date(),
     }).where(and(
@@ -560,6 +578,33 @@ router.post("/transactions/:id/refresh", async (req, res) => {
     )).returning();
     if (!updated) {
       return res.json({ transaction: row, refreshed: false });
+    }
+    const botRunId = typeof (row.metadata as any)?.sessionId === "string" && row.source === "bot_assisted"
+      ? String((row.metadata as any).sessionId)
+      : null;
+    if (botRunId && profit !== null) {
+      const settledLoss = Math.max(0, -profit);
+      await db.update(botRuns).set({
+        settledLoss: sql`${botRuns.settledLoss} + ${settledLoss}`,
+        status: sql`CASE
+          WHEN ${botRuns.acceptedRuns} >= ${botRuns.runCount}
+            OR ${botRuns.settledLoss} + ${settledLoss} >= ${botRuns.riskCap}
+          THEN 'completed'
+          ELSE ${botRuns.status}
+        END`,
+        completedAt: sql`CASE
+          WHEN ${botRuns.acceptedRuns} >= ${botRuns.runCount}
+            OR ${botRuns.settledLoss} + ${settledLoss} >= ${botRuns.riskCap}
+          THEN NOW()
+          ELSE ${botRuns.completedAt}
+        END`,
+        updatedAt: new Date(),
+      }).where(and(
+        eq(botRuns.id, botRunId),
+        eq(botRuns.ownerKey, ownerKey),
+        eq(botRuns.accountId, tradeAccount.account_id),
+        eq(botRuns.status, "active"),
+      ));
     }
     void recordActivity({
       eventType: "settlement",
@@ -736,7 +781,22 @@ router.get("/account", async (req, res) => {
       requestedAccountType,
       requestedAccountType ? undefined : session.accountId,
     );
-    if (!account?.account_id) throw new Error("No Deriv options account was returned");
+    if (!account?.account_id) {
+      if (requestedAccountType) {
+        return errorResponse(
+          res,
+          404,
+          `${requestedAccountType === "real" ? "Real" : "Demo"} account unavailable`,
+          `This Deriv connection does not include a ${requestedAccountType} options account.`,
+        );
+      }
+      return errorResponse(
+        res,
+        409,
+        session.accountId ? "Selected account unavailable" : "Account selection required",
+        "Choose an available Demo or Real account.",
+      );
+    }
     if (requestedAccountType && account.account_type !== requestedAccountType) {
       return errorResponse(
         res,
@@ -760,7 +820,7 @@ router.get("/account", async (req, res) => {
       balance: account.balance ?? null,
       currency: account.currency ?? null,
       loginid: account.account_id ?? null,
-      accountType: account.account_type ?? "demo",
+      accountType: account.account_type,
       openPnl: null,
     });
   } catch (error) {
@@ -786,10 +846,18 @@ router.post("/trades/preview", async (req, res) => {
   const stake = Number(req.body?.stake);
   const duration = Number(req.body?.duration);
   const stopLoss = req.body?.stop_loss === undefined ? null : Number(req.body.stop_loss);
+  const runCount = req.body?.run_count === undefined ? null : Number(req.body.run_count);
+  const riskCap = req.body?.risk_cap === undefined ? null : Number(req.body.risk_cap);
+  const source = String(req.body?.source || "manual");
   const barrier = req.body?.barrier === undefined ? undefined : String(req.body.barrier);
   const sessionId = typeof req.body?.session_id === "string" && /^[a-zA-Z0-9-]{1,80}$/.test(req.body.session_id)
     ? req.body.session_id
     : null;
+  const requestedAccountId = typeof req.body?.account_id === "string" ? req.body.account_id : null;
+  const botId = typeof req.body?.bot_id === "string" && /^[0-9a-f-]{36}$/i.test(req.body.bot_id) ? req.body.bot_id : null;
+  if (!session.accountId || !requestedAccountId || requestedAccountId !== session.accountId) {
+    return errorResponse(res, 409, "Trading account changed", "Review the order again using the currently selected account.");
+  }
   const previewErrors = [
     !contractType ? "Choose a supported Deriv contract type." : "",
     !supportedVolatilitySymbols.has(symbol) ? "Choose a supported Volatility 10–100 market." : "",
@@ -797,18 +865,95 @@ router.post("/trades/preview", async (req, res) => {
     !Number.isInteger(duration) || duration < 1 ? "Duration must be at least 1 tick." : "",
     duration > maxDuration ? `Duration cannot exceed ${maxDuration} ticks.` : "",
     stopLoss !== null && (!Number.isFinite(stopLoss) || stopLoss <= 0) ? "Stop loss must be greater than 0." : "",
+    req.body?.source === "bot_assisted" && (!Number.isInteger(runCount) || Number(runCount) < 1 || Number(runCount) > 10) ? "Bot run count must be from 1 to 10." : "",
+    req.body?.source === "bot_assisted" && (!Number.isFinite(riskCap) || Number(riskCap) <= 0 || stake * Number(runCount) > Number(riskCap)) ? "Bot plan exceeds its risk cap." : "",
+    req.body?.source === "bot_assisted" && (!botId || !sessionId) ? "A saved bot and run session are required." : "",
+    source !== "bot_assisted" && (req.body?.bot_id !== undefined || req.body?.run_count !== undefined || req.body?.risk_cap !== undefined)
+      ? "Bot plan fields require bot-assisted execution." : "",
     contractType && barrierContractTypes.has(contractType) && !/^[0-9]$/.test(barrier || "") ? "Choose a digit barrier from 0 to 9." : "",
   ].filter(Boolean);
   if (previewErrors.length) {
     return errorResponse(res, 400, "Invalid proposal parameters", previewErrors.join(" "));
   }
   const requestedContractType = contractType as string;
+  let executionStage = "account_lookup";
+  let executionAccountType: string | undefined;
   try {
     const accounts = await listDerivAccounts(session.accessToken);
     const account = chooseAccount(accounts, undefined, session.accountId);
     if (!account?.account_id || !account.currency) return errorResponse(res, 502, "Account identity unavailable");
+    executionAccountType = account.account_type;
     const policy = accountTradingPolicy(account);
     if (!policy.allowed) return errorResponse(res, 403, policy.error || "Account trading unavailable", policy.message);
+    if (req.body?.source === "bot_assisted") {
+      const ownerKey = ownerKeyFor(account.account_id);
+      const [bot] = await db.select().from(bots).where(and(
+        eq(bots.id, botId as string),
+        eq(bots.ownerKey, ownerKey),
+      )).limit(1);
+      const config = bot?.config as Record<string, unknown> | undefined;
+      const configuredContractType = String(config?.contractType || "CALL");
+      const configuredDuration = Number(config?.duration || 1);
+      const configuredBarrier = barrierContractTypes.has(configuredContractType) ? String(config?.barrier || "5") : null;
+      const configuredStopLoss = Number(config?.stopLoss || 1);
+      const configuredStake = Number(config?.stake);
+      const configuredRunCount = Number(config?.runCount || 1);
+      const configuredRiskCap = Number(config?.riskCap);
+      if (!bot) {
+        return errorResponse(res, 409, "Bot not found", "Review the saved bot before starting a new session.");
+      }
+      if (config?.mode !== "market_observer") {
+        return errorResponse(res, 403, "Bot is monitor-only", "Recovery and monitoring bots cannot create trade proposals.");
+      }
+      if (
+        bot.symbol !== symbol
+        || configuredContractType !== requestedContractType
+        || configuredDuration !== duration
+        || configuredBarrier !== (barrier || null)
+        || configuredStopLoss !== stopLoss
+        || configuredStake !== stake
+        || configuredRunCount !== runCount
+        || configuredRiskCap !== riskCap
+      ) {
+        return errorResponse(res, 409, "Bot plan changed", "Review the saved bot settings before starting a new session.");
+      }
+      await db.insert(botRuns).values({
+        id: sessionId as string,
+        ownerKey,
+        botId: bot.id,
+        mode: "execution_plan",
+        status: "active",
+        contractType: requestedContractType,
+        duration,
+        barrier: barrier || null,
+        stopLoss: String(stopLoss),
+        accountId: account.account_id,
+        accountType: account.account_type,
+        stake: String(stake),
+        runCount: Number(runCount),
+        riskCap: String(riskCap),
+        result: { sessionId, symbol, contractType: requestedContractType },
+      }).onConflictDoNothing();
+      const [plan] = await db.select().from(botRuns).where(and(
+        eq(botRuns.id, sessionId as string),
+        eq(botRuns.ownerKey, ownerKey),
+        eq(botRuns.botId, bot.id),
+      )).limit(1);
+      if (
+        !plan
+        || plan.mode !== "execution_plan"
+        || plan.accountId !== account.account_id
+        || plan.contractType !== requestedContractType
+        || plan.duration !== duration
+        || plan.barrier !== (barrier || null)
+        || Number(plan.stopLoss) !== stopLoss
+        || Number(plan.stake) !== stake
+        || plan.runCount !== runCount
+        || Number(plan.riskCap) !== riskCap
+      ) {
+        return errorResponse(res, 409, "Bot session mismatch", "Start a fresh reviewed bot session.");
+      }
+    }
     const availableBalance = Number(account.balance);
     if (!Number.isFinite(availableBalance) || availableBalance <= 0) {
       return errorResponse(res, 502, "Account balance unavailable", "Reconnect or refresh the selected Deriv account.");
@@ -816,9 +961,11 @@ router.post("/trades/preview", async (req, res) => {
     if (stake >= availableBalance) {
       return errorResponse(res, 400, "Stake exceeds available balance", "Enter a stake below the selected account balance.");
     }
+    executionStage = "contract_availability";
     const availability = await derivRequest(session.accessToken, { contracts_for: symbol }, session.accountId);
     const offered = new Set((availability.contracts_for?.available || []).map((item: any) => String(item.contract_type)));
     if (!offered.has(requestedContractType)) return errorResponse(res, 400, "Contract unavailable", `${requestedContractType} is not offered by Deriv for ${symbol}.`);
+    executionStage = "proposal";
     const response = await derivRequest(session.accessToken, {
       proposal: 1, amount: stake, basis: "stake", contract_type: requestedContractType,
       currency: account.currency, duration, duration_unit: "t", underlying_symbol: symbol,
@@ -839,7 +986,7 @@ router.post("/trades/preview", async (req, res) => {
       },
     });
     return res.json({
-      proposalToken: seal({ id: proposal.id, nonce: crypto.randomUUID(), accountId: account.account_id, symbol, contractType: requestedContractType, stake, duration, barrier: barrier || null, stopLoss, sessionId, askPrice, expiresAt: Date.now() + 30_000 }),
+      proposalToken: seal({ id: proposal.id, nonce: crypto.randomUUID(), accountId: account.account_id, source, botId, symbol, contractType: requestedContractType, stake, duration, barrier: barrier || null, stopLoss, runCount, riskCap, sessionId, askPrice, expiresAt: Date.now() + 30_000 }),
       symbol, contractType: requestedContractType, stake, duration, barrier: barrier || null,
       askPrice,
       payout: Number.isFinite(Number(proposal.payout)) ? Number(proposal.payout) : null,
@@ -848,7 +995,9 @@ router.post("/trades/preview", async (req, res) => {
       stopLossNote: "Stop loss is requested after Deriv accepts the contract; any rejection is reported explicitly.",
     });
   } catch (error) {
-    return errorResponse(res, 502, "Proposal unavailable", error instanceof Error ? error.message : undefined);
+    const message = safeErrorMessage(error);
+    req.log?.warn({ stage: executionStage, accountType: executionAccountType, symbol, contractType: requestedContractType, message }, "trade proposal failed");
+    return errorResponse(res, 502, "Proposal unavailable", `${executionStage}: ${message}`);
   }
 });
 
@@ -873,9 +1022,17 @@ router.post("/trades", async (req, res) => {
   const duration = Number(req.body?.duration);
   const barrier = req.body?.barrier === undefined ? undefined : String(req.body.barrier);
   const stopLoss = req.body?.stop_loss === undefined ? undefined : Number(req.body.stop_loss);
+  const runCount = req.body?.run_count === undefined ? null : Number(req.body.run_count);
+  const riskCap = req.body?.risk_cap === undefined ? null : Number(req.body.risk_cap);
+  const source = String(req.body?.source || "manual");
   const sessionId = typeof req.body?.session_id === "string" && /^[a-zA-Z0-9-]{1,80}$/.test(req.body.session_id)
     ? req.body.session_id
     : null;
+  const requestedAccountId = typeof req.body?.account_id === "string" ? req.body.account_id : null;
+  const botId = typeof req.body?.bot_id === "string" && /^[0-9a-f-]{36}$/i.test(req.body.bot_id) ? req.body.bot_id : null;
+  if (!session.accountId || !requestedAccountId || requestedAccountId !== session.accountId) {
+    return errorResponse(res, 409, "Trading account changed", "Review the order again using the currently selected account.");
+  }
   const validationErrors = [
     !contractType ? "Choose a supported Deriv contract type." : "",
     !supportedVolatilitySymbols.has(symbol) ? "Choose a supported Volatility 10–100 market." : "",
@@ -884,18 +1041,26 @@ router.post("/trades", async (req, res) => {
     duration > maxDuration ? `Duration cannot exceed ${maxDuration} ticks.` : "",
     contractType && barrierContractTypes.has(contractType) && !/^[0-9]$/.test(barrier || "") ? "Choose a digit barrier from 0 to 9." : "",
     stopLoss !== undefined && (!Number.isFinite(stopLoss) || stopLoss <= 0) ? "Stop loss must be greater than 0." : "",
+    req.body?.source === "bot_assisted" && (!Number.isInteger(runCount) || Number(runCount) < 1 || Number(runCount) > 10) ? "Bot run count must be from 1 to 10." : "",
+    req.body?.source === "bot_assisted" && (!Number.isFinite(riskCap) || Number(riskCap) <= 0 || stake * Number(runCount) > Number(riskCap)) ? "Bot plan exceeds its risk cap." : "",
+    req.body?.source === "bot_assisted" && (!botId || !sessionId) ? "A saved bot and run session are required." : "",
+    source !== "bot_assisted" && (req.body?.bot_id !== undefined || req.body?.run_count !== undefined || req.body?.risk_cap !== undefined)
+      ? "Bot plan fields require bot-assisted execution." : "",
   ].filter(Boolean);
   if (validationErrors.length) {
     return errorResponse(res, 400, "Invalid trade parameters", validationErrors.join(" "));
   }
   const validatedContractType = contractType as string;
 
+  let executionStage = "account_lookup";
+  let executionAccountType: string | undefined;
   try {
     const accounts = await listDerivAccounts(session.accessToken);
     const account = chooseAccount(accounts, undefined, session.accountId);
     const loginId = String(account?.account_id || "");
     const isDemoAccount = account?.account_type === "demo";
     if (!loginId || !account) return errorResponse(res, 502, "Account identity unavailable");
+    executionAccountType = account.account_type;
     const policy = accountTradingPolicy(account);
     if (!policy.allowed) return errorResponse(res, isDemoAccount ? 503 : 403, policy.error || "Account trading unavailable", policy.message);
     const availableBalance = Number(account.balance);
@@ -938,6 +1103,7 @@ router.post("/trades", async (req, res) => {
     const currency = account.currency;
     if (!currency) return errorResponse(res, 502, "Account currency unavailable");
 
+    executionStage = "contract_availability";
     const availability = await derivRequest(session.accessToken, { contracts_for: symbol }, session.accountId);
     const availableContractTypes = new Set(
       (Array.isArray(availability.contracts_for?.available) ? availability.contracts_for.available : [])
@@ -949,16 +1115,55 @@ router.post("/trades", async (req, res) => {
 
     if (!req.body?.proposal_token) return errorResponse(res, 409, "Proposal review required", "Review a provider-backed proposal before execution.");
     const reviewed = unseal(req.body.proposal_token);
-    const matches = reviewed?.accountId === loginId && reviewed?.symbol === symbol && reviewed?.contractType === validatedContractType
+    const matches = reviewed?.accountId === loginId && reviewed?.source === source && reviewed?.symbol === symbol && reviewed?.contractType === validatedContractType
       && reviewed?.stake === stake && reviewed?.duration === duration && reviewed?.barrier === (barrier || null)
-      && reviewed?.stopLoss === (stopLoss ?? null) && reviewed?.sessionId === sessionId && reviewed?.expiresAt > Date.now();
+      && reviewed?.stopLoss === (stopLoss ?? null) && reviewed?.botId === botId && reviewed?.runCount === runCount && reviewed?.riskCap === riskCap
+      && reviewed?.sessionId === sessionId && reviewed?.expiresAt > Date.now();
     if (!matches || !reviewed?.id || !reviewed?.nonce || !Number.isFinite(reviewed?.askPrice) || reviewed.askPrice <= 0) return errorResponse(res, 409, "Proposal expired or changed", "Review the current order again before execution.");
+    executionStage = "proposal_review";
     const consumed = await db.insert(consumedTradeProposals).values({
       nonce: reviewed.nonce,
       ownerKey: ownerKeyFor(account.account_id || loginId),
       proposalId: reviewed.id,
     }).onConflictDoNothing().returning({ nonce: consumedTradeProposals.nonce });
     if (!consumed.length) return errorResponse(res, 409, "Proposal already used", "This proposal has already been submitted. Review a fresh proposal before another order.");
+    if (reviewed.source === "bot_assisted") {
+      const [plan] = await db.select().from(botRuns).where(and(
+        eq(botRuns.id, sessionId as string),
+        eq(botRuns.ownerKey, ownerKeyFor(loginId)),
+        eq(botRuns.botId, botId as string),
+        eq(botRuns.accountId, loginId),
+        eq(botRuns.status, "active"),
+      )).limit(1);
+      if (
+        !plan
+        || plan.contractType !== reviewed.contractType
+        || plan.duration !== reviewed.duration
+        || plan.barrier !== reviewed.barrier
+        || Number(plan.stopLoss) !== Number(reviewed.stopLoss)
+        || Number(plan.stake) !== Number(reviewed.stake)
+        || plan.runCount !== reviewed.runCount
+        || Number(plan.riskCap) !== Number(reviewed.riskCap)
+      ) {
+        return errorResponse(res, 409, "Bot plan changed", "The saved bot execution plan no longer matches this proposal.");
+      }
+      const reserved = await db.update(botRuns).set({
+        acceptedRuns: sql`${botRuns.acceptedRuns} + 1`,
+        updatedAt: new Date(),
+      }).where(and(
+        eq(botRuns.id, sessionId as string),
+        eq(botRuns.ownerKey, ownerKeyFor(loginId)),
+        eq(botRuns.botId, botId as string),
+        eq(botRuns.accountId, loginId),
+        eq(botRuns.status, "active"),
+        lt(botRuns.acceptedRuns, Number(runCount)),
+        sql`${botRuns.acceptedRuns} * ${botRuns.stake} + ${stake} <= ${botRuns.riskCap}`,
+      )).returning({ id: botRuns.id });
+      if (!reserved.length) {
+        return errorResponse(res, 409, "Bot plan limit reached", "This bot session has no remaining reviewed runs or risk capacity.");
+      }
+    }
+    executionStage = "buy";
     const buy = await derivProposalAndBuy(session.accessToken, {
       proposal: 1,
       amount: stake,
@@ -975,9 +1180,12 @@ router.post("/trades", async (req, res) => {
     if (!contractId || !Number.isFinite(contractId)) {
       return errorResponse(res, 502, "Trade not accepted", "Deriv did not return an accepted contract ID. No transaction was recorded.");
     }
+    const buyPrice = transactionNumber(buy.buy?.buy_price ?? reviewed.askPrice);
+    const entrySpot = transactionNumber(buy.buy?.entry_spot);
     let stopLossApplied: boolean | null = null;
     let stopLossMessage: string | null = null;
     if (stopLoss !== undefined && contractId) {
+      executionStage = "stop_loss";
       try {
         await derivRequest(session.accessToken, {
           contract_update: 1,
@@ -990,6 +1198,7 @@ router.post("/trades", async (req, res) => {
         stopLossMessage = error instanceof Error ? error.message : "Deriv rejected the stop loss";
       }
     }
+    executionStage = "persistence";
     const transaction = await db.insert(transactions).values({
       ownerKey: ownerKeyFor(loginId),
       source: ["manual", "bulk", "ai_assisted", "bot_assisted"].includes(String(req.body?.source))
@@ -1012,6 +1221,10 @@ router.post("/trades", async (req, res) => {
         stopLossMessage,
         requestLabel: String(req.body?.request_label || "").slice(0, 120) || null,
         sessionId,
+        botId,
+        buyPrice,
+        entrySpot,
+        exitSpot: null,
       },
     }).returning();
     void recordActivity({
@@ -1031,15 +1244,21 @@ router.post("/trades", async (req, res) => {
       transactionId: transaction[0]?.id || null,
       status: "pending",
       netProfit: null,
+       contractType: validatedContractType,
+       buyPrice,
+       entrySpot,
+       exitSpot: null,
       stopLossApplied,
       stopLossMessage,
     });
   } catch (error) {
+    const message = safeErrorMessage(error);
+    req.log?.warn({ stage: executionStage, accountType: executionAccountType, symbol, contractType: validatedContractType, message }, "trade execution failed");
     return errorResponse(
       res,
       502,
       "Trade request failed",
-      error instanceof Error ? error.message : undefined,
+      `${executionStage}: ${message}`,
     );
   }
 });
@@ -1101,16 +1320,18 @@ export async function handleOAuthCallback(req: Request, res: Response) {
     };
     const accounts = await listDerivAccounts(nextSession.accessToken);
     const selectedAccount = chooseAccount(accounts, state.targetAccount);
-    if (!selectedAccount?.account_id) {
-      throw new Error("No Deriv options account was returned");
-    }
-    if (state.targetAccount && selectedAccount.account_type !== state.targetAccount) {
+    if (state.targetAccount && selectedAccount?.account_type !== state.targetAccount) {
         clearOAuthCookie(res);
         return res.redirect(`/initializing?account_switch=mismatch&expected=${state.targetAccount}`);
     }
-    nextSession = { ...nextSession, accountId: selectedAccount.account_id };
+    if (selectedAccount?.account_id) {
+      nextSession = { ...nextSession, accountId: selectedAccount.account_id };
+    }
     setSessionCookie(res, nextSession);
     clearOAuthCookie(res);
+    if (!selectedAccount?.account_id) {
+      return res.redirect("/initializing?account_required=1");
+    }
     const ownerKey = ownerKeyFor(selectedAccount.account_id);
     await recordActivity({
       eventType: state.mode === "signup" ? "oauth_signup_success" : "oauth_login_success",

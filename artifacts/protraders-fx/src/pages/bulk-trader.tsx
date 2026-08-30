@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { AccountStrip } from "@/components/trading/account-strip"
 import { RunSessionSummary } from "@/components/trading/run-session-summary"
+import { TradingTabs } from "@/components/trading/trading-tabs"
 import { useTradingRunSession } from "@/hooks/use-trading-run-session"
 import { DEFAULT_MARKET_SYMBOL, CONTRACT_LABELS, marketLabel } from "@/lib/markets"
 import { formatVolatility } from "@/lib/format"
@@ -87,9 +88,9 @@ export default function BulkTrader() {
       ? "demo-account"
       : "selected-account"
   const accountBadgeLabel = selectedAccountType === "real"
-    ? "Real-account gates"
+    ? "Real account"
     : selectedAccountType === "demo"
-      ? "Demo-account gates"
+      ? "Demo account"
       : "Select account"
   const accountCanTrade = selectedAccountType === "real"
     ? preflight.data?.readyForRealTrading
@@ -98,7 +99,7 @@ export default function BulkTrader() {
     ? "Select a Demo or Real account before running Bulk Trader."
     : selectedAccountType === "real"
     ? preflight.data && !preflight.data.readyForRealTrading
-      ? "Bulk Trader requires the reviewed real-trading gate and selected real account."
+      ? "Real trading is not ready for this account."
       : ""
     : selectedAccountType === "demo"
       ? preflight.data && !preflight.data.tradingEnabled
@@ -156,12 +157,14 @@ export default function BulkTrader() {
         : selectedContract
     setSetupOpen(false)
     await runSession.start({
+      account_id: String(account.data?.loginid || ""),
+      account_type: account.data?.accountType,
       symbol,
       contract_type: contractType,
       stake: stakeValue,
       duration: 1,
       stop_loss: Math.min(1, stakeValue),
-      source: "bulk_trader",
+       source: "bulk",
       request_label: "Bulk Trader quick run",
     }, totalRuns, Number.POSITIVE_INFINITY)
   }
@@ -176,8 +179,9 @@ export default function BulkTrader() {
         : "Market scan has not returned yet."
 
   return (
-        <Workspace title="Bulk Trader" eyebrow="Fast, bounded execution" description={`Choose a stake and run count. Bulk Trader scans live Deriv markets and executes one bounded ${accountSessionLabel} session.`}>
-      <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} />
+        <Workspace title="Bulk Trader" eyebrow="Fast, bounded execution" description={`Set a stake and run count for a bounded ${accountSessionLabel} session.`}>
+      <TradingTabs active="bulk" />
+      <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} switchingDisabled={runSession.isBusy} />
 
       <div className="overflow-hidden rounded-2xl border border-primary/20 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/.18),transparent_38%),linear-gradient(135deg,hsl(var(--card)),hsl(var(--secondary)/.45))] shadow-[0_18px_60px_rgba(0,0,0,.16)]">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-3 text-xs">
@@ -191,9 +195,7 @@ export default function BulkTrader() {
           <div className="flex flex-col justify-center">
             <p className="text-xs font-semibold uppercase tracking-[.25em] text-primary">Scan · select · run</p>
             <h2 className="mt-3 max-w-xl text-4xl font-semibold tracking-tight md:text-5xl">A faster way to run a bounded plan.</h2>
-            <p className="mt-4 max-w-xl leading-7 text-muted-foreground">
-               Bulk Trader scans current Deriv markets, then executes the exact number of runs you enter. Stop remains available while the session is active.
-            </p>
+             <p className="mt-4 max-w-xl leading-7 text-muted-foreground">Scan live markets, then execute the exact number of runs entered.</p>
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <Button size="lg" onClick={() => setSetupOpen(true)} disabled={runSession.isBusy} data-testid="button-open-bulk-setup">
                  <Activity className="mr-2 h-4 w-4" />{runSession.isBusy ? "Bulk Trader active" : "Run Bulk Trader"}
@@ -231,7 +233,7 @@ export default function BulkTrader() {
             <ScanStep label="Compare fresh candle history" done={Boolean(scanData?.markets?.length)} active={scan.isPending} />
             <ScanStep label={bestMarket ? `Selected ${marketLabel(undefined, scannedSymbol)} for the session` : "Select the best available market"} done={Boolean(bestMarket)} active={Boolean(scanData) && !bestMarket} />
              <ScanStep label={runSession.isBusy ? "Execute runs and wait for settlement" : "Ready to execute the run plan"} done={runSession.isBusy || runSession.state.status === "completed"} active={!runSession.isBusy && Boolean(scanData)} />
-             <p className="pt-2 text-xs leading-5 text-muted-foreground">The scan refreshes during an active session. Each order receives its own provider proposal, and the next run waits for settlement.</p>
+              <p className="pt-2 text-xs leading-5 text-muted-foreground">Scan refreshes during a run. Orders settle one at a time.</p>
           </CardContent>
         </Card>
         <RunSessionSummary
@@ -239,6 +241,7 @@ export default function BulkTrader() {
           currency={account.data?.currency || "USD"}
           onStart={() => setSetupOpen(true)}
           onStop={runSession.stop}
+          onReset={runSession.reset}
           disabled={!canRun}
            label="Run Bulk Trader"
            runNoun="Bulk Trader"
