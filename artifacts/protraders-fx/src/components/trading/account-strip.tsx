@@ -45,6 +45,11 @@ export function AccountStrip({ account, isLoading, error }: AccountStripProps) {
       : Number(account.balance) / conversionRate
     : account?.balance
   const balanceCurrency = isConverted ? displayCurrency : currency
+  const accountStatusLabel = account?.accountType === "real"
+    ? "Real-money safety gates apply"
+    : account?.accountType === "demo"
+      ? "Demo account selected"
+      : "Select a Demo or Real account"
   const switchAccount = async (accountType: "demo" | "real") => {
     if (account?.accountType === accountType || switchingTo) return
     setSwitchingTo(accountType)
@@ -86,7 +91,7 @@ export function AccountStrip({ account, isLoading, error }: AccountStripProps) {
           ))}
         </div>
         <p className="mt-2 text-[10px] text-muted-foreground">
-          Active: {account?.loginid || "Unavailable"} · {account?.accountType === "real" ? "Real-money safety gates apply" : "Demo-first execution"}
+          Active: {account?.loginid || "Unavailable"} · {accountStatusLabel}
         </p>
         {(switchError || error) && <p className="mt-2 text-xs text-destructive">{switchError || "Account data unavailable."}</p>}
       </div>
