@@ -90,6 +90,11 @@ export default function Bots() {
   };
 
   const selectedBot = list.find((b: any) => String(b.id) === selectedBotId);
+  const accountSessionLabel = account.data?.accountType === "real"
+    ? "real-account"
+    : account.data?.accountType === "demo"
+      ? "demo-account"
+      : "selected-account"
   const executeBot = async (bot: any) => {
     if (bot.config?.mode === "recovery_guard") {
       setNotice("Recovery is monitor-only and cannot place an order.");
@@ -101,7 +106,9 @@ export default function Bots() {
     if (!accountCanTrade) {
       setNotice(account.data?.accountType === "real"
         ? "Bot execution requires the reviewed real-trading gate and selected real account."
-        : "Bot execution requires the protected Deriv demo mode.");
+        : account.data?.accountType === "demo"
+          ? "Bot execution requires enabled Demo trading."
+          : "Select a Demo or Real account before starting a bot.");
       return;
     }
     setExecutingBotId(String(bot.id));
@@ -127,7 +134,7 @@ export default function Bots() {
   };
 
   return (
-       <Workspace title="Bots" eyebrow="User-started execution" description={`Configure a bot, then start one bounded ${account.data?.accountType === "real" ? "real-account" : "demo"} session. Nothing runs unattended.`}>
+       <Workspace title="Bots" eyebrow="User-started execution" description={`Configure a bot, then start one bounded ${accountSessionLabel} session. Nothing runs unattended.`}>
       <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} />
       <div className="flex items-center justify-between">
         <Badge variant="outline" className="bg-background"><ShieldCheck className="mr-1 h-3 w-3" />User-started sessions</Badge>
