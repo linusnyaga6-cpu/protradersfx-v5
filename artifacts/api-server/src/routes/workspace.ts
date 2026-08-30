@@ -14,6 +14,7 @@ import { recordActivity } from "../lib/activity-tracking";
 const router = Router();
 const RISK_VERSION = "2025-01";
 const marketCache = new Map<string, { expiresAt: number; value: unknown }>();
+let usdKesCache: { expiresAt: number; value: unknown } | null = null;
 const advisorySchema = z.object({
   summary: z.string().min(1).max(800),
   observations: z.array(z.string().min(1).max(240)).max(6),
@@ -85,6 +86,28 @@ async function cachedMarket<T>(key: string, loader: () => Promise<T>) {
   const value = await loader();
   marketCache.set(key, { value, expiresAt: Date.now() + 10_000 });
   if (marketCache.size > 200) marketCache.delete(marketCache.keys().next().value!);
+  return value;
+}
+async function latestUsdKesRate() {
+  if (usdKesCache && usdKesCache.expiresAt > Date.now()) return usdKesCache.value;
+  const response = await fetch("https://open.er-api.com/v6/latest/USD", {
+    headers: { Accept: "application/json" },
+  });
+  if (!response.ok) throw new Error(`Exchange-rate provider returned ${response.status}`);
+  const body = await response.json() as { rates?: { KES?: unknown }; time_last_update_unix?: unknown; time_last_update_utc?: unknown };
+  const quote = Number(body.rates?.KES);
+  if (!Number.isFinite(quote) || quote <= 0) throw new Error("Exchange-rate provider returned no USD/KES rate");
+  const value = {
+    symbol: "frxUSDKES",
+    quote,
+    epoch: Number.isFinite(Number(body.time_last_update_unix)) ? Number(body.time_last_update_unix) : Math.floor(Date.now() / 1000),
+    pipSize: null,
+    source: "exchange-rate-api",
+    available: true,
+    asOf: typeof body.time_last_update_utc === "string" ? body.time_last_update_utc : null,
+    rateType: "indicative",
+  };
+  usdKesCache = { value, expiresAt: Date.now() + 15 * 60_000 };
   return value;
 }
 function string(value: unknown, maximum = 160) {
@@ -315,6 +338,13 @@ router.get("/market/ticker/:symbol", async (req, res) => {
   const symbol = string(req.params.symbol, 30);
   const isConversionQuote = symbol === "frxUSDKES";
   if (!symbol || (!isVolatilitySymbol(symbol) && !isConversionQuote)) return fail(res, 400, "Choose a supported Volatility 10–100 market");
+  if (isConversionQuote) {
+    try {
+      return res.json(await latestUsdKesRate());
+    } catch {
+      return res.json({ symbol, quote: null, epoch: null, pipSize: null, source: "exchange-rate-api", available: false });
+    }
+  }
   try { const body = await cachedMarket(`ticker:${symbol}`, async () => {
     const data = await publicDeriv({ ticks_history: symbol, style: "ticks", count: 1, end: "latest" });
     const quote = Number(data.history?.prices?.at?.(-1));

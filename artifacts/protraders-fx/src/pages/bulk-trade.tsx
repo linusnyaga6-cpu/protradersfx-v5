@@ -21,7 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { AccountStrip } from "@/components/trading/account-strip"
-import { formatMoney, formatVolatility } from "@/lib/format"
+import { formatMoney, formatSignedMoney, formatVolatility } from "@/lib/format"
 import { CONTRACT_LABELS, DEFAULT_MARKET_SYMBOL, SUPPORTED_VOLATILITY_SYMBOLS, marketLabel } from "@/lib/markets"
 import { useDerivMarkets } from "@/hooks/use-deriv-markets"
 import { useTradingRunSession } from "@/hooks/use-trading-run-session"
@@ -135,9 +135,9 @@ export default function BulkTrade() {
 
        <div className="flex items-end justify-between gap-3">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-[.22em] text-primary">Bot builder</div>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Create Bot</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Configure a reusable, user-started bot session. For the two-input quick-run experience, open Bulk Trader.</p>
+           <div className="text-xs font-semibold uppercase tracking-[.22em] text-primary">Manual execution</div>
+           <h1 className="mt-1 text-3xl font-semibold tracking-tight">Manual Trader</h1>
+           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Review the market, order details, and run limit before starting a controlled demo session.</p>
         </div>
       </div>
 
@@ -212,7 +212,7 @@ export default function BulkTrade() {
               <div className="space-y-2">
                 <Label htmlFor="bulk-run-count">Number of runs</Label>
                 <Input id="bulk-run-count" type="number" min="1" max="100" step="1" value={runCount} onChange={event => setRunCount(event.target.value)} />
-                <p className="text-xs text-muted-foreground">Run Bot obtains a fresh provider proposal automatically before every bounded run.</p>
+                   <p className="text-xs text-muted-foreground">Each run gets a fresh Deriv proposal before submission.</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="bulk-take-profit">Take-profit target ({accountCurrency})</Label>
@@ -241,9 +241,10 @@ export default function BulkTrade() {
                   onStart={() => runSession.start(orderData, totalRuns, targetProfit)}
                   onStop={runSession.stop}
                   disabled={!canRun || !validOrder || marketOffline || runSession.isBusy}
-                  label="Run Bot"
+                 label="Run Manual Trader"
+                 runNoun="Manual Trader"
                 />
-                <p className="text-[11px] leading-5 text-muted-foreground">Run Bot starts one bounded session. Each run gets a fresh Deriv proposal and the next order waits for the previous contract to settle. Stop Bot prevents future entries.</p>
+                 <p className="text-[11px] leading-5 text-muted-foreground">One run starts at a time. The next order waits for provider settlement. Stopping prevents future entries.</p>
           </CardContent>
         </Card>
       </div>
@@ -255,10 +256,13 @@ export default function BulkTrade() {
               {runSession.state.results.map((result: any) => (
                <div key={result.id} className="flex items-center justify-between gap-3 p-4 text-sm">
                  <div>
-                     <div className="font-mono">{selectedMarket} · run {result.run}</div>
+                      <div className="font-mono">{result.symbol || selectedMarket} · run {result.run}</div>
                    <div className="mt-1 text-xs text-muted-foreground">{result.message}</div>
                  </div>
-                  <span className={["won", "settled"].includes(result.status) ? "text-success" : result.status === "rejected" ? "text-destructive" : "text-muted-foreground"}>{result.status || "queued"}</span>
+                   <div className="text-right">
+                   <span className={["won", "settled"].includes(result.status) ? "text-success" : ["lost", "rejected"].includes(result.status) ? "text-destructive" : "text-muted-foreground"}>{result.status || "queued"}</span>
+                     {result.netProfit != null && <div className="font-mono text-xs">{formatSignedMoney(result.netProfit, accountCurrency)}</div>}
+                   </div>
               </div>
             ))}
           </CardContent>

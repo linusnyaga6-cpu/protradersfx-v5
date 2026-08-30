@@ -122,7 +122,7 @@ export default function Bots() {
   };
 
   return (
-    <Workspace title="Bots" eyebrow="Controlled automation" description="Choose the market, contract, stake, run limit, take-profit target, duration, and risk controls, then start one bounded session with Run Bot.">
+      <Workspace title="Bots" eyebrow="User-started execution" description="Configure a bot, then start one bounded demo session. Nothing runs unattended.">
       <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} />
       <div className="flex items-center justify-between">
         <Badge variant="outline" className="bg-background"><ShieldCheck className="mr-1 h-3 w-3" />User-started sessions</Badge>
@@ -196,7 +196,8 @@ export default function Bots() {
                         currency={account.data?.currency || "USD"}
                         onStart={() => executeBot(bot)}
                         onStop={runSession.stop}
-                        disabled={Boolean(executingBotId && executingBotId !== String(bot.id))}
+                         disabled={Boolean(executingBotId && executingBotId !== String(bot.id))}
+                         runNoun="Bot"
                       />
                     </div>
                   )}
@@ -571,7 +572,7 @@ function BotRunHistory({ botId, accountCurrency }: { botId: string; accountCurre
         <CardHeader className="bg-secondary/10 border-b pb-4">
           <CardTitle className="text-lg flex items-center gap-2">
             <Activity className="h-5 w-5 text-primary" />
-            Recent Dry-Runs
+             Bot evaluations
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
@@ -621,7 +622,7 @@ function BotRunHistory({ botId, accountCurrency }: { botId: string; accountCurre
           ) : (
             <div className="p-10 text-center text-sm text-muted-foreground">
               <Clock className="h-8 w-8 mx-auto mb-3 text-muted-foreground/40" />
-              No observation records yet.
+               No bot evaluations yet.
             </div>
           )}
         </CardContent>

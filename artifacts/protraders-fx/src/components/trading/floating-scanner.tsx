@@ -234,7 +234,7 @@ export function FloatingScanner() {
                const direction = bestMarket.bias === "bearish" ? "PUT" : "CALL"
                window.location.href = `/create-bot?symbol=${encodeURIComponent(bestMarket.symbol)}&contract=${direction}&source=ai_assisted`
              }} data-testid="button-review-best-market">
-               Configure Run Bot <ArrowRight className="ml-1 h-3.5 w-3.5" />
+               Open Manual Trader <ArrowRight className="ml-1 h-3.5 w-3.5" />
              </Button>
            </div>
          )}
@@ -263,13 +263,13 @@ export function FloatingScanner() {
                    const direction = result.analysis.bias === "bullish" ? "CALL" : result.analysis.bias === "bearish" ? "PUT" : "CALL"
                     window.location.href = `/create-bot?symbol=${encodeURIComponent(symbol)}&contract=${direction}&source=ai_assisted`
                  }} data-testid="button-review-ai-trade">
-                   Review order <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                    Review in Manual Trader <ArrowRight className="ml-1 h-3.5 w-3.5" />
                  </Button>
                  <Button size="sm" variant="outline" onClick={() => {
                     const direction = result.analysis.bias === "bullish" ? "CALL" : result.analysis.bias === "bearish" ? "PUT" : "CALL"
                     window.location.href = `/create-bot?symbol=${encodeURIComponent(symbol)}&contract=${direction}&source=ai_assisted`
                  }} data-testid="button-run-ai-bot">
-                    Review & Run Bot
+                    Review & Run Manual Trader
                  </Button>
                  </div>
                </div>

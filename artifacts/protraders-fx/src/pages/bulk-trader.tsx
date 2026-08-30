@@ -117,9 +117,20 @@ export default function BulkTrader() {
     setNotice("")
     const freshScan = await performScan()
     const market = freshScan?.best || freshScan?.markets?.[0] || bestMarket
-    const symbol = executionSymbol
+    const freshSymbol = String(market?.symbol || executionSymbol)
+    if (freshSymbol !== executionSymbol) {
+      setScanData(freshScan)
+      setNotice(`The scan changed to ${freshSymbol}. Review the updated market before starting.`)
+      return
+    }
+    const symbol = String(market?.symbol || executionSymbol)
     const preferredDirection = market?.symbol === symbol && market?.bias === "bearish" ? "PUT" : "CALL"
-    const contractType = executionTypes.includes(preferredDirection) ? preferredDirection : selectedContract
+    const contractTypesForSymbol = symbol === executionSymbol ? executionTypes : []
+    const contractType = contractTypesForSymbol.includes(preferredDirection)
+      ? preferredDirection
+      : contractTypesForSymbol.includes(selectedContract)
+        ? selectedContract
+        : selectedContract
     setSetupOpen(false)
     await runSession.start({
       symbol,
@@ -142,7 +153,7 @@ export default function BulkTrader() {
         : "Market scan has not returned yet."
 
   return (
-    <Workspace title="Bulk Trader" eyebrow="Fast, bounded execution" description="Choose only the stake and number of runs. Bulk Trader scans live Deriv markets, starts immediately, and keeps every run visible.">
+       <Workspace title="Bulk Trader" eyebrow="Fast, bounded execution" description="Choose a stake and run count. Bulk Trader scans live Deriv markets and executes one bounded session.">
       <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} />
 
       <div className="overflow-hidden rounded-2xl border border-primary/20 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/.18),transparent_38%),linear-gradient(135deg,hsl(var(--card)),hsl(var(--secondary)/.45))] shadow-[0_18px_60px_rgba(0,0,0,.16)]">
@@ -158,11 +169,11 @@ export default function BulkTrader() {
             <p className="text-xs font-semibold uppercase tracking-[.25em] text-primary">Scan · select · run</p>
             <h2 className="mt-3 max-w-xl text-4xl font-semibold tracking-tight md:text-5xl">A faster way to run a bounded plan.</h2>
             <p className="mt-4 max-w-xl leading-7 text-muted-foreground">
-              Bulk Trader handles the market scan and executes the exact number of runs you enter. There is no second approval after setup, and Stop Bot stays available while the session is active.
+               Bulk Trader scans current Deriv markets, then executes the exact number of runs you enter. Stop remains available while the session is active.
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <Button size="lg" onClick={() => setSetupOpen(true)} disabled={runSession.isBusy} data-testid="button-open-bulk-setup">
-                <Activity className="mr-2 h-4 w-4" />{runSession.isBusy ? "Run Bot active" : "Run Bot"}
+                 <Activity className="mr-2 h-4 w-4" />{runSession.isBusy ? "Bulk Trader active" : "Run Bulk Trader"}
               </Button>
               <span className="text-xs text-muted-foreground">Stake + run count only</span>
             </div>
@@ -196,8 +207,8 @@ export default function BulkTrader() {
             <ScanStep label="Discover active volatility markets" done={Boolean(scanData)} active={scan.isPending} />
             <ScanStep label="Compare fresh candle history" done={Boolean(scanData?.markets?.length)} active={scan.isPending} />
             <ScanStep label={bestMarket ? `Selected ${marketLabel(undefined, scannedSymbol)} for the session` : "Select the best available market"} done={Boolean(bestMarket)} active={Boolean(scanData) && !bestMarket} />
-            <ScanStep label={runSession.isBusy ? "Execute runs and wait for authoritative settlement" : "Ready to execute the run plan"} done={runSession.isBusy || runSession.state.status === "completed"} active={!runSession.isBusy && Boolean(scanData)} />
-            <p className="pt-2 text-xs leading-5 text-muted-foreground">The scan panel refreshes during an active session for visibility. Each submitted order still receives its own provider-backed Deriv proposal, and the next run waits for settlement.</p>
+             <ScanStep label={runSession.isBusy ? "Execute runs and wait for settlement" : "Ready to execute the run plan"} done={runSession.isBusy || runSession.state.status === "completed"} active={!runSession.isBusy && Boolean(scanData)} />
+             <p className="pt-2 text-xs leading-5 text-muted-foreground">The scan refreshes during an active session. Each order receives its own provider proposal, and the next run waits for settlement.</p>
           </CardContent>
         </Card>
         <RunSessionSummary
@@ -206,15 +217,16 @@ export default function BulkTrader() {
           onStart={() => setSetupOpen(true)}
           onStop={runSession.stop}
           disabled={!canRun}
-          label="Run Bot"
+           label="Run Bulk Trader"
+           runNoun="Bulk Trader"
         />
       </div>
 
       <Dialog open={setupOpen} onOpenChange={setSetupOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Run Bot</DialogTitle>
-            <DialogDescription>Enter the two values for this bounded session. Submitting starts immediately without another approval step.</DialogDescription>
+           <DialogTitle>Run Bulk Trader</DialogTitle>
+           <DialogDescription>Enter the stake and number of runs. Starting submits the bounded session immediately.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
@@ -236,7 +248,7 @@ export default function BulkTrader() {
             <Button type="button" variant="outline" onClick={() => setSetupOpen(false)}>Cancel</Button>
             <Button type="button" onClick={startBulkRun} disabled={!canRun} data-testid="button-start-bulk-run">
               {scan.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Activity className="mr-2 h-4 w-4" />}
-              Run Bot immediately
+               Run Bulk Trader
             </Button>
           </DialogFooter>
         </DialogContent>

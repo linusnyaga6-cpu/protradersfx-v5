@@ -4,7 +4,7 @@ import { useListTransactions, getListTransactionsQueryKey } from "@workspace/api
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { formatMoney } from "@/lib/format"
+import { formatMoney, formatSignedMoney, isSettledStatus } from "@/lib/format"
 
 type TransactionLedgerProps = {
   compact?: boolean
@@ -48,10 +48,10 @@ export function TransactionLedger({ compact = false, accountBalance, accountCurr
     }
   }, [pendingIds])
 
-  const summary = useMemo(() => rows.reduce((acc: { net: number; staked: number; runs: number; wins: number; losses: number; settled: number }, row: any) => {
+  const summary = useMemo(() => rows.reduce((acc: { net: number; staked: number; runs: number; wins: number; losses: number; settled: number; profitKnown: number }, row: any) => {
     const net = Number(row.netProfit)
     const stake = Number(row.stake)
-    const settled = row.status === "won" || row.status === "lost" || Number.isFinite(net)
+    const settled = isSettledStatus(row.status)
     return {
       net: acc.net + (Number.isFinite(net) ? net : 0),
       staked: acc.staked + (Number.isFinite(stake) ? stake : 0),
@@ -59,12 +59,15 @@ export function TransactionLedger({ compact = false, accountBalance, accountCurr
       wins: acc.wins + (row.status === "won" ? 1 : 0),
       losses: acc.losses + (row.status === "lost" ? 1 : 0),
       settled: acc.settled + (settled ? 1 : 0),
+      profitKnown: acc.profitKnown + (settled && Number.isFinite(net) ? 1 : 0),
     }
-  }, { net: 0, staked: 0, runs: 0, wins: 0, losses: 0, settled: 0 }), [rows])
+  }, { net: 0, staked: 0, runs: 0, wins: 0, losses: 0, settled: 0, profitKnown: 0 }), [rows])
   const summaryCurrency = accountCurrency || rows.find((row: any) => row.currency)?.currency || "USD"
-  const signedNet = summary.settled > 0
-    ? `${summary.net >= 0 ? "+" : "-"}${formatMoney(Math.abs(summary.net), summaryCurrency)}`
-    : "Not settled"
+  const signedNet = summary.settled === 0
+    ? "Not settled"
+    : summary.profitKnown < summary.settled
+      ? "Unavailable"
+      : formatSignedMoney(summary.net, summaryCurrency)
 
   return (
     <Card className={compact ? "shadow-sm" : "shadow-md"} data-testid="card-transaction-ledger">
@@ -123,7 +126,11 @@ export function TransactionLedger({ compact = false, accountBalance, accountCurr
                   </div>
                   <div className="text-left sm:text-right">
                     <div className={`font-mono text-sm font-semibold ${Number.isFinite(net) ? (net >= 0 ? "text-success" : "text-destructive") : "text-muted-foreground"}`}>
-                      {Number.isFinite(net) ? `${net >= 0 ? "+" : ""}${money(net, currency)}` : "Awaiting settlement"}
+                       {isSettledStatus(row.status) && Number.isFinite(net)
+                         ? formatSignedMoney(net, currency)
+                         : row.status === "pending"
+                           ? "Awaiting settlement"
+                           : "No realized P/L"}
                     </div>
                     <div className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground sm:justify-end">
                       <Clock3 className="h-3 w-3" /> {row.createdAt ? new Date(row.createdAt).toLocaleString() : "Time unavailable"}

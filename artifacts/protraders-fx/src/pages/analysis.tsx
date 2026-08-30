@@ -149,7 +149,7 @@ export default function Analysis() {
               </div>
               <div className="flex flex-wrap gap-3 border-t border-white/[.08] pt-5">
                 <Button onClick={scanBest} disabled={bestScan.isPending}>{bestScan.isPending ? "Comparing markets…" : "Find best market"}</Button>
-                <Button asChild><Link href={`/create-bot?symbol=${encodeURIComponent(selectedSymbol)}`}>Create bot for this market <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
+                <Button asChild><Link href={`/create-bot?symbol=${encodeURIComponent(selectedSymbol)}`}>Open Manual Trader <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
                 <Button asChild variant="outline"><Link href="/markets">Open full market view</Link></Button>
                 <Button asChild variant="outline"><Link href="/course">Read the course</Link></Button>
               </div>

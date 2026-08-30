@@ -14,16 +14,16 @@ export function Navbar() {
 
   const navItems = [
     { path: "/", label: "Home", icon: Home, show: true },
-    { path: "/dashboard", label: "Workspace", icon: LayoutDashboard, show: session?.authenticated },
+     { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard, show: session?.authenticated },
+     { path: "/create-bot", label: "Manual Trader", icon: Activity, show: session?.authenticated },
     { path: "/bulk-trade", label: "Bulk Trader", icon: Layers3, show: session?.authenticated },
-    { path: "/create-bot", label: "Create Bot", icon: Bot, show: session?.authenticated },
-    { path: "/activity", label: "Activity", icon: Activity, show: !!session?.authenticated },
+     { path: "/bots", label: "Bots", icon: Bot, show: session?.authenticated },
+     { path: "/markets", label: "Markets", icon: BarChart3, show: session?.authenticated },
+     { path: "/activity", label: "Activity", icon: Activity, show: !!session?.authenticated },
+     { path: "/recovery", label: "Recovery", icon: CircleAlert, show: session?.authenticated },
     { path: "/about", label: "About", icon: UserRound, show: true },
     { path: "/course", label: "Course", icon: BookOpen, show: true },
     { path: "/analysis", label: "Analysis Tools", icon: LineChart, show: true },
-    { path: "/markets", label: "Markets", icon: BarChart3, show: session?.authenticated },
-    { path: "/bots", label: "Bots", icon: Bot, show: session?.authenticated },
-    { path: "/recovery", label: "Recovery", icon: CircleAlert, show: session?.authenticated },
   ]
 
   const handleLogout = async () => {

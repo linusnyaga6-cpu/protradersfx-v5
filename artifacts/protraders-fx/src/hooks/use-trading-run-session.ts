@@ -9,7 +9,18 @@ export type TradingRunSessionState = {
   completedRuns: number
   netProfit: number
   message: string
-  results: Array<{ id: string; run: number; status: string; netProfit?: number | null; transactionId?: string | null; message: string }>
+  results: Array<{
+    id: string
+    run: number
+    status: string
+    symbol?: string
+    stake?: number | null
+    payout?: number | null
+    outcome?: string | null
+    netProfit?: number | null
+    transactionId?: string | null
+    message: string
+  }>
 }
 
 export type RunSessionOrder = Record<string, unknown> & {
@@ -35,6 +46,12 @@ function providerErrorMessage(error: unknown) {
   const providerMessage = failure?.response?.data?.message
   if (providerError && providerMessage) return `${providerError}: ${providerMessage}`
   return providerMessage || providerError || failure?.message || "Trading session stopped because the provider response was unavailable."
+}
+
+function sessionLabel(source: unknown) {
+  if (source === "bulk_trader") return "Bulk Trader"
+  if (source === "bot_assisted") return "Bot"
+  return "Manual Trader"
 }
 
 export function useTradingRunSession(storageKey: string, onChange?: () => void) {
@@ -77,7 +94,7 @@ export function useTradingRunSession(storageKey: string, onChange?: () => void) 
     stopRequested.current = false
     cancelled.current = false
     const sessionId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`
-    commit({ ...initialState, id: sessionId, status: "running", totalRuns, message: "Run Bot started. Requesting the first Deriv proposal…" })
+    commit({ ...initialState, id: sessionId, status: "running", totalRuns, message: `${sessionLabel(order.source)} started. Requesting the first Deriv proposal…` })
     try {
       for (let index = 1; index <= totalRuns; index += 1) {
         if (stopRequested.current || cancelled.current) break
@@ -91,7 +108,14 @@ export function useTradingRunSession(storageKey: string, onChange?: () => void) 
           commit(current => ({
             ...current,
             status: "failed",
-            results: [...current.results, { id: resultId, run: index, status: "rejected", message: receipt?.message || "Deriv rejected the order." }],
+            results: [...current.results, {
+              id: resultId,
+              run: index,
+              status: "rejected",
+              symbol: order.symbol,
+              stake: Number(order.stake),
+              message: receipt?.message || "Deriv rejected the order.",
+            }],
             message: receipt?.message || "Deriv rejected the order. Session stopped.",
           }))
           return
@@ -99,7 +123,15 @@ export function useTradingRunSession(storageKey: string, onChange?: () => void) 
         commit(current => ({
           ...current,
           message: `Run ${index} accepted. Waiting for authoritative Deriv settlement…`,
-          results: [...current.results, { id: resultId, run: index, status: "pending", transactionId: String(receipt.transactionId), message: `Contract ${receipt.contractId || receipt.transactionId} is open.` }],
+          results: [...current.results, {
+            id: resultId,
+            run: index,
+            status: "pending",
+            symbol: order.symbol,
+            stake: Number(order.stake),
+            transactionId: String(receipt.transactionId),
+            message: `Contract ${receipt.contractId || receipt.transactionId} is open.`,
+          }],
         }))
         let settled: any = null
         for (let attempt = 0; attempt < 120 && !cancelled.current; attempt += 1) {
@@ -117,12 +149,20 @@ export function useTradingRunSession(storageKey: string, onChange?: () => void) 
         }
         if (!settled) throw new Error("Settlement was not available before the session timed out.")
         const totalProfit = stateRef.current.netProfit + settled.profit
+        const settledPayout = Number(settled.transaction.payout)
         commit(current => ({
           ...current,
           completedRuns: index,
           netProfit: totalProfit,
           message: `Run ${index} settled with ${settled.profit >= 0 ? "+" : ""}${settled.profit.toFixed(2)}.`,
-          results: current.results.map(item => item.id === resultId ? { ...item, status: String(settled.transaction.status), netProfit: settled.profit, message: `Settled by Deriv with net profit ${settled.profit >= 0 ? "+" : ""}${settled.profit.toFixed(2)}.` } : item),
+          results: current.results.map(item => item.id === resultId ? {
+            ...item,
+            status: String(settled.transaction.status),
+            payout: Number.isFinite(settledPayout) ? settledPayout : null,
+            outcome: String(settled.transaction.status),
+            netProfit: settled.profit,
+            message: `Settled by Deriv with net profit ${settled.profit >= 0 ? "+" : ""}${settled.profit.toFixed(2)}.`,
+          } : item),
         }))
         onChange?.()
         if (stopRequested.current) break

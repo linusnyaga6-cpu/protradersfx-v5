@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { Activity, Bot, Layers3, RefreshCw } from "lucide-react"
+import { Activity, Bot, CircleAlert, Layers3, RefreshCw } from "lucide-react"
 import { Link, useLocation } from "wouter"
 import {
   getGetAccountQueryKey,
@@ -69,11 +69,13 @@ export default function Dashboard() {
         </Card>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-4">
+       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <ActionCard href="/bulk-trade" icon={<Layers3 className="h-4 w-4" />} title="Bulk Trader" featured />
-        <ActionCard href="/create-bot" icon={<Bot className="h-4 w-4" />} title="Create Bot" />
-        <ActionCard href="/markets" icon={<Activity className="h-4 w-4" />} title="Scan market" />
-        <ActionCard href="/bots" icon={<Bot className="h-4 w-4" />} title="Run bot" />
+         <ActionCard href="/create-bot" icon={<Activity className="h-4 w-4" />} title="Manual Trader" />
+         <ActionCard href="/bots" icon={<Bot className="h-4 w-4" />} title="Bots" />
+         <ActionCard href="/markets" icon={<Activity className="h-4 w-4" />} title="Markets" />
+         <ActionCard href="/activity" icon={<Activity className="h-4 w-4" />} title="Activity" />
+         <ActionCard href="/recovery" icon={<CircleAlert className="h-4 w-4" />} title="Recovery" />
       </div>
 
       <TransactionLedger accountBalance={account.data?.balance} accountCurrency={account.data?.currency} />

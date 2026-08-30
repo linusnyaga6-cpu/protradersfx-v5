@@ -48,9 +48,12 @@ const affiliateToken = process.env.DERIV_AFFILIATE_TOKEN || "";
 const affiliateId = process.env.DERIV_AFFILIATE_ID || "";
 const campaign = process.env.DERIV_CAMPAIGN || "protraders-fx";
 const scope = process.env.DERIV_SCOPE || "trade account_manage";
-const tradingEnabled = process.env.TRADING_ENABLED === "true" || (!isProduction && process.env.TRADING_ENABLED !== "false");
 const liveTradingEnabled = process.env.TRADING_LIVE_ENABLED === "true";
 const demoOnly = process.env.TRADING_DEMO_ONLY !== "false";
+// Demo execution is available by default; production stays demo-only unless the
+// operator explicitly opts out or enables a reviewed live configuration.
+const tradingEnabled = process.env.TRADING_ENABLED === "true"
+  || (demoOnly && process.env.TRADING_ENABLED !== "false");
 const frontendConfigured = process.env.FRONTEND_CONFIGURED !== "false";
 const maxDuration = positiveInteger(process.env.TRADING_MAX_DURATION, 3600);
 const riskAcknowledgementVersion = "2025-01";
