@@ -50,9 +50,9 @@ export function AccountStrip({ account, isLoading, error }: AccountStripProps) {
     setSwitchingTo(accountType)
     setSwitchError("")
     try {
+      await queryClient.cancelQueries({ queryKey: getGetAccountQueryKey() })
       const nextAccount = await getAccount({ account_type: accountType })
-      queryClient.setQueriesData({ queryKey: getGetAccountQueryKey() }, nextAccount)
-      await queryClient.invalidateQueries({ queryKey: getGetAccountQueryKey() })
+      queryClient.setQueryData(getGetAccountQueryKey(), nextAccount)
     } catch (accountError) {
       const failure = accountError as { data?: { error?: string; message?: string }; message?: string }
       setSwitchError(failure.data?.message || failure.data?.error || failure.message || "Account switch unavailable.")
