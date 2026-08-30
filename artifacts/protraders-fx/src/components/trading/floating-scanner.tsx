@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { formatVolatility } from "@/lib/format"
 import { DEFAULT_MARKET_SYMBOL, marketLabel } from "@/lib/markets"
 import { useDerivMarkets } from "@/hooks/use-deriv-markets"
+import { useLocation } from "wouter"
 
 type ScannerResult = {
   symbol: string
@@ -29,6 +30,7 @@ type ScannerResult = {
 
 export function FloatingScanner() {
   const { data: session } = useGetSessionStatus({ query: { queryKey: getGetSessionStatusQueryKey() } })
+  const [, setLocation] = useLocation()
   const [open, setOpen] = useState(false)
   const [symbol, setSymbol] = useState(DEFAULT_MARKET_SYMBOL)
   const marketQuery = useDerivMarkets()
@@ -55,6 +57,11 @@ export function FloatingScanner() {
   const ticker = useGetMarketTicker(symbol, { query: { queryKey: getGetMarketTickerQueryKey(symbol), enabled: !!session?.authenticated && open, refetchInterval: 15000 } })
   const candleParams = { count: 60, granularity: 60 }
   const candles = useGetMarketCandles(symbol, candleParams, { query: { queryKey: getGetMarketCandlesQueryKey(symbol, candleParams), enabled: !!session?.authenticated && open, staleTime: 30000 } })
+  const openManualTrader = (nextSymbol: string, contract?: string) => {
+    const params = new URLSearchParams({ symbol: nextSymbol, source: "ai_assisted" })
+    if (contract) params.set("contract", contract)
+    setLocation(`/create-bot?${params.toString()}`)
+  }
 
   useEffect(() => {
     const show = () => setOpen(true)
@@ -179,8 +186,8 @@ export function FloatingScanner() {
                 The scanner uses current Deriv market data and returns advisory context only. Connect your account to run a scan.
               </p>
             </div>
-            <Button asChild className="w-full" data-testid="button-connect-scanner">
-              <a href="/api/deriv/login">Connect Deriv account <ArrowRight className="ml-2 h-4 w-4" /></a>
+             <Button asChild className="w-full" data-testid="button-connect-scanner">
+               <a href={`${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/deriv/login`}>Connect Deriv account <ArrowRight className="ml-2 h-4 w-4" /></a>
             </Button>
             <div className="flex items-center gap-2 border-t border-white/10 pt-3 text-[10px] uppercase tracking-wider text-muted-foreground">
               <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Advisory only · no order execution
@@ -230,10 +237,10 @@ export function FloatingScanner() {
                 <Metric label="Signals tested" value={String(bestMarket.signalSampleSize)} />
              </div>
              <p className="text-xs leading-5 text-muted-foreground">This is a recent one-step candle backtest, not a guaranteed Deriv win percentage. Review the market and contract before placing any order.</p>
-             <Button className="w-full" variant="outline" onClick={() => {
-               const direction = bestMarket.bias === "bearish" ? "PUT" : "CALL"
-               window.location.href = `/create-bot?symbol=${encodeURIComponent(bestMarket.symbol)}&contract=${direction}&source=ai_assisted`
-             }} data-testid="button-review-best-market">
+              <Button className="w-full" variant="outline" onClick={() => {
+                const direction = bestMarket.bias === "bearish" ? "PUT" : "CALL"
+                openManualTrader(bestMarket.symbol, direction)
+              }} data-testid="button-review-best-market">
                Open Manual Trader <ArrowRight className="ml-1 h-3.5 w-3.5" />
              </Button>
            </div>
@@ -259,16 +266,16 @@ export function FloatingScanner() {
                    <div className="mt-1 font-mono text-sm">{formatVolatility(result.indicators.volatilityLevel, result.indicators.volatilityPct)}</div>
                  </div>
                  <div className="flex flex-wrap justify-end gap-2">
-                 <Button size="sm" variant="outline" onClick={() => {
-                   const direction = result.analysis.bias === "bullish" ? "CALL" : result.analysis.bias === "bearish" ? "PUT" : "CALL"
-                    window.location.href = `/create-bot?symbol=${encodeURIComponent(symbol)}&contract=${direction}&source=ai_assisted`
-                 }} data-testid="button-review-ai-trade">
+                  <Button size="sm" variant="outline" onClick={() => {
+                    const direction = result.analysis.bias === "bullish" ? "CALL" : result.analysis.bias === "bearish" ? "PUT" : "CALL"
+                    openManualTrader(symbol, direction)
+                  }} data-testid="button-review-ai-trade">
                     Review in Manual Trader <ArrowRight className="ml-1 h-3.5 w-3.5" />
                  </Button>
-                 <Button size="sm" variant="outline" onClick={() => {
+                  <Button size="sm" variant="outline" onClick={() => {
                     const direction = result.analysis.bias === "bullish" ? "CALL" : result.analysis.bias === "bearish" ? "PUT" : "CALL"
-                    window.location.href = `/create-bot?symbol=${encodeURIComponent(symbol)}&contract=${direction}&source=ai_assisted`
-                 }} data-testid="button-run-ai-bot">
+                    openManualTrader(symbol, direction)
+                  }} data-testid="button-run-ai-bot">
                     Review & Run Manual Trader
                  </Button>
                  </div>
@@ -286,11 +293,11 @@ export function FloatingScanner() {
                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Fresh-market ranking</div>
                <span className="text-[10px] text-muted-foreground">{(scanBestMarket.data as any)?.availableCount || 0} available</span>
              </div>
-             {(scanBestMarket.data as any).markets.slice(0, 5).map((market: any, index: number) => (
-               <button key={market.symbol} type="button" className="flex w-full items-center justify-between rounded-lg border border-white/10 bg-background/50 px-3 py-2 text-left hover:border-primary/40" onClick={() => {
-                 const direction = market.bias === "bearish" ? "PUT" : "CALL"
-                 window.location.href = `/create-bot?symbol=${encodeURIComponent(market.symbol)}&contract=${direction}&source=ai_assisted`
-               }}>
+              {(scanBestMarket.data as any).markets.slice(0, 5).map((market: any, index: number) => (
+                <button key={market.symbol} type="button" className="flex w-full items-center justify-between rounded-lg border border-white/10 bg-background/50 px-3 py-2 text-left hover:border-primary/40" onClick={() => {
+                  const direction = market.bias === "bearish" ? "PUT" : "CALL"
+                  openManualTrader(market.symbol, direction)
+                }}>
                   <span><span className="mr-2 font-mono text-xs text-primary">#{index + 1}</span><span className="text-xs">{market.displayName}</span><span className="ml-2 font-mono text-[10px] text-muted-foreground">{market.symbol}</span><span className="ml-2 text-[10px] uppercase text-muted-foreground">{formatVolatility(market.indicators?.volatilityLevel, market.indicators?.volatilityPct)} · {market.bias} · {market.freshnessSeconds}s old</span></span>
                  <span className="font-mono text-xs">Score {market.score}</span>
                </button>
