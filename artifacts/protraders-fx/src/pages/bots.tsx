@@ -95,8 +95,13 @@ export default function Bots() {
       setNotice("Recovery is monitor-only and cannot place an order.");
       return;
     }
-    if (account.data?.accountType !== "demo" || !preflight.data?.tradingEnabled || !preflight.data?.demoOnly) {
-      setNotice("Bot execution requires the protected Deriv demo mode.");
+    const accountCanTrade = account.data?.accountType === "real"
+      ? preflight.data?.readyForRealTrading
+      : account.data?.accountType === "demo" && preflight.data?.tradingEnabled
+    if (!accountCanTrade) {
+      setNotice(account.data?.accountType === "real"
+        ? "Bot execution requires the reviewed real-trading gate and selected real account."
+        : "Bot execution requires the protected Deriv demo mode.");
       return;
     }
     setExecutingBotId(String(bot.id));
@@ -122,7 +127,7 @@ export default function Bots() {
   };
 
   return (
-      <Workspace title="Bots" eyebrow="User-started execution" description="Configure a bot, then start one bounded demo session. Nothing runs unattended.">
+       <Workspace title="Bots" eyebrow="User-started execution" description={`Configure a bot, then start one bounded ${account.data?.accountType === "real" ? "real-account" : "demo"} session. Nothing runs unattended.`}>
       <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} />
       <div className="flex items-center justify-between">
         <Badge variant="outline" className="bg-background"><ShieldCheck className="mr-1 h-3 w-3" />User-started sessions</Badge>

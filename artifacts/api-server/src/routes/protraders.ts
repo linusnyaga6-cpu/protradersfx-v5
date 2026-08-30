@@ -52,8 +52,7 @@ const liveTradingEnabled = process.env.TRADING_LIVE_ENABLED === "true";
 const demoOnly = process.env.TRADING_DEMO_ONLY !== "false";
 // Demo execution is available by default; production stays demo-only unless the
 // operator explicitly opts out or enables a reviewed live configuration.
-const tradingEnabled = process.env.TRADING_ENABLED === "true"
-  || (demoOnly && process.env.TRADING_ENABLED !== "false");
+const tradingEnabled = process.env.TRADING_ENABLED !== "false";
 const frontendConfigured = process.env.FRONTEND_CONFIGURED !== "false";
 const maxDuration = positiveInteger(process.env.TRADING_MAX_DURATION, 3600);
 const riskAcknowledgementVersion = "2025-01";
@@ -73,17 +72,38 @@ const allowedSymbols = new Set(
 const deploymentReady = Boolean(
   baseUrl.startsWith("https://") &&
   clientId &&
-  affiliateToken &&
   sessionSecret &&
   frontendConfigured,
 );
 const realTradingReady = Boolean(
   deploymentReady &&
+  databaseConfigured &&
   tradingEnabled &&
   liveTradingEnabled &&
   !demoOnly &&
   allowedSymbols.size > 0,
 );
+
+function accountTradingPolicy(account: DerivOptionsAccount | undefined) {
+  if (!account?.account_id) {
+    return { allowed: false, error: "Account identity unavailable", message: "Reconnect or select a Deriv account before trading." };
+  }
+  if (account.account_type === "demo") {
+    return tradingEnabled
+      ? { allowed: true }
+      : { allowed: false, error: "Trading disabled", message: "Demo trading is not enabled in this deployment." };
+  }
+  if (account.account_type === "real" && demoOnly) {
+    return { allowed: false, error: "Demo account required", message: "Real trading is disabled by TRADING_DEMO_ONLY." };
+  }
+  if (account.account_type === "real" && !liveTradingEnabled) {
+    return { allowed: false, error: "Live trading disabled", message: "Set TRADING_LIVE_ENABLED=true only after an independent risk review." };
+  }
+  if (account.account_type === "real" && !realTradingReady) {
+    return { allowed: false, error: "Live trading not ready", message: "Complete HTTPS, Deriv, persistence, session, and symbol-allowlist configuration first." };
+  }
+  return { allowed: false, error: "Unsupported account type", message: "Choose a supported Demo or Real Deriv account." };
+}
 
 function positiveInteger(value: string | undefined, fallback: number) {
   const parsed = Number(value);
@@ -789,6 +809,8 @@ router.post("/trades/preview", async (req, res) => {
     const accounts = await listDerivAccounts(session.accessToken);
     const account = chooseAccount(accounts, undefined, session.accountId);
     if (!account?.account_id || !account.currency) return errorResponse(res, 502, "Account identity unavailable");
+    const policy = accountTradingPolicy(account);
+    if (!policy.allowed) return errorResponse(res, 403, policy.error || "Account trading unavailable", policy.message);
     const availableBalance = Number(account.balance);
     if (!Number.isFinite(availableBalance) || availableBalance <= 0) {
       return errorResponse(res, 502, "Account balance unavailable", "Reconnect or refresh the selected Deriv account.");
@@ -841,22 +863,6 @@ router.post("/trades", async (req, res) => {
       "Enable TRADING_ENABLED only after the controlled demo test passes.",
     );
   }
-  if (!demoOnly && !liveTradingEnabled) {
-    return errorResponse(
-      res,
-      403,
-      "Live trading disabled",
-      "Set TRADING_LIVE_ENABLED=true only after an independent risk review.",
-    );
-  }
-  if (!demoOnly && !realTradingReady) {
-    return errorResponse(
-      res,
-      503,
-      "Live trading not ready",
-      "Complete HTTPS, Deriv, session, frontend, and symbol-allowlist configuration first.",
-    );
-  }
 
   const session = await getSession(req, res);
   if (!session) return errorResponse(res, 401, "Not authenticated");
@@ -892,20 +898,14 @@ router.post("/trades", async (req, res) => {
     const loginId = String(account?.account_id || "");
     const isDemoAccount = account?.account_type === "demo";
     if (!loginId || !account) return errorResponse(res, 502, "Account identity unavailable");
+    const policy = accountTradingPolicy(account);
+    if (!policy.allowed) return errorResponse(res, isDemoAccount ? 503 : 403, policy.error || "Account trading unavailable", policy.message);
     const availableBalance = Number(account.balance);
     if (!Number.isFinite(availableBalance) || availableBalance <= 0) {
       return errorResponse(res, 502, "Account balance unavailable", "Reconnect or refresh the selected Deriv account.");
     }
     if (stake >= availableBalance) {
       return errorResponse(res, 400, "Stake exceeds available balance", "Enter a stake below the selected account balance.");
-    }
-    if (demoOnly && !isDemoAccount) {
-      return errorResponse(
-        res,
-        403,
-        "Demo account required",
-        "Live trading is disabled by TRADING_DEMO_ONLY.",
-      );
     }
     if (!isDemoAccount && allowedSymbols.size > 0 && !allowedSymbols.has(symbol)) {
       return errorResponse(res, 403, "Market not enabled for real trading", `${symbol} is available in Demo but is not on the reviewed real-money allowlist.`);

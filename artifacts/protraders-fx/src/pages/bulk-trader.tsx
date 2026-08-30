@@ -80,10 +80,11 @@ export default function BulkTrader() {
   const validSetup = Number.isInteger(totalRuns) && totalRuns >= 1 && totalRuns <= 100
     && Number.isFinite(availableBalance) && availableBalance > 0
     && Number.isFinite(stakeValue) && stakeValue > 0 && stakeValue < availableBalance
+  const accountCanTrade = account.data?.accountType === "real"
+    ? preflight.data?.readyForRealTrading
+    : account.data?.accountType === "demo" && preflight.data?.tradingEnabled
   const canRun = Boolean(
-    account.data?.accountType === "demo"
-    && preflight.data?.tradingEnabled
-    && preflight.data?.demoOnly
+    accountCanTrade
     && validSetup
     && contractReady
     && !runSession.isBusy,
@@ -153,7 +154,7 @@ export default function BulkTrader() {
         : "Market scan has not returned yet."
 
   return (
-       <Workspace title="Bulk Trader" eyebrow="Fast, bounded execution" description="Choose a stake and run count. Bulk Trader scans live Deriv markets and executes one bounded session.">
+        <Workspace title="Bulk Trader" eyebrow="Fast, bounded execution" description={`Choose a stake and run count. Bulk Trader scans live Deriv markets and executes one bounded ${account.data?.accountType === "real" ? "real-account" : "demo"} session.`}>
       <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} />
 
       <div className="overflow-hidden rounded-2xl border border-primary/20 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/.18),transparent_38%),linear-gradient(135deg,hsl(var(--card)),hsl(var(--secondary)/.45))] shadow-[0_18px_60px_rgba(0,0,0,.16)]">
@@ -162,7 +163,7 @@ export default function BulkTrader() {
             <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
             Live Deriv market scan
           </div>
-          <Badge variant="outline" className="border-primary/30 bg-background/40"><ShieldCheck className="mr-1 h-3 w-3 text-primary" />Demo-first</Badge>
+          <Badge variant="outline" className="border-primary/30 bg-background/40"><ShieldCheck className="mr-1 h-3 w-3 text-primary" />{account.data?.accountType === "real" ? "Real-account gates" : "Demo-first"}</Badge>
         </div>
         <div className="grid gap-8 px-5 py-10 md:grid-cols-[1.1fr_.9fr] md:px-10">
           <div className="flex flex-col justify-center">

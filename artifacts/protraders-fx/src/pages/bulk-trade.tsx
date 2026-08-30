@@ -67,7 +67,10 @@ export default function BulkTrade() {
   })
   const accountCurrency = account.data?.currency || "USD"
   const availableBalance = Number(account.data?.balance)
-  const canRun = Boolean(session?.authenticated && account.data?.accountType === "demo" && preflight.data?.tradingEnabled && preflight.data?.demoOnly)
+  const accountCanTrade = account.data?.accountType === "real"
+    ? preflight.data?.readyForRealTrading
+    : account.data?.accountType === "demo" && preflight.data?.tradingEnabled
+  const canRun = Boolean(session?.authenticated && accountCanTrade)
   const tradeSource = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("source") === "ai_assisted"
     ? "ai_assisted" as const
     : "manual" as const
@@ -137,7 +140,7 @@ export default function BulkTrade() {
         <div>
            <div className="text-xs font-semibold uppercase tracking-[.22em] text-primary">Manual execution</div>
            <h1 className="mt-1 text-3xl font-semibold tracking-tight">Manual Trader</h1>
-           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Review the market, order details, and run limit before starting a controlled demo session.</p>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Review the market, order details, and run limit before starting a controlled {account.data?.accountType === "real" ? "real-account" : "demo"} session.</p>
         </div>
       </div>
 
