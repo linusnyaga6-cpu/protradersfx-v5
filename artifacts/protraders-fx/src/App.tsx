@@ -21,6 +21,7 @@ import NotFound from '@/pages/not-found';
 import Course from '@/pages/course';
 import Analysis from '@/pages/analysis';
 import { ActivityTracker } from '@/hooks/use-activity-tracking';
+import { FreeVertexPreview } from '@/components/bots/freevertex-preview';
 import {
   Route,
   Switch,
@@ -147,6 +148,7 @@ function PublicBotPreview() {
       <div className="mt-5 space-y-3">
         {sourceBots.map((bot) => (
           <article key={bot.number} className="rounded-lg border border-primary/20 bg-primary/[.04] p-4">
+            {bot.number === 1 && <FreeVertexPreview />}
             <div className="flex items-start gap-3">
               <div className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-primary/10 text-sm font-semibold text-primary">
                 {bot.number}
