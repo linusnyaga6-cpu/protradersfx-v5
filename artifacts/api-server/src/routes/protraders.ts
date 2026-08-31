@@ -458,6 +458,44 @@ router.get("/preflight", (_req, res) => {
   });
 });
 
+router.get("/diagnostics/database-identity", async (req, res) => {
+  const session = await getSession(req, res);
+  if (!session) return errorResponse(res, 401, "Not authenticated");
+
+  if (!databaseConfigured) {
+    return errorResponse(res, 503, "Database unavailable");
+  }
+
+  try {
+    const result = await db.execute(sql`
+      SELECT
+        current_database() AS database_name,
+        current_user AS user_name,
+        inet_server_addr()::text AS server_address,
+        inet_server_port() AS server_port,
+        version() AS server_version,
+        pg_is_in_recovery() AS in_recovery
+    `);
+
+    const row = result.rows[0] as Record<string, unknown> | undefined;
+
+    return res.json({
+      database: typeof row?.database_name === "string" ? row.database_name : null,
+      user: typeof row?.user_name === "string" ? row.user_name : null,
+      serverAddress: typeof row?.server_address === "string" ? row.server_address : null,
+      serverPort: row?.server_port == null ? null : Number(row.server_port),
+      version: typeof row?.server_version === "string" ? row.server_version : null,
+      isInRecovery: row?.in_recovery === true,
+    });
+  } catch {
+    req.log?.warn(
+      { stage: "database_identity" },
+      "database identity diagnostic failed",
+    );
+    return errorResponse(res, 503, "Database identity unavailable");
+  }
+});
+
 router.get("/deriv/login", async (req, res) => {
   const target = req.query.target === "demo" || req.query.target === "real"
     ? req.query.target
@@ -1179,8 +1217,10 @@ router.post("/trades", async (req, res) => {
         proposalId: reviewed.id,
       }).onConflictDoNothing({ target: consumedTradeProposals.nonce }).returning({ nonce: consumedTradeProposals.nonce });
     } catch (error) {
+      const diagnostic = proposalReviewDatabaseDiagnostic(error);
+      console.error("proposal_review_db_error", diagnostic);
       req.log?.warn(
-        proposalReviewDatabaseDiagnostic(error),
+        diagnostic,
         "proposal review database insert failed",
       );
       if (isConsumedProposalConflict(error)) {
