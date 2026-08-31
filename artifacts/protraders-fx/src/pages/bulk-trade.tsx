@@ -60,15 +60,6 @@ export default function BulkTrade() {
   const queryClient = useQueryClient()
   const marketQuery = useDerivMarkets()
 
-  const marketGroups = useMemo(() => {
-    const groups = new Map<string, typeof marketQuery.markets>()
-    for (const market of marketQuery.markets) {
-      const key = market.submarketDisplayName || market.marketDisplayName || "Deriv markets"
-      groups.set(key, [...(groups.get(key) || []), market])
-    }
-    return [...groups.entries()]
-  }, [marketQuery.markets])
-
   useEffect(() => {
     if (marketQuery.markets.length && !marketQuery.markets.some(item => item.symbol === selectedMarket)) {
       setSelectedMarket(marketQuery.defaultSymbol)
@@ -125,6 +116,7 @@ export default function BulkTrade() {
   const liveLastDigit = quoteDigits ? Number(quoteDigits.at(-1)) : null
   const marketOffline = ticker.isError || (ticker.data as any)?.available === false
   const candleCloses = useMemo(() => readCandleCloses(marketData), [marketData])
+  const selectedMarketIndex = Math.max(0, marketQuery.markets.findIndex(item => item.symbol === selectedMarket))
   const quoteTrend = candleCloses.length > 1
     ? candleCloses.at(-1)! >= candleCloses.at(-2)! ? "up" : "down"
     : "flat"
@@ -205,28 +197,8 @@ export default function BulkTrade() {
                 <Radio className="h-3 w-3" />
                 Manual trading
               </div>
-              <h1 className="truncate text-lg font-semibold tracking-tight md:text-xl">{marketLabel(marketQuery.markets.find(item => item.symbol === selectedMarket), selectedMarket)}</h1>
+               <h1 className="truncate text-lg font-semibold tracking-tight md:text-xl">One reviewed decision</h1>
             </div>
-          </div>
-          <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-              <Label htmlFor="bulk-market" className="sr-only">Market</Label>
-              <select
-                id="bulk-market"
-                value={selectedMarket}
-                onChange={event => setSelectedMarket(event.target.value)}
-                className="h-10 min-w-0 rounded-md border border-input bg-background px-3 text-sm sm:w-[280px]"
-                data-testid="select-bulk-market"
-              >
-                {marketGroups.map(([group, markets]) => (
-                  <optgroup key={group} label={group}>
-                    {markets.map(market => <option key={market.symbol} value={market.symbol}>{marketLabel(market, market.symbol)}</option>)}
-                  </optgroup>
-                ))}
-              </select>
-              <div className="flex items-center gap-2 whitespace-nowrap text-xs text-muted-foreground">
-                <Clock3 className="h-3.5 w-3.5" />
-                Quote refreshes every 15s
-              </div>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground md:ml-2">
             <Badge variant={marketOffline ? "destructive" : "success"} data-testid="status-market-connection">
@@ -244,6 +216,13 @@ export default function BulkTrade() {
         )}
         <div className="border-b border-border/80 bg-background/40 p-3 md:p-4">
           <DigitRail activeDigit={liveLastDigit} selectedDigit={needsBarrier ? Number(barrier) : null} />
+           <MarketCursor
+             markets={marketQuery.markets}
+             selectedMarket={selectedMarket}
+             selectedIndex={selectedMarketIndex}
+             onChange={setSelectedMarket}
+             isLoading={marketQuery.isLoading}
+           />
         </div>
 
         <div className="grid lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -483,6 +462,73 @@ function Field({ label, id, value, onChange, min, max, step }: { label: string; 
 
 function GateNotice({ icon, text }: { icon: ReactNode; text: string }) {
   return <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs leading-5 text-amber-700 dark:text-amber-300" data-testid="status-trading-gate">{icon}<span>{text}</span></div>
+}
+
+function MarketCursor({
+  markets,
+  selectedMarket,
+  selectedIndex,
+  onChange,
+  isLoading,
+}: {
+  markets: Array<{ symbol: string; displayName?: string; marketDisplayName?: string; submarketDisplayName?: string }>
+  selectedMarket: string
+  selectedIndex: number
+  onChange: (symbol: string) => void
+  isLoading: boolean
+}) {
+  const selected = markets[selectedIndex]
+  const maxIndex = Math.max(0, markets.length - 1)
+  const cursorPosition = maxIndex === 0 ? 0 : (selectedIndex / maxIndex) * 100
+
+  return (
+    <div className="mt-3 rounded-lg border border-primary/20 bg-primary/[.04] px-4 py-3" data-testid="market-cursor-selector">
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-[.18em] text-primary">Chosen market</div>
+          <div className="mt-1 font-mono text-sm font-semibold">{selected ? marketLabel(selected, selectedMarket) : isLoading ? "Loading markets…" : "No market selected"}</div>
+        </div>
+        <div className="flex items-center gap-2 text-[10px] uppercase tracking-[.14em] text-muted-foreground">
+          <Crosshair className="h-3.5 w-3.5 text-primary" />
+          Drag cursor to choose
+        </div>
+      </div>
+      <div className="relative mt-4 px-1">
+        <div className="pointer-events-none absolute left-1 right-1 top-1/2 h-1 -translate-y-1/2 rounded-full bg-border" aria-hidden="true" />
+        <div
+          className="pointer-events-none absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-primary transition-[width] duration-300"
+          style={{ left: "4px", width: `calc(${cursorPosition}% - ${cursorPosition * 8 / 100}px)` }}
+          aria-hidden="true"
+        />
+        <div
+          className="pointer-events-none absolute -top-2 z-10 -translate-x-1/2 text-primary transition-[left] duration-300"
+          style={{ left: `calc(${cursorPosition}% + ${4 - cursorPosition * 8 / 100}px)` }}
+          aria-hidden="true"
+        >
+          <span className="block animate-pulse text-sm leading-none">▼</span>
+        </div>
+        <input
+          aria-label="Choose market"
+          type="range"
+          min={0}
+          max={maxIndex}
+          step={1}
+          value={selectedIndex}
+          onChange={event => {
+            const nextMarket = markets[Number(event.target.value)]
+            if (nextMarket) onChange(nextMarket.symbol)
+          }}
+          disabled={markets.length < 2 || isLoading}
+          className="relative z-20 h-5 w-full cursor-pointer appearance-none bg-transparent accent-primary disabled:cursor-not-allowed disabled:opacity-50"
+          data-testid="cursor-market-selector"
+        />
+      </div>
+      <div className="mt-1 flex items-center justify-between gap-3 font-mono text-[9px] uppercase tracking-[.12em] text-muted-foreground">
+        <span>{markets.length ? `${selectedIndex + 1} of ${markets.length}` : "—"}</span>
+        <span>Live quote refreshes every 15s</span>
+      </div>
+    </div>
+  )
 }
 
 function SessionActions({ state, currency, contractType, disabled, onStart, onStop, onReset }: {
