@@ -47,10 +47,11 @@ export function AccountStrip({ account, isLoading, error, switchingDisabled = fa
     : account?.balance
   const balanceCurrency = isConverted ? displayCurrency : currency
   const accountStatusLabel = account?.accountType === "real"
-    ? "Real account selected"
+    ? "REAL"
     : account?.accountType === "demo"
-      ? "Demo account selected"
-      : "Choose an account"
+      ? "DEMO"
+      : "SELECT"
+  const isRealAccount = account?.accountType === "real"
   const switchAccount = async (accountType: "demo" | "real") => {
     if (account?.accountType === accountType || switchingTo || switchingDisabled) return
     setSwitchingTo(accountType)
@@ -68,10 +69,10 @@ export function AccountStrip({ account, isLoading, error, switchingDisabled = fa
   }
 
   return (
-    <div className="grid gap-3 rounded-xl border border-border bg-card p-3 shadow-[0_10px_35px_hsl(215_40%_20%/.06)] md:grid-cols-[1fr_300px]" data-testid="account-strip">
+    <div className={`instrument-panel grid gap-3 rounded-xl border p-3 md:grid-cols-[1fr_300px] ${isRealAccount ? "border-amber-500/50 bg-amber-500/[.045]" : "border-primary/20"}`} data-testid="account-strip">
       <div className="rounded-lg border border-border/80 bg-background/70 p-3.5">
         <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.2em] text-muted-foreground">
-          <Landmark className="h-3.5 w-3.5 text-primary" /> Account
+          <Landmark className={`h-3.5 w-3.5 ${isRealAccount ? "text-amber-600 dark:text-amber-400" : "text-primary"}`} /> Account · <span className={isRealAccount ? "text-amber-700 dark:text-amber-300" : "text-primary"}>{accountStatusLabel}</span>
         </div>
         <div className="mt-2 grid grid-cols-2 gap-2" role="tablist" aria-label="Deriv account type">
           {(["demo", "real"] as const).map(type => (
@@ -79,8 +80,12 @@ export function AccountStrip({ account, isLoading, error, switchingDisabled = fa
               key={type}
               type="button"
               size="sm"
-               variant={account?.accountType === type ? "default" : "outline"}
-               className="h-9 justify-start"
+               variant="outline"
+                className={`h-9 justify-start ${account?.accountType === type
+                  ? type === "real"
+                    ? "border-amber-500/70 bg-amber-500/15 text-amber-800 hover:bg-amber-500/25 dark:text-amber-200"
+                    : "border-primary/50 bg-primary/15 text-primary hover:bg-primary/25"
+                  : "bg-background/40 text-muted-foreground hover:border-border hover:bg-secondary"}`}
               role="tab"
               aria-selected={account?.accountType === type}
               onClick={() => void switchAccount(type)}
@@ -92,16 +97,16 @@ export function AccountStrip({ account, isLoading, error, switchingDisabled = fa
             </Button>
           ))}
         </div>
-        {switchingDisabled && <p className="mt-2 text-xs text-amber-700">Active session · switching locked</p>}
-        <p className="mt-2 text-[10px] text-muted-foreground">
-          {account?.loginid || "Account unavailable"} · {accountStatusLabel}
+        {switchingDisabled && <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">Session active · switching locked</p>}
+        <p className="mt-2 truncate text-[10px] text-muted-foreground">
+           {account?.loginid || "Account unavailable"} · {accountStatusLabel}
         </p>
         {(switchError || error) && <p className="mt-2 text-xs text-destructive">{switchError || "Account data unavailable."}</p>}
       </div>
-      <div className="w-full rounded-lg border border-primary/20 bg-primary/5 px-4 py-3.5">
+       <div className={`w-full rounded-lg border px-4 py-3.5 ${isRealAccount ? "border-amber-500/35 bg-amber-500/[.1]" : "border-primary/25 bg-primary/[.07]"}`}>
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.2em] text-primary">
-            <Wallet className="h-3.5 w-3.5" /> Available balance
+          <div className={`flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.2em] ${isRealAccount ? "text-amber-700 dark:text-amber-300" : "text-primary"}`}>
+            <Wallet className="h-3.5 w-3.5" /> {isRealAccount ? "Real balance" : "Demo balance"}
           </div>
           <Select value={canConvert ? displayCurrency : currency} onValueChange={setCurrency}>
             <SelectTrigger className="h-7 w-[78px] border-primary/20 bg-background/60 px-2 text-[10px]" data-testid="select-display-currency">
@@ -121,8 +126,7 @@ export function AccountStrip({ account, isLoading, error, switchingDisabled = fa
           {isLoading ? "Syncing…" : convertedBalance != null ? formatMoney(convertedBalance, balanceCurrency) : "Unavailable"}
         </div>
         <div className="mt-1 text-[10px] text-muted-foreground">
-           Base currency: {currency}
-          {isConverted ? ` · 1 USD = ${conversionRate.toFixed(2)} KSh` : canConvert && displayCurrency !== currency ? " · live conversion unavailable" : " · actual balance"}
+          {currency} base{isConverted ? ` · 1 USD = ${conversionRate.toFixed(2)} KSh` : canConvert && displayCurrency !== currency ? " · conversion unavailable" : " · actual"}
         </div>
       </div>
     </div>

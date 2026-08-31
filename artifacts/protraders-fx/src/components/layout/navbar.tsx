@@ -32,14 +32,14 @@ export function Navbar() {
   }
 
   return (
-    <nav className="sticky top-0 z-50 w-full overflow-x-clip border-b border-border/80 bg-background/90 backdrop-blur-xl">
+    <nav className="sticky top-0 z-50 w-full overflow-x-clip border-b border-sidebar-border bg-sidebar text-sidebar-foreground shadow-[0_8px_30px_hsl(var(--foreground)/.12)] backdrop-blur-xl">
       <div className="container mx-auto px-4 md:px-8">
         <div className="flex h-16 items-center">
-          <Link href="/" className="mr-4 flex min-w-0 items-center gap-2.5 text-base font-bold tracking-tight text-foreground sm:mr-8 sm:text-lg" data-testid="link-brand">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-sm">
+          <Link href="/" className="mr-4 flex min-w-0 items-center gap-2.5 text-base font-bold tracking-tight text-sidebar-foreground sm:mr-8 sm:text-lg" data-testid="link-brand">
+            <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground shadow-[0_0_0_3px_hsl(var(--sidebar-primary)/.12)]">
               <span className="font-mono text-xs font-bold">PT</span>
             </div>
-            <span className="truncate tracking-tight">ProTraders <span className="font-medium text-primary">FX</span></span>
+            <span className="truncate tracking-tight">ProTraders <span className="font-medium text-sidebar-primary">FX</span></span>
           </Link>
           <div className="hidden flex-1 gap-1 md:flex">
             {navItems.filter(item => item.show).map((item) => {
@@ -50,13 +50,13 @@ export function Navbar() {
                   key={item.path}
                   href={item.path}
                   className={cn(
-                      "flex items-center gap-2 rounded-md px-3 py-2 text-xs font-medium transition-all duration-200",
+                      "relative flex items-center gap-2 rounded-md px-3 py-2 text-xs font-medium transition-all duration-200",
                     active
-                      ? "bg-secondary text-foreground shadow-sm"
-                      : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm after:absolute after:inset-x-3 after:-bottom-[17px] after:h-0.5 after:bg-sidebar-primary"
+                      : "text-sidebar-foreground/65 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"
                   )}
                 >
-                  <Icon className={cn("h-4 w-4", active ? "text-primary" : "")} />
+                  <Icon className={cn("h-4 w-4", active ? "text-sidebar-primary" : "")} />
                   {item.label}
                 </Link>
               )
@@ -66,13 +66,13 @@ export function Navbar() {
             {session?.authenticated && <GlobalSearch />}
              {session?.authenticated ? (
               <div className="flex items-center gap-4">
-                 <span className="hidden rounded-md border border-primary/20 bg-primary/5 px-2 py-1 font-mono text-[10px] text-primary sm:inline-block">SECURE</span>
+                  <span className="hidden rounded-md border border-sidebar-primary/25 bg-sidebar-primary/10 px-2 py-1 font-mono text-[10px] text-sidebar-primary sm:inline-block">SECURE</span>
                  {location !== "/" && <Button
                    variant="ghost"
                    size="sm"
                    onClick={handleLogout}
                    disabled={isLoggingOut}
-                    className="gap-2 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                     className="gap-2 text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                    data-testid="button-logout"
                  >
                    <LogOut className="h-4 w-4" />
@@ -81,17 +81,17 @@ export function Navbar() {
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                 <Button asChild size="sm" variant="ghost" className="text-muted-foreground hover:bg-secondary hover:text-foreground" data-testid="link-login">
+                  <Button asChild size="sm" variant="ghost" className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground" data-testid="link-login">
                   <a href="/api/deriv/login">Log In</a>
                 </Button>
-                 <Button asChild size="sm" className="font-semibold shadow-md bg-primary text-primary-foreground hover:bg-primary/90" data-testid="link-signup">
+                  <Button asChild size="sm" className="bg-sidebar-primary font-semibold text-sidebar-primary-foreground shadow-md hover:bg-sidebar-primary/90" data-testid="link-signup">
                    <a href="/api/deriv/signup">Get Started</a>
                 </Button>
               </div>
             )}
           </div>
         </div>
-         {<div className="flex w-full max-w-full gap-1 overflow-x-auto border-t border-border/70 py-2 md:hidden">
+         {<div className="flex w-full max-w-full gap-1 overflow-x-auto border-t border-sidebar-border py-2 md:hidden">
           {navItems.filter(item => item.show).map((item) => {
             const Icon = item.icon
             const active = location === item.path
@@ -99,14 +99,14 @@ export function Navbar() {
               <Link
                 key={item.path}
                 href={item.path}
-                className={cn(
-                  "flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                   className={cn(
+                   "flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                      active
-                       ? "bg-secondary text-foreground"
-                       : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"
+                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                        : "text-sidebar-foreground/65 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"
                 )}
               >
-                <Icon className={cn("h-4 w-4", active ? "text-primary" : "")} />
+                 <Icon className={cn("h-4 w-4", active ? "text-sidebar-primary" : "")} />
                 {item.label}
               </Link>
             )

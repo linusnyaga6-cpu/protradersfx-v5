@@ -171,9 +171,13 @@ function DataCard({label,value}:{label:string,value:string}){
 export function Workspace({title,eyebrow,description,children}:{title:string,eyebrow:string,description:string,children:any}){
   return (
     <div className="mx-auto max-w-[1400px] space-y-6 p-4 md:p-8">
-      <div className="border-b border-border/80 pb-5">
-        <div className="font-mono text-[10px] font-medium uppercase tracking-widest text-primary">{eyebrow}</div>
-        <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight md:text-4xl">{title}</h1>
+      <div className="relative overflow-hidden border-b border-border/80 pb-6">
+        <div className="absolute bottom-0 left-0 h-px w-28 signal-line" />
+        <div className="font-mono text-[10px] font-medium uppercase tracking-[.22em] text-primary">{eyebrow}</div>
+        <div className="mt-2 flex items-end justify-between gap-4">
+          <h1 className="font-display text-3xl font-semibold tracking-tight md:text-4xl">{title}</h1>
+          <span className="hidden items-center gap-2 pb-1 font-mono text-[9px] uppercase tracking-[.18em] text-muted-foreground sm:flex"><span className="h-1.5 w-1.5 rounded-full bg-primary" /> Deriv connected</span>
+        </div>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">{description}</p>
       </div>
       {children}

@@ -32,7 +32,7 @@ export function Shell({ children }: { children: ReactNode }) {
          </Button>
        </div>
     </aside>
-    <header className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/90 px-4 backdrop-blur md:ml-64 md:hidden"><Link href="/" className="font-semibold">ProTraders <span className="text-primary">FX</span></Link></header>
+     <header className="sticky top-0 z-30 flex h-16 items-center border-b border-sidebar-border bg-sidebar px-4 text-sidebar-foreground shadow-md backdrop-blur md:ml-64 md:hidden"><Link href="/" className="font-semibold">ProTraders <span className="text-sidebar-primary">FX</span></Link></header>
     <main className="md:ml-64">{children}</main>
   </div>
 }

@@ -56,7 +56,7 @@ export default function Dashboard() {
           <h1 className="mt-2 text-3xl font-semibold tracking-tight md:text-4xl">Trading dashboard</h1>
           <p className="mt-2 text-sm text-muted-foreground">Live account context and recent execution.</p>
         </div>
-        <Button variant="outline" size="icon" className="bg-card" onClick={() => account.refetch()} disabled={account.isFetching} aria-label="Refresh account" data-testid="button-refresh-account">
+        <Button variant="outline" size="icon" className="instrument-panel h-10 w-10 rounded-md" onClick={() => account.refetch()} disabled={account.isFetching} aria-label="Refresh account" data-testid="button-refresh-account">
           <RefreshCw className={account.isFetching ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
         </Button>
       </div>
@@ -81,7 +81,7 @@ export default function Dashboard() {
 
        <div className="grid gap-5 lg:grid-cols-[1fr_260px]">
          <TransactionLedger accountBalance={account.data?.balance} accountCurrency={account.data?.currency} />
-         <Card className="h-fit border-primary/20 bg-primary/5">
+         <Card className="instrument-panel h-fit border-primary/25 bg-primary/[.055]">
            <CardContent className="space-y-4 p-5">
              <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.2em] text-primary">
                <ShieldCheck className="h-4 w-4" /> Execution guard
@@ -100,8 +100,8 @@ export default function Dashboard() {
 
 function ActionCard({ href, icon, title, featured }: { href: string; icon: React.ReactNode; title: string; featured?: boolean }) {
   return (
-    <Link href={href} className={`group flex items-center gap-3 rounded-xl border p-4 transition-colors hover:border-primary/60 hover:bg-card ${featured ? "border-primary/45 bg-primary/10 shadow-[0_8px_30px_hsl(174_69%_35%/.08)]" : "border-border bg-card/60"}`} data-testid={`link-dashboard-${title.toLowerCase().replace(/\s+/g, "-")}`}>
-      <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary">{icon}</span>
+    <Link href={href} className={`group flex items-center gap-3 rounded-xl border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/60 hover:bg-card ${featured ? "border-primary/45 bg-primary/10 shadow-[0_8px_30px_hsl(var(--primary)/.11)]" : "border-border bg-card/60"}`} data-testid={`link-dashboard-${title.toLowerCase().replace(/\s+/g, "-")}`}>
+      <span className="grid h-9 w-9 place-items-center rounded-lg border border-primary/15 bg-primary/10 text-primary">{icon}</span>
       <span className="font-medium">{title}</span>
       <span className="ml-auto text-muted-foreground transition-transform group-hover:translate-x-1">→</span>
     </Link>

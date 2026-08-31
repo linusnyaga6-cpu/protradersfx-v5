@@ -35,19 +35,19 @@ export default function Home() {
       
       <main className="flex-1 w-full">
         {/* HERO SECTION */}
-        <section className="relative px-5 py-16 md:px-10 md:py-24 lg:py-32 border-b border-border">
-           <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/.08),transparent_50%)]" />
+         <section className="relative border-b border-border px-5 py-16 md:px-10 md:py-24 lg:py-32">
+            <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/.12),transparent_42%),radial-gradient(circle_at_bottom_left,hsl(var(--accent)/.07),transparent_38%)]" />
           <div className="mx-auto max-w-7xl relative z-10 grid gap-16 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
             
             <div className="max-w-2xl animate-in fade-in slide-in-from-bottom-4 duration-700">
               <div className="mb-6 inline-flex items-center gap-2 rounded-sm border border-primary/20 bg-primary/5 px-2.5 py-1 font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-primary">
                 <Radio className="h-3 w-3" /> Deriv Workspace
               </div>
-              <h1 className="font-display text-5xl font-semibold leading-[1.05] tracking-tight text-foreground sm:text-6xl lg:text-7xl">
+               <h1 className="font-display text-5xl font-semibold leading-[1.02] tracking-tight text-foreground sm:text-6xl lg:text-7xl">
                  TRADE LIKE A <br /><span className="text-primary/90">PRO.</span>
               </h1>
               <p className="mt-6 max-w-lg text-base leading-relaxed text-muted-foreground sm:text-lg">
-                A technical workspace for Deriv traders. Analyze live market structures, practice with bounded demo accounts, and deploy bot strategies—without the noise.
+                 A technical workspace for Deriv traders. Review live markets and trade from your selected Demo or Real account—without the noise.
               </p>
               
               <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -61,15 +61,15 @@ export default function Home() {
               </div>
               
               <div className="mt-10 flex items-center gap-6 border-t border-border pt-6 font-mono text-[10px] uppercase tracking-widest text-muted-foreground/80">
-                <span className="flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5 text-primary/70" /> Demo-First</span>
+                 <span className="flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5 text-primary/70" /> Demo + Real</span>
                 <span className="flex items-center gap-2"><LockKeyhole className="h-3.5 w-3.5 text-primary/70" /> User-Controlled</span>
               </div>
             </div>
 
             <div className="relative animate-in fade-in slide-in-from-right-4 duration-1000">
                {/* Technical Market Pulse Card */}
-               <div className="relative overflow-hidden rounded-sm border border-border bg-card/40 backdrop-blur-xl shadow-2xl">
-                 <div className="flex items-center justify-between border-b border-border bg-secondary/20 px-5 py-3">
+                <div className="instrument-panel relative overflow-hidden rounded-sm border-primary/25 bg-card/75 backdrop-blur-xl">
+                  <div className="flex items-center justify-between border-b border-border bg-secondary/35 px-5 py-3">
                    <div className="flex items-center gap-2">
                      <span className="relative flex h-2 w-2">
                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
@@ -77,7 +77,7 @@ export default function Home() {
                      </span>
                      <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Market Pulse / {DEFAULT_MARKET_SYMBOL}</span>
                    </div>
-                   <div className="rounded-sm bg-primary/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-primary border border-primary/20">Live</div>
+                    <div className="rounded-sm border border-primary/25 bg-primary/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-primary">Live</div>
                  </div>
                  
                  <div className="p-6">
@@ -96,7 +96,7 @@ export default function Home() {
                      </div>
                    </div>
 
-                   <div className="relative mt-8 h-40 w-full overflow-hidden border border-border bg-background/50 rounded-sm">
+                    <div className="relative mt-8 h-40 w-full overflow-hidden rounded-sm border border-border bg-background/65">
                      <div className="absolute inset-x-0 top-1/4 border-t border-dashed border-border" />
                      <div className="absolute inset-x-0 top-1/2 border-t border-dashed border-border" />
                      <div className="absolute inset-x-0 top-3/4 border-t border-dashed border-border" />
@@ -172,13 +172,13 @@ export default function Home() {
 
         {/* FEATURES GRID */}
         <section className="px-5 py-24 md:px-10 border-b border-border bg-secondary/5">
-          <div className="mx-auto max-w-7xl">
+           <div className="mx-auto max-w-7xl">
             <div className="mb-12 md:mb-16">
               <h2 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Workspace Capabilities</h2>
             </div>
             
-            <div className="grid gap-px bg-border border border-border sm:grid-cols-2 lg:grid-cols-3 rounded-sm overflow-hidden">
-              <Link href="/analysis" className="group relative bg-background p-8 transition-colors hover:bg-secondary/20">
+             <div className="grid gap-px overflow-hidden rounded-sm border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
+               <Link href="/analysis" className="group relative bg-card p-8 transition-colors hover:bg-primary/[.055]">
                 <div className="mb-6 inline-flex h-10 w-10 items-center justify-center rounded-sm bg-primary/10 border border-primary/20 text-primary">
                   <Activity className="h-5 w-5" />
                 </div>
@@ -188,7 +188,7 @@ export default function Home() {
                 </p>
               </Link>
               
-              <Link href="/dashboard" className="group relative bg-background p-8 transition-colors hover:bg-secondary/20">
+               <Link href="/dashboard" className="group relative bg-card p-8 transition-colors hover:bg-primary/[.055]">
                 <div className="mb-6 inline-flex h-10 w-10 items-center justify-center rounded-sm bg-primary/10 border border-primary/20 text-primary">
                   <TerminalSquare className="h-5 w-5" />
                 </div>
@@ -198,7 +198,7 @@ export default function Home() {
                 </p>
               </Link>
 
-              <Link href="/bots" className="group relative bg-background p-8 transition-colors hover:bg-secondary/20">
+               <Link href="/bots" className="group relative bg-card p-8 transition-colors hover:bg-primary/[.055]">
                 <div className="mb-6 inline-flex h-10 w-10 items-center justify-center rounded-sm bg-primary/10 border border-primary/20 text-primary">
                   <Bot className="h-5 w-5" />
                 </div>
@@ -282,7 +282,7 @@ function MarketTicker() {
   const marketQuery = useDerivMarkets()
   const liveQuote = useGetMarketTicker(marketQuery.defaultSymbol, { query: { queryKey: getGetMarketTickerQueryKey(marketQuery.defaultSymbol), staleTime: 60000, refetchInterval: 60000 } })
   return (
-    <div className="relative z-20 flex w-full items-center justify-center overflow-hidden border-b border-border bg-card/80 backdrop-blur-md py-2.5 font-mono text-[10px]" aria-label="Live market ticker">
+     <div className="relative z-20 flex w-full items-center justify-center overflow-hidden border-b border-sidebar-border bg-sidebar py-2.5 font-mono text-[10px] text-sidebar-foreground/80 shadow-[0_4px_18px_hsl(var(--foreground)/.08)]" aria-label="Live market ticker">
       <div className="flex min-w-max items-center gap-7 px-4">
         {marketQuery.markets.map((market, index) => { 
           const value = index === 0 ? ((liveQuote.data as any)?.quote ?? (liveQuote.data as any)?.price) : undefined; 
@@ -290,8 +290,8 @@ function MarketTicker() {
           return (
             <div key={market.symbol} className="flex items-center gap-2">
               <span className={`h-1.5 w-1.5 rounded-full ${unavailable ? "bg-accent" : "bg-primary/75"}`} />
-              <span className="text-muted-foreground uppercase tracking-widest">{market.displayName || market.symbol}</span>
-              <span className={unavailable ? "text-accent" : "font-medium text-foreground tabular-nums"}>{unavailable ? "offline" : value ?? (index === 0 ? "—" : "")}</span>
+               <span className="uppercase tracking-widest text-sidebar-foreground/50">{market.displayName || market.symbol}</span>
+               <span className={unavailable ? "text-accent" : "font-medium tabular-nums text-sidebar-foreground"}>{unavailable ? "offline" : value ?? (index === 0 ? "—" : "")}</span>
             </div>
           ) 
         })}
