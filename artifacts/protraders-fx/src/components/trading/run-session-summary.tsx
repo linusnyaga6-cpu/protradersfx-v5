@@ -25,10 +25,10 @@ export function RunSessionSummary({ state, currency, onStart, onStop, onReset, d
   const terminalResult = [...state.results].reverse().find(item => ["won", "lost", "settled", "rejected"].includes(item.status))
 
   useEffect(() => {
-    if (active || !terminalResult || shownResultId.current === terminalResult.id) return
+    if (!terminalResult || shownResultId.current === terminalResult.id) return
     shownResultId.current = terminalResult.id
     setResultDialogOpen(true)
-  }, [active, terminalResult])
+  }, [terminalResult])
 
   const resetResults = () => {
     setResultDialogOpen(false)
@@ -132,7 +132,7 @@ export function RunSessionSummary({ state, currency, onStart, onStop, onReset, d
            currency={currency}
            open={resultDialogOpen}
            onOpenChange={setResultDialogOpen}
-           onRunAgain={onStart ? runAgain : undefined}
+           onRunAgain={onStart && !active ? runAgain : undefined}
          />
        )}
     </div>
