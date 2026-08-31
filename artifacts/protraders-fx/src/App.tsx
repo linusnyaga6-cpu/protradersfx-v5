@@ -60,7 +60,7 @@ function Router() {
   );
 }
 
-function ProtectedPage({ page: Page }: { page: ComponentType }) {
+function ProtectedPage({ page: Page, publicPreview }: { page: ComponentType; publicPreview?: ReactNode }) {
   const { data: session, isLoading, isError } = useGetSessionStatus();
 
   if (isLoading) {
@@ -69,7 +69,8 @@ function ProtectedPage({ page: Page }: { page: ComponentType }) {
 
   if (isError || !session?.authenticated) {
     return (
-      <section className="mx-auto grid min-h-[55vh] w-full max-w-3xl place-items-center px-5 py-12">
+      <section className={`mx-auto w-full px-5 py-12 ${publicPreview ? "max-w-5xl" : "max-w-3xl"}`}>
+        <div className={`grid gap-6 ${publicPreview ? "lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] lg:items-start" : "place-items-center"}`}>
         <div className="w-full rounded-xl border bg-card p-7 text-center shadow-sm md:p-10">
           <div className="text-xs font-semibold uppercase tracking-[.24em] text-primary">Secure workspace</div>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight">Connect your Deriv account to continue</h1>
@@ -84,6 +85,8 @@ function ProtectedPage({ page: Page }: { page: ComponentType }) {
               Return home
             </a>
           </div>
+        </div>
+        {publicPreview}
         </div>
       </section>
     );
@@ -109,10 +112,64 @@ function OAuthCallbackBridge() {
 
 const DashboardRoute = () => <ProtectedPage page={Dashboard} />;
 const MarketsRoute = () => <ProtectedPage page={Markets} />;
-const BotsRoute = () => <ProtectedPage page={Bots} />;
+const BotsRoute = () => <ProtectedPage page={Bots} publicPreview={<PublicBotPreview />} />;
 const RecoveryRoute = () => <ProtectedPage page={Recovery} />;
 const CreateBotRoute = () => <ProtectedPage page={BulkTrade} />;
 const BulkTraderRoute = () => <ProtectedPage page={BulkTrader} />;
+
+function PublicBotPreview() {
+  const sourceBots = [
+    {
+      number: 1,
+      name: "FreeVertex",
+      source: "traderscheme.com",
+      sourceUrl: "https://traderscheme.com",
+      description: "A free market-observer bot that helps you review EMA direction before starting.",
+      badgeClass: "border-primary/30 text-primary",
+    },
+    {
+      number: 2,
+      name: "Recovery Bot",
+      source: "exwager.com",
+      sourceUrl: "https://exwager.com",
+      description: "A monitor-only recovery assistant. It never increases stake, retries an order, or places a trade.",
+      badgeClass: "border-amber-500/30 text-amber-600",
+    },
+  ];
+
+  return (
+    <div className="w-full rounded-xl border bg-card p-5 shadow-sm md:p-6">
+      <div className="text-xs font-semibold uppercase tracking-[.24em] text-primary">Bots available</div>
+      <h2 className="mt-2 text-xl font-semibold tracking-tight">Start with a controlled strategy</h2>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+        These source bots are available after you connect Deriv. They remain dry-run and review-first until you choose what to do.
+      </p>
+      <div className="mt-5 space-y-3">
+        {sourceBots.map((bot) => (
+          <article key={bot.number} className="rounded-lg border border-primary/20 bg-primary/[.04] p-4">
+            <div className="flex items-start gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-primary/10 text-sm font-semibold text-primary">
+                {bot.number}
+              </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${bot.badgeClass}`}>
+                    BOT {bot.number}
+                  </span>
+                  <h3 className="font-semibold">{bot.name}</h3>
+                </div>
+                <p className="mt-1.5 text-xs leading-5 text-muted-foreground">{bot.description}</p>
+                <a className="mt-2 inline-block text-[10px] uppercase tracking-wider text-primary hover:underline" href={bot.sourceUrl} target="_blank" rel="noreferrer">
+                  Source: {bot.source}
+                </a>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function RoutedErrorBoundary({ children }: { children: ReactNode }) {
   const [location] = useLocation();
