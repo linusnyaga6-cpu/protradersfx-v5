@@ -4,7 +4,7 @@ import { Link } from "wouter"
 import { useGetMarketCandles, getGetMarketCandlesQueryKey, useGetMarketTicker, getGetMarketTickerQueryKey, useGetSessionStatus, getGetSessionStatusQueryKey, useTrackEvent } from "@workspace/api-client-react"
 import { DEFAULT_MARKET_SYMBOL } from "@/lib/markets"
 import { useDerivMarkets } from "@/hooks/use-deriv-markets"
-import traderHeroImage from "@/assets/trader-hero.jpg"
+import traderHeroImage from "@/assets/trader-hero-personalized.jpg"
 
 export default function Home() {
   const { data: session } = useGetSessionStatus({

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { ArrowLeft, ArrowRight, BookOpen, Check, Circle, Clock3, LockKeyhole, RotateCcw, ShieldCheck } from "lucide-react"
 import { Link } from "wouter"
-import traderHeroImage from "@/assets/trader-hero.jpg"
 
 type Lesson = { id: string; index: string; title: string; duration: string; kicker: string; summary: string; points: string[] }
 
@@ -71,15 +70,20 @@ export default function Course() {
             <div className="relative mx-auto w-full max-w-[560px]">
               <div className="absolute -inset-4 rounded-[2rem] bg-[#e96751]/15" aria-hidden="true" />
               <div className="relative aspect-[1.12/1] overflow-hidden rounded-[1.7rem] border-[8px] border-white/10 bg-[#102945] shadow-[0_25px_70px_rgba(0,0,0,.3)]">
-                <img src={traderHeroImage} alt="Trader learning from live market charts" className="h-full w-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#061525]/90 via-transparent to-[#102945]/10" />
-                <div className="absolute left-5 right-5 top-5 flex items-center justify-between">
-                  <span className="rounded-full border border-white/20 bg-[#081c32]/70 px-3 py-1.5 font-mono text-[9px] uppercase tracking-[.16em] text-white/80 backdrop-blur">Learn the sequence</span>
-                  <span className="rounded-full bg-[#e96751] px-2.5 py-1 font-mono text-[9px] uppercase tracking-wider text-white">01 / 04</span>
-                </div>
-                <div className="absolute bottom-5 left-5">
-                  <div className="font-mono text-[9px] uppercase tracking-[.18em] text-white/55">Your next move</div>
-                  <div className="mt-1 font-display text-2xl tracking-tight text-white">Observe before you act.</div>
+                <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(21,152,132,.18),transparent_42%),linear-gradient(315deg,rgba(233,103,81,.2),transparent_48%)]" aria-hidden="true" />
+                <div className="absolute inset-6 rounded-2xl border border-white/10" aria-hidden="true" />
+                <div className="relative flex h-full flex-col justify-between p-7">
+                  <div className="flex items-center justify-between">
+                    <span className="rounded-full border border-white/20 bg-[#081c32]/70 px-3 py-1.5 font-mono text-[9px] uppercase tracking-[.16em] text-white/80">Learn the sequence</span>
+                    <span className="rounded-full bg-[#e96751] px-2.5 py-1 font-mono text-[9px] uppercase tracking-wider text-white">01 / 04</span>
+                  </div>
+                  <div>
+                    <div className="font-mono text-[9px] uppercase tracking-[.18em] text-[#6ee2cb]">Your next move</div>
+                    <div className="mt-2 font-display text-3xl tracking-tight text-white">Observe before<br />you act.</div>
+                  </div>
+                  <div className="flex items-center gap-3 font-mono text-[9px] uppercase tracking-[.18em] text-white/55">
+                    <span className="h-2 w-2 rounded-full bg-[#ff9f8c]" /> Lesson 01 · Observe
+                  </div>
                 </div>
               </div>
               <div className="absolute -bottom-6 -left-4 w-60 rounded-2xl border border-[#dce6e7] bg-white p-4 text-[#14243a] shadow-[0_14px_35px_rgba(0,0,0,.18)]">

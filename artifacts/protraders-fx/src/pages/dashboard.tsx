@@ -13,7 +13,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { AccountStrip } from "@/components/trading/account-strip"
 import { TransactionLedger } from "@/components/trading/transaction-ledger"
 import { formatMoney } from "@/lib/format"
-import dashboardPortrait from "@/assets/dashboard-avatar.jpg"
 
 export default function Dashboard() {
   const [, setLocation] = useLocation()
@@ -82,24 +81,13 @@ export default function Dashboard() {
                 </Button>
               </div>
             </div>
-            <div className="overflow-hidden rounded-2xl border border-white/15 bg-white/[.07] backdrop-blur-sm">
-              <div className="relative h-56 overflow-hidden">
-                <img
-                  src={dashboardPortrait}
-                  alt="ProTraders FX trader portrait"
-                  className="h-full w-full object-cover object-[center_24%]"
-                  loading="eager"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#091a2d] via-[#091a2d]/10 to-transparent" aria-hidden="true" />
-                <div className="absolute inset-x-5 bottom-4 flex items-end justify-between gap-3">
-                  <div>
-                    <div className="font-mono text-[9px] font-semibold uppercase tracking-[.2em] text-[#6ee2cb]">Trader profile</div>
-                    <div className="mt-1 text-sm font-semibold text-white">Built around your next move.</div>
-                  </div>
-                  <div className="h-2 w-2 rounded-full bg-[#6ee2cb] shadow-[0_0_14px_#6ee2cb]" />
+            <div className="relative overflow-hidden rounded-2xl border border-white/15 bg-white/[.07] backdrop-blur-sm">
+              <div className="absolute -right-12 -top-12 h-36 w-36 rounded-full bg-[#6ee2cb]/10 blur-2xl" aria-hidden="true" />
+              <div className="relative p-5">
+                <div className="mb-10 flex items-center justify-between">
+                  <div className="font-mono text-[9px] font-semibold uppercase tracking-[.2em] text-[#6ee2cb]">Workspace status</div>
+                  <ShieldCheck className="h-5 w-5 text-[#6ee2cb]" />
                 </div>
-              </div>
-              <div className="p-5">
                 <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[.2em] text-white/55">
                   <span>Available balance</span>
                   <span className="rounded-full border border-[#6ee2cb]/30 bg-[#6ee2cb]/10 px-2 py-1 text-[#6ee2cb]">{accountTypeLabel}</span>
