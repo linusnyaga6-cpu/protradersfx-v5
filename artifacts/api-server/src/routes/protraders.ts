@@ -487,9 +487,48 @@ router.get("/diagnostics/database-identity", async (req, res) => {
       version: typeof row?.server_version === "string" ? row.server_version : null,
       isInRecovery: row?.in_recovery === true,
     });
-  } catch {
+  } catch (error: unknown) {
+    const errorRecord = error && typeof error === "object"
+      ? error as {
+        name?: unknown;
+        code?: unknown;
+        message?: unknown;
+        constraint?: unknown;
+        severity?: unknown;
+        cause?: unknown;
+      }
+      : {};
+    const causeRecord = errorRecord.cause && typeof errorRecord.cause === "object"
+      ? errorRecord.cause as { code?: unknown }
+      : {};
+    const sanitizeText = (value: unknown, fallback: string) => {
+      const text = typeof value === "string" ? value.split(/\r?\n/, 1)[0] : fallback;
+      return text
+        .replace(/postgres(?:ql)?:\/\/\S+/gi, "[redacted]")
+        .replace(/(?:password|passwd|pwd|access[_-]?token|refresh[_-]?token|authorization|cookie)\s*[=:]?\s*[^\s,;]+/gi, "$1=[redacted]")
+        .replace(/[0-9a-f]{32,}/gi, "[redacted]")
+        .slice(0, 240);
+    };
+    const sanitizeCode = (value: unknown) => (
+      typeof value === "string" && /^[0-9A-Z]{5}$/i.test(value) ? value : undefined
+    );
+    const sanitizeConstraint = (value: unknown) => (
+      typeof value === "string" && /^[a-zA-Z0-9_]{1,128}$/.test(value) ? value : undefined
+    );
+    const sanitizeSeverity = (value: unknown) => (
+      typeof value === "string" && /^[A-Z ]{1,32}$/.test(value) ? value : undefined
+    );
+
     req.log?.warn(
-      { stage: "database_identity" },
+      {
+        stage: "database_identity",
+        errorName: sanitizeText(errorRecord.name, "UnknownError"),
+        code: sanitizeCode(errorRecord.code),
+        causeCode: sanitizeCode(causeRecord.code),
+        message: sanitizeText(errorRecord.message ?? error, "Unknown error"),
+        constraint: sanitizeConstraint(errorRecord.constraint),
+        severity: sanitizeSeverity(errorRecord.severity),
+      },
       "database identity diagnostic failed",
     );
     return errorResponse(res, 503, "Database identity unavailable");
