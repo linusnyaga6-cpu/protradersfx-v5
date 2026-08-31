@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react"
+import { Link } from "wouter"
 import { useQueryClient } from "@tanstack/react-query"
 import {
-  Bot as BotIcon, CheckCircle2, Copy, Pause, Play, Plus, ShieldCheck,
-  Settings, Save, Archive, Clock, Activity, Loader2, AlertTriangle, AlertCircle, Search
+  ArrowRight, Bot as BotIcon, CheckCircle2, Copy, Pause, Play, Plus, ShieldCheck,
+  Settings, Save, Archive, Clock, Activity, Loader2, AlertTriangle, AlertCircle, Search,
+  Gauge, HandCoins, Sparkles, Download, FileText
 } from "lucide-react"
 import {
   useListBots, getListBotsQueryKey,
@@ -160,10 +162,25 @@ export default function Bots() {
   };
 
   return (
-       <Workspace title="Bots" eyebrow={account.data?.accountType === "real" ? "Real-account execution" : "User-started execution"} description={`Start one bounded ${accountSessionLabel} session.`}>
+       <Workspace title="Bot Workspace" eyebrow={account.data?.accountType === "real" ? "Real account" : "Bots"} description="Build, review, run.">
       <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} switchingDisabled={runSession.isBusy} />
-      <div className="flex items-center justify-between">
-        <Badge variant="outline" className="bg-background"><ShieldCheck className="mr-1 h-3 w-3" />User-started sessions</Badge>
+       <section className="overflow-hidden rounded-2xl border border-[#234159] bg-[#091a2d] text-white shadow-[0_18px_60px_rgba(7,19,33,.18)]">
+         <div className="flex flex-col gap-3 border-b border-white/10 px-5 py-5 md:flex-row md:items-end md:justify-between md:px-7">
+           <div>
+             <div className="font-mono text-[10px] uppercase tracking-[.2em] text-[#20c7c2]">Workspace</div>
+             <h2 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">What do you want to open?</h2>
+           </div>
+           <p className="max-w-sm text-sm text-white/55">Pick a tool. Review every setting before you run.</p>
+         </div>
+         <div className="grid gap-px bg-white/10 sm:grid-cols-2 lg:grid-cols-4">
+           <LauncherTile href="#saved-bots" icon={<BotIcon className="h-5 w-5" />} title="Load Bot" detail="Open a saved setup" />
+           <LauncherTile href="#premium-ai-bots" icon={<Sparkles className="h-5 w-5" />} title="Premium Bots" detail="Browse strategy templates" tone="gold" />
+           <LauncherTile href="/bulk-trade" icon={<Gauge className="h-5 w-5" />} title="Speed Bot" detail="Run a bounded scan" />
+           <LauncherTile href="/create-bot" icon={<HandCoins className="h-5 w-5" />} title="Manual Trading" detail="Trade from the terminal" tone="coral" />
+         </div>
+       </section>
+       <div className="flex items-center justify-between gap-3">
+         <Badge variant="outline" className="bg-background"><ShieldCheck className="mr-1 h-3 w-3" />Review-first execution</Badge>
         <Button onClick={() => add({name:"Blank observation",id:"blank",strategy:{}})} data-testid="button-create-bot">
           <Plus className="h-4 w-4 mr-2" />New bot
         </Button>
@@ -179,9 +196,10 @@ export default function Bots() {
 
       <div className="grid gap-5 lg:grid-cols-[380px_1fr] items-start">
         <div className="space-y-5">
-          <Card className="shadow-sm">
+           <Card id="free-bots" className="scroll-mt-28 shadow-sm">
             <CardHeader className="pb-4 border-b bg-secondary/10">
-              <CardTitle className="text-lg">Your bots</CardTitle>
+               <CardTitle className="text-lg">Free bots</CardTitle>
+               <p className="text-xs text-muted-foreground">Ready-made starting points.</p>
             </CardHeader>
             <CardContent className="space-y-3 pt-4">
                  {templates.isLoading ? <SkeletonList /> : sourceBots.map((template: any) => (
@@ -214,8 +232,8 @@ export default function Bots() {
                    </Button>
                  </div>
                ))}
-               {!bots.isLoading && sourceBots.length > 0 && list.length > 0 && (
-                 <div className="border-t pt-3 text-[10px] font-semibold uppercase tracking-[.18em] text-muted-foreground">Saved bots</div>
+                {!bots.isLoading && sourceBots.length > 0 && list.length > 0 && (
+                  <div id="saved-bots" className="scroll-mt-28 border-t pt-3 text-[10px] font-semibold uppercase tracking-[.18em] text-muted-foreground">Saved bots</div>
                )}
                {bots.isLoading ? <SkeletonList /> : list.length ? list.map((bot: any, i: number) => (
                 <div
@@ -289,9 +307,10 @@ export default function Bots() {
             </CardContent>
           </Card>
 
-          <Card className="shadow-sm">
+           <Card id="premium-ai-bots" className="scroll-mt-28 shadow-sm">
             <CardHeader className="pb-4 border-b bg-secondary/10">
-              <CardTitle className="text-lg">Template library</CardTitle>
+               <CardTitle className="text-lg">AI templates</CardTitle>
+               <p className="text-xs text-muted-foreground">Review settings before use.</p>
             </CardHeader>
             <CardContent className="space-y-3 pt-4">
               <div className="relative mb-2">
@@ -338,8 +357,15 @@ export default function Bots() {
         </div>
 
         <div className="h-full">
-          {selectedBot ? (
-            <BotBuilder bot={selectedBot} accountCurrency={account.data?.currency ?? undefined} accountBalance={account.data?.balance ?? null} onUpdate={() => client.invalidateQueries({queryKey:getListBotsQueryKey()})} />
+           {selectedBot ? (
+             <BotBuilder
+               bot={selectedBot}
+               accountCurrency={account.data?.currency ?? undefined}
+               accountBalance={account.data?.balance ?? null}
+               onUpdate={() => client.invalidateQueries({queryKey:getListBotsQueryKey()})}
+               onRun={() => executeBot(selectedBot)}
+               onCancel={() => setSelectedBotId(null)}
+             />
           ) : (
             <Card className="h-full border-dashed bg-secondary/10 flex items-center justify-center min-h-[500px]">
               <div className="text-center p-8 max-w-sm">
@@ -359,7 +385,21 @@ export default function Bots() {
   )
 }
 
-function BotBuilder({ bot, accountCurrency, accountBalance, onUpdate }: { bot: any, accountCurrency?: string, accountBalance?: number | null, onUpdate: () => void }) {
+function BotBuilder({
+  bot,
+  accountCurrency,
+  accountBalance,
+  onUpdate,
+  onRun,
+  onCancel,
+}: {
+  bot: any
+  accountCurrency?: string
+  accountBalance?: number | null
+  onUpdate: () => void
+  onRun: () => void
+  onCancel: () => void
+}) {
   const update = useUpdateBot();
   const createTpl = useCreateBotTemplate();
   const client = useQueryClient();
@@ -517,61 +557,67 @@ function BotBuilder({ bot, accountCurrency, accountBalance, onUpdate }: { bot: a
 
   return (
     <div className="space-y-5 h-full">
-      <Card className="border-t-4 border-t-primary shadow-md">
-        <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between pb-4 gap-4">
+      <Card className="border border-[#155b56] bg-[#020b0a] text-white shadow-[0_18px_55px_rgba(0,0,0,.22)]">
+        <CardHeader className="flex flex-col gap-4 border-b border-[#123b39] pb-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <CardTitle className="text-2xl font-bold tracking-tight">{name || "Unnamed Bot"}</CardTitle>
-            <CardDescription className="mt-2 flex flex-wrap items-center gap-2">
-              <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 uppercase tracking-wider">
+            <CardTitle className="text-2xl font-bold tracking-tight text-white">{name || "Unnamed Bot"}</CardTitle>
+            <CardDescription className="mt-2 flex flex-wrap items-center gap-2 text-white/55">
+              <Badge variant="outline" className="border-[#18b8ad]/40 bg-[#18b8ad]/10 uppercase tracking-wider text-[#6ee7df]">
                 <ShieldCheck className="h-3 w-3 mr-1" /> {mode === "recovery_guard" ? "Recovery Guard (monitor-only)" : "User-started bot session"}
               </Badge>
-              <Badge variant="secondary" className="uppercase tracking-wider">
+              <Badge variant="secondary" className="bg-white/10 uppercase tracking-wider text-white/65">
                 Status: {bot.status === 'archived' || bot.status === 'stopped' ? bot.status : (bot.status === 'observing' ? 'observing' : (bot.status ?? "draft"))}
               </Badge>
             </CardDescription>
           </div>
-          <div className="flex gap-2 w-full sm:w-auto">
-             <Button variant="outline" size="sm" onClick={handleSaveAsTemplate} disabled={createTpl.isPending} className="flex-1 sm:flex-none">
+          <div className="flex w-full gap-2 sm:w-auto">
+             <Button variant="outline" size="sm" onClick={handleSaveAsTemplate} disabled={createTpl.isPending} className="flex-1 border-white/15 bg-white/5 text-white/75 hover:bg-white/10 hover:text-white sm:flex-none">
                <Copy className="mr-2 h-4 w-4"/>Save as Template
              </Button>
-             <Button size="sm" onClick={handleSave} disabled={saving} className="flex-1 sm:flex-none shadow-sm">
+              <Button size="sm" onClick={handleSave} disabled={saving} className="flex-1 bg-[#16a34a] text-white shadow-sm hover:bg-[#12843c] sm:flex-none">
                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
-               Save Config
+                Save
              </Button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 p-4 md:p-6">
            {String(bot.name || "").startsWith("Bot 1") && <FreeVertexPreview compact />}
           {notice && (
-            <Alert variant="default" className="bg-success/10 border-success/30 text-success">
+             <Alert variant="default" className="border-[#18b8ad]/30 bg-[#18b8ad]/10 text-[#8df0e8]">
               <CheckCircle2 className="h-4 w-4 !text-success" />
               <AlertDescription>{notice}</AlertDescription>
             </Alert>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-secondary/10 p-5 rounded-lg border border-secondary/50">
+           <div className="rounded-xl border border-[#0d514e] bg-[#000403] p-4 shadow-[0_0_28px_rgba(22,184,173,.08)] md:p-5">
+             <div className="mb-5 flex items-center justify-between gap-3">
+               <div>
+                 <div className="text-base font-semibold text-[#8df0e8]">Bot Parameters</div>
+                 <div className="mt-1 text-xs text-white/45">Set limits before launch.</div>
+               </div>
+               <Badge variant="outline" className="border-[#16a34a]/40 bg-[#16a34a]/10 text-[10px] uppercase tracking-wider text-[#6ee7a0]">Fixed stake</Badge>
+             </div>
+           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Bot Name</Label>
-              <Input value={name} onChange={e => setName(e.target.value)} className="bg-background shadow-sm" />
+             <Label className="text-xs font-medium text-[#a5f3ec]">Bot name</Label>
+             <Input value={name} onChange={e => setName(e.target.value)} className="border-[#159e98] bg-[#06110f] text-white shadow-[0_0_0_1px_rgba(21,158,152,.12)]" />
               {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
             </div>
 
                <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Volatility market</Label>
+                 <Label className="text-xs font-medium text-[#a5f3ec]">Market</Label>
                <Select value={symbol} onValueChange={setSymbol}>
-                 <SelectTrigger className="bg-background shadow-sm font-mono"><SelectValue /></SelectTrigger>
+                 <SelectTrigger className="border-[#159e98] bg-[#06110f] font-mono text-white shadow-[0_0_0_1px_rgba(21,158,152,.12)]"><SelectValue /></SelectTrigger>
                  <SelectContent>{marketQuery.markets.map(item => <SelectItem key={item.symbol} value={item.symbol}><span>{item.displayName}</span><span className="ml-2 font-mono text-xs text-muted-foreground">{item.symbol}</span></SelectItem>)}</SelectContent>
                </Select>
-                <p className="text-xs leading-5 text-muted-foreground">
-                  Change the volatility family here. Both standard and 1-second indices are loaded from the Deriv market catalog.
-                </p>
+                 <p className="text-xs text-white/40">Live Deriv volatility index.</p>
               {errors.symbol && <p className="text-xs text-destructive">{errors.symbol}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Entry Indicator</Label>
+               <Label className="text-xs font-medium text-[#a5f3ec]">Indicator</Label>
               <Select value={indicator} onValueChange={setIndicator}>
-                <SelectTrigger className="bg-background shadow-sm"><SelectValue placeholder="Select indicator" /></SelectTrigger>
+                 <SelectTrigger className="border-[#159e98] bg-[#06110f] text-white shadow-[0_0_0_1px_rgba(21,158,152,.12)]"><SelectValue placeholder="Select indicator" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ema">Exponential Moving Average (EMA)</SelectItem>
                   <SelectItem value="rsi">Relative Strength Index (RSI)</SelectItem>
@@ -580,13 +626,13 @@ function BotBuilder({ bot, accountCurrency, accountBalance, onUpdate }: { bot: a
               </Select>
             </div>
             <div className="space-y-2">
-               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Market type</Label>
+                <Label className="text-xs font-medium text-[#a5f3ec]">Contract</Label>
               {["Rise / Fall", "Over / Under", "Odd / Even"].map(family => {
                 const options = Object.entries(CONTRACT_LABELS).filter(([, item]) => item.family === family)
                 return <div key={family} className="space-y-2">
-                  <div className="text-xs font-medium text-muted-foreground">{family}</div>
+                   <div className="text-xs font-medium text-white/55">{family}</div>
                   <div className="grid grid-cols-2 gap-2">
-                    {options.map(([value, item]) => <Button key={value} type="button" size="sm" variant={contractType === value ? "default" : "outline"} onClick={() => setContractType(value)} disabled={!availableTypes.includes(value)}>{item.action}</Button>)}
+                     {options.map(([value, item]) => <Button key={value} type="button" size="sm" variant={contractType === value ? "default" : "outline"} className={contractType === value ? "bg-[#159e98] text-white hover:bg-[#12847f]" : "border-[#1a6662] bg-[#06110f] text-white/70 hover:bg-[#0b211f] hover:text-white"} onClick={() => setContractType(value)} disabled={!availableTypes.includes(value)}>{item.action}</Button>)}
                   </div>
                 </div>
               })}
@@ -598,55 +644,63 @@ function BotBuilder({ bot, accountCurrency, accountBalance, onUpdate }: { bot: a
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Stake ({accountCurrency || "account currency"})</Label>
-              <Input type="number" step="1" value={stake} onChange={e => setStake(e.target.value)} className="bg-background shadow-sm font-numeric" />
-              <p className="text-xs text-muted-foreground">Enter any trader-selected amount below the available account balance.</p>
+               <Label className="text-xs font-medium text-[#a5f3ec]">Stake · {accountCurrency || "account"}</Label>
+               <Input type="number" step="1" value={stake} onChange={e => setStake(e.target.value)} className="border-[#159e98] bg-[#06110f] font-numeric text-white shadow-[0_0_0_1px_rgba(21,158,152,.12)]" />
+               <p className="text-xs text-white/40">Below available balance.</p>
               {errors.stake && <p className="text-xs text-destructive">{errors.stake}</p>}
             </div>
             <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Stop loss ({accountCurrency || "account currency"})</Label>
-              <Input type="number" min="0.01" step="0.01" value={stopLoss} onChange={e => setStopLoss(e.target.value)} className="bg-background shadow-sm font-numeric" />
+               <Label className="text-xs font-medium text-[#a5f3ec]">Stop loss · {accountCurrency || "account"}</Label>
+               <Input type="number" min="0.01" step="0.01" value={stopLoss} onChange={e => setStopLoss(e.target.value)} className="border-[#159e98] bg-[#06110f] font-numeric text-white shadow-[0_0_0_1px_rgba(21,158,152,.12)]" />
               {errors.stopLoss && <p className="text-xs text-destructive">{errors.stopLoss}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ticks before expiry</Label>
+               <Label className="text-xs font-medium text-[#a5f3ec]">Ticks before expiry</Label>
               <div className="grid grid-cols-4 gap-2">
-                {["1", "2", "3", "5"].map(ticks => <Button key={ticks} type="button" size="sm" variant={duration === ticks ? "default" : "outline"} onClick={() => setDuration(ticks)}>{ticks}</Button>)}
+                 {["1", "2", "3", "5"].map(ticks => <Button key={ticks} type="button" size="sm" variant={duration === ticks ? "default" : "outline"} className={duration === ticks ? "bg-[#159e98] text-white hover:bg-[#12847f]" : "border-[#1a6662] bg-[#06110f] text-white/70 hover:bg-[#0b211f] hover:text-white"} onClick={() => setDuration(ticks)}>{ticks}</Button>)}
               </div>
-              <Input type="number" min="1" max="10" step="1" value={duration} onChange={e => setDuration(e.target.value)} className="bg-background shadow-sm font-numeric" />
-              <p className="text-xs text-muted-foreground">Choose the tick count before starting. The next order waits for authoritative settlement.</p>
+               <Input type="number" min="1" max="10" step="1" value={duration} onChange={e => setDuration(e.target.value)} className="border-[#159e98] bg-[#06110f] font-numeric text-white shadow-[0_0_0_1px_rgba(21,158,152,.12)]" />
               {errors.duration && <p className="text-xs text-destructive">{errors.duration}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Number of runs</Label>
-              <Input type="number" min="1" max="10" step="1" value={runCount} onChange={e => setRunCount(e.target.value)} className="bg-background shadow-sm font-numeric" />
+               <Label className="text-xs font-medium text-[#a5f3ec]">Runs before stop</Label>
+               <Input type="number" min="1" max="10" step="1" value={runCount} onChange={e => setRunCount(e.target.value)} className="border-[#159e98] bg-[#06110f] font-numeric text-white shadow-[0_0_0_1px_rgba(21,158,152,.12)]" />
               {errors.runCount && <p className="text-xs text-destructive">{errors.runCount}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Take-profit target ({accountCurrency || "account currency"})</Label>
-              <Input type="number" min="0.01" step="0.01" value={takeProfit} onChange={e => setTakeProfit(e.target.value)} className="bg-background shadow-sm font-numeric" />
+               <Label className="text-xs font-medium text-[#a5f3ec]">Take profit · {accountCurrency || "account"}</Label>
+               <Input type="number" min="0.01" step="0.01" value={takeProfit} onChange={e => setTakeProfit(e.target.value)} className="border-[#159e98] bg-[#06110f] font-numeric text-white shadow-[0_0_0_1px_rgba(21,158,152,.12)]" />
               {errors.takeProfit && <p className="text-xs text-destructive">{errors.takeProfit}</p>}
             </div>
 
             <div className="space-y-2 md:col-span-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Risk Cap (Max Daily Loss)</Label>
-              <Input type="number" step="1" value={riskCap} onChange={e => setRiskCap(e.target.value)} className="bg-background shadow-sm font-numeric max-w-[50%]" />
+               <Label className="text-xs font-medium text-[#a5f3ec]">Risk cap · max loss</Label>
+               <Input type="number" step="1" value={riskCap} onChange={e => setRiskCap(e.target.value)} className="max-w-[50%] border-[#159e98] bg-[#06110f] font-numeric text-white shadow-[0_0_0_1px_rgba(21,158,152,.12)]" />
               {errors.riskCap && <p className="text-xs text-destructive">{errors.riskCap}</p>}
             </div>
-          </div>
+           </div>
+           </div>
 
           <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Schedule & Exit Notes</Label>
+             <Label className="text-xs font-medium text-muted-foreground">Notes</Label>
             <Textarea
-              placeholder="E.g., Only run during London session. Stop if drawdown exceeds $50."
+               placeholder="Optional run notes"
               value={notes}
               onChange={e => setNotes(e.target.value)}
-              className="resize-none h-24 bg-secondary/5"
+               className="h-20 resize-none border-border/80 bg-background/60 text-foreground"
             />
           </div>
+           <div className="flex items-center justify-end gap-2 border-t border-[#123b39] pt-4">
+             <Button type="button" variant="outline" onClick={onCancel} className="border-white/15 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white">
+               Cancel
+             </Button>
+             <Button type="button" onClick={onRun} disabled={saving || mode === "recovery_guard"} className="bg-[#16a34a] text-white shadow-[0_0_18px_rgba(22,163,74,.2)] hover:bg-[#12843c]">
+               <Play className="mr-2 h-4 w-4" /> Launch Bot
+             </Button>
+           </div>
         </CardContent>
       </Card>
 
@@ -658,65 +712,58 @@ function BotBuilder({ bot, accountCurrency, accountBalance, onUpdate }: { bot: a
 function BotRunHistory({ botId, accountCurrency }: { botId: string; accountCurrency?: string }) {
   const runs = useListBotRuns(botId, { query: { queryKey: getListBotRunsQueryKey(botId), refetchInterval: 5000 } });
   const runRows = Array.isArray((runs.data as any)?.runs) ? (runs.data as any).runs : [];
+  const downloadResults = () => {
+    const blob = new Blob([JSON.stringify(runRows, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `bot-${botId}-results.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="space-y-5">
       <BotRunSummary runs={runRows} accountCurrency={accountCurrency} />
-      <Card className="shadow-sm">
-        <CardHeader className="bg-secondary/10 border-b pb-4">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Activity className="h-5 w-5 text-primary" />
-             Bot evaluations
-          </CardTitle>
+      <Card className="overflow-hidden border-border/80 shadow-sm">
+        <CardHeader className="space-y-0 border-b bg-background p-0">
+          <div className="flex items-center justify-between gap-3 border-b px-4 pt-3">
+            <div className="flex items-center gap-5 text-[10px] font-semibold uppercase tracking-wider">
+              <span className="pb-3 text-muted-foreground">Summary</span>
+              <span className="relative pb-3 text-foreground after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-primary">Transactions</span>
+              <span className="pb-3 text-muted-foreground">Journal</span>
+            </div>
+            <Activity className="mb-3 h-4 w-4 text-primary" />
+          </div>
+          <div className="flex flex-wrap gap-2 px-4 py-3">
+            <Button type="button" size="sm" onClick={downloadResults} disabled={!runRows.length} className="h-8 bg-[#102d78] text-xs text-white hover:bg-[#0c245e]">
+              <Download className="mr-2 h-3.5 w-3.5" />Download
+            </Button>
+            <Button type="button" size="sm" variant="outline" disabled={!runRows.length} className="h-8 text-xs">
+              <FileText className="mr-2 h-3.5 w-3.5" />View detail
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {runs.isLoading ? (
-            <div className="p-10 text-center text-muted-foreground text-sm flex flex-col items-center justify-center">
-               <Loader2 className="mb-3 h-6 w-6 animate-spin text-primary"/> Loading history...
+            <div className="flex flex-col items-center justify-center p-10 text-sm text-muted-foreground">
+              <Loader2 className="mb-3 h-6 w-6 animate-spin text-primary" /> Loading results...
             </div>
           ) : runs.isError ? (
-            <div className="p-8 text-center text-destructive text-sm flex flex-col items-center justify-center">
-               <AlertCircle className="mb-2 h-6 w-6"/> Failed to load history
+            <div className="flex flex-col items-center justify-center p-8 text-sm text-destructive">
+              <AlertCircle className="mb-2 h-6 w-6" /> Failed to load results
             </div>
           ) : runRows.length ? (
-             <div className="divide-y max-h-[300px] overflow-y-auto">
-               {runRows.map((run: any) => (
-                 <div key={run.id} className="p-4 flex items-center justify-between hover:bg-secondary/10 transition-colors">
-                   <div>
-                     <div className="flex items-center gap-2">
-                       <span className="font-semibold text-sm capitalize">{run.status}</span>
-                       <Badge variant="outline" className="text-[10px] uppercase tracking-widest">{run.mode}</Badge>
-                     </div>
-                     <div className="text-xs text-muted-foreground mt-1 font-mono">
-                       {new Date(run.startedAt || run.started_at || Date.now()).toLocaleString()}
-                     </div>
-                   </div>
-                   <div className="text-right max-w-[50%]">
-                     {run.result ? (
-                       <div className="text-xs bg-secondary/30 p-2 rounded border font-mono break-words" title={JSON.stringify(run.result, null, 2)}>
-                         <div className="font-semibold text-foreground">{run.result.action || run.result.error || "Completed"}</div>
-                         {run.result.exactInputs && (
-                           <div className="mt-1 text-[10px] text-muted-foreground">
-                              Considered: {run.result.exactInputs.indicator?.toUpperCase()} ({run.result.exactInputs.direction})
-                           </div>
-                         )}
-                         {run.result.dryRun && (
-                           <div className="mt-1 text-[10px] text-amber-600/80 font-sans font-medium bg-amber-500/10 px-1 py-0.5 rounded inline-block">
-                             DRY-RUN ONLY
-                           </div>
-                         )}
-                       </div>
-                     ) : (
-                       <span className="text-xs text-muted-foreground italic">No result</span>
-                     )}
-                   </div>
-                 </div>
-               ))}
-             </div>
+            <div className="max-h-[360px] divide-y overflow-y-auto">
+              <div className="hidden grid-cols-[minmax(100px,.7fr)_minmax(140px,1fr)_minmax(120px,.8fr)] gap-3 border-y bg-muted/20 px-4 py-2 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground sm:grid">
+                <span>Type</span><span>Entry / Exit spot</span><span className="text-right">Buy price and P/L</span>
+              </div>
+              {runRows.map((run: any) => <BotResultRow key={run.id} run={run} accountCurrency={accountCurrency} />)}
+            </div>
           ) : (
-            <div className="p-10 text-center text-sm text-muted-foreground">
-              <Clock className="h-8 w-8 mx-auto mb-3 text-muted-foreground/40" />
-               No bot evaluations yet.
+            <div className="flex flex-col items-center justify-center p-10 text-sm text-muted-foreground">
+              <Clock className="mb-3 h-8 w-8 text-muted-foreground/40" />
+              No run results yet.
             </div>
           )}
         </CardContent>
@@ -725,8 +772,99 @@ function BotRunHistory({ botId, accountCurrency }: { botId: string; accountCurre
   );
 }
 
+function BotResultRow({ run, accountCurrency }: { run: any; accountCurrency?: string }) {
+  const result = run.result ?? {};
+  const settlement = result.providerSettlement ?? result.settlement ?? result.contract ?? {};
+  const exactInputs = result.exactInputs ?? {};
+  const status = String(settlement.status ?? settlement.outcome ?? run.status ?? "queued").toLowerCase();
+  const type = settlement.contractType ?? result.contractType ?? exactInputs.contractType ?? result.action ?? "SIGNAL";
+  const entry = settlement.entrySpot ?? result.entrySpot ?? result.entry ?? null;
+  const exit = settlement.exitSpot ?? result.exitSpot ?? result.exit ?? null;
+  const buyPrice = settlement.buyPrice ?? result.buyPrice ?? result.stake ?? exactInputs.stake ?? null;
+  const pnl = settlement.netProfit ?? settlement.profit ?? result.netProfit ?? result.profit ?? null;
+  const positive = pnl != null && Number(pnl) >= 0;
+  const statusColor = status === "won" || status === "settled" ? "text-success" : status === "lost" || status === "rejected" ? "text-destructive" : "text-amber-600";
+
+  return (
+    <div className="grid gap-3 px-4 py-3.5 transition-colors hover:bg-muted/20 sm:grid-cols-[minmax(100px,.7fr)_minmax(140px,1fr)_minmax(120px,.8fr)] sm:items-center" data-testid={`row-bot-result-${run.id}`}>
+      <div className="flex min-w-0 items-center gap-2">
+        <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-md ${positive ? "bg-success/10 text-success" : "bg-primary/10 text-primary"}`}>
+          <Activity className="h-3.5 w-3.5" />
+        </span>
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="truncate font-mono text-[10px] font-semibold uppercase">{type}</span>
+            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${statusColor.replace("text-", "bg-")}`} />
+          </div>
+          <div className="truncate text-[9px] text-muted-foreground">Run {String(run.runNumber ?? run.id ?? "—").slice(-4)}</div>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3 text-[10px] sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <ResultSpot label="Entry" value={formatBotSpot(entry)} />
+        <ResultSpot label="Exit" value={formatBotSpot(exit)} />
+      </div>
+      <div className="text-left sm:text-right">
+        <div className="font-mono text-[10px] font-semibold">{buyPrice == null ? "—" : formatBotMoney(buyPrice, accountCurrency)}</div>
+        <div className={`mt-0.5 font-mono text-[10px] font-semibold ${pnl == null ? "text-muted-foreground" : positive ? "text-success" : "text-destructive"}`}>
+          {pnl == null ? (run.result?.dryRun ? "Dry run" : "Pending") : formatBotSignedMoney(pnl, accountCurrency)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ResultSpot({ label, value }: { label: string; value: string }) {
+  return <div className="min-w-0"><div className="text-[8px] uppercase tracking-wider text-muted-foreground">{label}</div><div className="truncate font-mono text-[10px] font-semibold">{value}</div></div>;
+}
+
+function formatBotSpot(value: unknown) {
+  return value == null || value === "" || !Number.isFinite(Number(value)) ? "—" : Number(value).toFixed(5).replace(/0+$/, "").replace(/\.$/, "");
+}
+
+function formatBotMoney(value: unknown, currency?: string) {
+  const amount = Number(value);
+  return Number.isFinite(amount) ? `${currency || "USD"} ${amount.toFixed(2)}` : "—";
+}
+
+function formatBotSignedMoney(value: unknown, currency?: string) {
+  const amount = Number(value);
+  return Number.isFinite(amount) ? `${amount >= 0 ? "+" : "-"}${currency || "USD"} ${Math.abs(amount).toFixed(2)}` : "—";
+}
+
 function SkeletonList(){return <div className="space-y-3"><div className="h-20 animate-pulse rounded-lg bg-muted/50"/><div className="h-20 animate-pulse rounded-lg bg-muted/50"/></div>}
 function Empty({title,text}:{title:string,text:string}){return <div className="rounded-lg border border-dashed border-muted-foreground/30 p-8 text-center bg-secondary/5"><CheckCircle2 className="mx-auto h-8 w-8 text-muted-foreground/50"/><div className="mt-3 font-semibold text-foreground">{title}</div><p className="mt-1 text-sm text-muted-foreground max-w-[200px] mx-auto leading-relaxed">{text}</p></div>}
 function BotDetail({ label, value }: { label: string; value: string }) {
   return <div className="min-w-0 bg-background/90 p-2"><div className="uppercase tracking-wider text-muted-foreground">{label}</div><div className="mt-1 truncate font-mono text-foreground">{value}</div></div>
+}
+
+function LauncherTile({
+  href,
+  icon,
+  title,
+  detail,
+  tone = "teal",
+}: {
+  href: string
+  icon: React.ReactNode
+  title: string
+  detail: string
+  tone?: "teal" | "gold" | "coral"
+}) {
+  const toneClass = tone === "gold"
+    ? "text-[#f0c95b] group-hover:bg-[#f0c95b]/15"
+    : tone === "coral"
+      ? "text-[#ff9b87] group-hover:bg-[#ff9b87]/15"
+      : "text-[#20c7c2] group-hover:bg-[#20c7c2]/15"
+  return (
+    <Link href={href} className="group flex min-h-[132px] flex-col justify-between bg-[#0d2438] p-5 transition-colors hover:bg-[#12304a]" data-testid={`link-bot-launcher-${title.toLowerCase().replace(/\s+/g, "-")}`}>
+      <span className={`grid h-10 w-10 place-items-center rounded-xl bg-white/5 ${toneClass}`}>{icon}</span>
+      <span className="mt-6 flex items-center justify-between gap-2">
+        <span>
+          <span className="block text-sm font-semibold">{title}</span>
+          <span className="mt-1 block text-xs text-white/45">{detail}</span>
+        </span>
+        <ArrowRight className="h-4 w-4 shrink-0 text-white/30 transition-transform group-hover:translate-x-1 group-hover:text-white" />
+      </span>
+    </Link>
+  )
 }

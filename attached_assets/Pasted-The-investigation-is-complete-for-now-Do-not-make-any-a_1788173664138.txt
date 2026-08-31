@@ -1,0 +1,84 @@
+The investigation is complete for now. Do not make any additional code, database, environment, or deployment changes.
+
+### Freeze the current state
+
+Record the following as the authoritative investigation status:
+
+```text
+Aiven connection: VERIFIED
+Aiven schema: VERIFIED
+consumed_trade_proposals: VERIFIED
+Database insert schema compatibility: VERIFIED
+
+SSL warning:
+- FIXED in current Replit API workflow
+- Typecheck PASSED
+- Build PASSED
+- /health PASSED
+- NOT deployed to Vercel
+- NOT established as the cause of /api/trades 502
+
+Vercel production:
+- Existing deployment unchanged
+- POST /api/trades previously returned 502
+- Existing evidence: Request ID 7, approximately 2289 ms
+- Runtime error details unavailable
+
+Vercel log access:
+- BLOCKED
+- HTTP 403
+- Scope: melody10467-8101s-projects
+
+/api/trades:
+- 502 confirmed
+- Exact failing stage: UNKNOWN
+- Root cause: NOT PROVEN
+```
+
+### Do NOT do any of the following
+
+* Do not deploy the SSL change.
+* Do not change production environment variables.
+* Do not modify Aiven.
+* Do not modify the schema.
+* Do not change `/api/trades`.
+* Do not submit another trade.
+* Do not manufacture a test trade merely to generate logs.
+* Do not bypass Vercel authorization.
+* Do not claim the SSL fix resolves the 502.
+
+### Only next action
+
+Wait until Vercel access is legitimately repaired for the team/project:
+
+```text
+melody10467-8101s-projects
+    ↓
+protradersfx-v5
+```
+
+Once authorized Vercel log access is available, retrieve the existing failed `/api/trades` request and identify:
+
+```text
+request ID
+deployment ID
+execution stage
+sanitized error
+PostgreSQL code/constraint, if applicable
+Deriv error, if applicable
+transaction persistence error, if applicable
+```
+
+Then stop again and report the evidence.
+
+Do not implement a fix until the evidence identifies the failing stage.
+
+### Important
+
+The next task is NOT "fix the 502."
+
+The next task is:
+
+**"Obtain the actual production runtime error that caused the 502."**
+
+No further changes should occur until that evidence is available.

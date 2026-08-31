@@ -28,3 +28,17 @@ mtime_ms = 1787990493382
 storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:d2226b06-4baa-4e65-a60d-b57c47a30dec/019d8777-f415-4942-ad2f-27c6f90dad5f/2758f4ac-3c4d-4b55-a4a4-6c6bcfb71365"
 storage_version_token = "1787990574343085"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "mF2TBG6dHYcwCC53ab6nr"
+uri = "file://protradersfxweb.zip"
+type = "unspecified"
+title = "protradersfxweb.zip"
+description = "Clean ProTraders FX web source package with trader repairs, assets, configs, lockfile, and Vercel routing. Dependencies, build output, caches, logs, workspace metadata, and environment files are excluded."
+logical_id = "d6cbe536-3dbc-4897-a089-d1478f078c09"
+content_hash = "sha256:ed72f2a309cfcdfe4b6dee60cb33619308168ebf8be24d2a832f23fdd0313223"
+size = 672035
+mtime_ms = 1788073270250
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:d2226b06-4baa-4e65-a60d-b57c47a30dec/d6cbe536-3dbc-4897-a089-d1478f078c09/b08bd20e-7a69-4360-991f-a3e8b32f979e"
+storage_version_token = "1788073276019837"
+content_type = "application/octet-stream"

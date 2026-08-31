@@ -1,0 +1,96 @@
+Good. The SSL warning fix is accepted as a separate, completed change.
+
+Do NOT deploy it yet.
+
+Now continue the original `/api/trades` investigation.
+
+### Current state
+
+```text
+SSL warning in Replit API workflow: FIXED
+Typecheck: PASSED
+API build: PASSED
+API workflow: RUNNING
+/health: 200
+Persistence: CONFIGURED
+
+Production Vercel deployment: UNCHANGED
+Aiven schema: VERIFIED
+/api/trades 502 root cause: STILL NOT PROVEN
+```
+
+### Next task: determine the actual `/api/trades` failure
+
+Do not submit another live trade.
+
+Do not modify the database.
+
+Do not change environment variables.
+
+Do not deploy.
+
+Do not make another code change unless the actual error proves it is necessary.
+
+First inspect the current code and identify every possible failure stage in `POST /api/trades`:
+
+```text
+request validation
+→ authentication/session
+→ account lookup
+→ account/balance/policy validation
+→ proposal generation/review
+→ consumed_trade_proposals insert
+→ bot reservation, if applicable
+→ Deriv buy
+→ transaction persistence
+→ response
+```
+
+For each stage, report:
+
+* exact file/function
+* possible exception/error
+* expected HTTP status
+* whether it can become 502
+
+### Then investigate the Vercel connection
+
+If the Vercel connector has now been repaired, retrieve the existing Production runtime logs for the failed `/api/trades` request.
+
+If the connection is still returning:
+
+```text
+403 Forbidden
+Not authorized for scope "melody10467-8101s-projects"
+```
+
+stop and report that the Vercel credential still lacks project access.
+
+Do not attempt to bypass the authorization.
+
+### Important distinction
+
+The new SSL change was made in the Replit API workflow.
+
+It does NOT prove that the deployed Vercel function has the same code/configuration.
+
+Therefore do not claim:
+
+```text
+/api/trades is fixed
+```
+
+unless the production Vercel deployment has actually been updated and the endpoint has been safely verified.
+
+### Final report
+
+Return:
+
+1. Whether Vercel log access now works.
+2. If yes, the sanitized runtime error for the existing 502.
+3. The exact failing stage.
+4. Whether the SSL issue is related or unrelated.
+5. The smallest safe production fix, if one is proven.
+6. Whether deployment is required.
+
+No production changes should be made automatically.

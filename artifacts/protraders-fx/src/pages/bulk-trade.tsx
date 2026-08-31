@@ -247,7 +247,7 @@ export default function BulkTrade() {
         </div>
 
         <div className="grid lg:grid-cols-[minmax(0,1fr)_320px]">
-          <section className="min-w-0 border-b border-border/80 lg:border-b-0 lg:border-r" aria-label="Live market">
+          <section className="order-2 min-w-0 border-b border-border/80 lg:order-1 lg:border-b-0 lg:border-r" aria-label="Live market">
             <div className="flex items-center justify-between gap-3 border-b border-border/70 px-4 py-3 md:px-5">
               <div>
                 <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.2em] text-muted-foreground">
@@ -295,7 +295,7 @@ export default function BulkTrade() {
             </div>
           </section>
 
-          <aside className="bg-card/90" aria-label="Order ticket">
+          <aside className="order-1 bg-card/90 lg:order-2" aria-label="Order ticket">
             <div className="flex items-center justify-between gap-3 border-b border-border/70 px-4 py-3 md:px-5">
               <div>
                 <div className="text-[10px] font-semibold uppercase tracking-[.2em] text-primary">Order ticket</div>
@@ -346,10 +346,32 @@ export default function BulkTrade() {
                 {!contracts.isLoading && !contracts.isError && !availableTypes.length && <p className="text-xs text-amber-600">No supported contracts are available for this symbol yet.</p>}
               </div>
 
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Duration</Label>
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Ticks</span>
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  {["1", "2", "3", "4"].map(tick => (
+                    <Button
+                      key={tick}
+                      type="button"
+                      variant={duration === tick ? "default" : "outline"}
+                      className={duration === tick ? "bg-primary text-primary-foreground" : "bg-background"}
+                      onClick={() => setDuration(tick)}
+                      disabled={runSession.isBusy}
+                      data-testid={`button-duration-${tick}`}
+                    >
+                      {tick}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-2">
                 <Field label={`Stake (${accountCurrency})`} id="bulk-stake" value={stake} onChange={setStake} min="0.01" step="0.01" />
                 <div className="space-y-2">
-                  <Label htmlFor="bulk-duration">Duration</Label>
+                  <Label htmlFor="bulk-duration">Custom ticks</Label>
                   <div className="relative">
                     <Input id="bulk-duration" type="number" min="1" max={Number(preflight.data?.maxDuration || 3600)} step="1" value={duration} onChange={event => setDuration(event.target.value)} disabled={runSession.isBusy} data-testid="input-duration" className="pr-14" />
                     <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[10px] uppercase text-muted-foreground">ticks</span>
@@ -371,6 +393,21 @@ export default function BulkTrade() {
                     <option key={type} value={type}>{CONTRACT_LABELS[type]?.action || type} · {CONTRACT_LABELS[type]?.family || "Contract"}</option>
                   ))}
                 </select>
+               <div className="grid grid-cols-2 gap-2" data-testid="quick-contract-selector">
+                 {availableTypes.slice(0, 4).map((type: string) => (
+                   <Button
+                     key={type}
+                     type="button"
+                     size="sm"
+                     variant={contractType === type ? "default" : "outline"}
+                     className={contractType === type ? "bg-primary text-primary-foreground" : "bg-background"}
+                     onClick={() => setContractType(type)}
+                     disabled={runSession.isBusy}
+                   >
+                     {CONTRACT_LABELS[type]?.action || type}
+                   </Button>
+                 ))}
+               </div>
               </div>
 
               {needsBarrier && (
@@ -503,22 +540,30 @@ function SettlementStream({ state, currency, selectedMarket }: {
   currency: string
   selectedMarket: string
 }) {
+  const settledCount = state.results.filter(result => ["won", "lost", "settled", "rejected"].includes(result.status)).length
+  const netProfit = state.netProfit
   return (
-    <Card data-testid="card-bulk-results">
-      <CardHeader className="border-b bg-secondary/10 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-primary" />
-            <CardTitle className="text-base">Live settlement stream</CardTitle>
+    <Card data-testid="card-bulk-results" className="overflow-hidden">
+      <CardHeader className="space-y-0 border-b bg-background p-0">
+        <div className="flex items-center justify-between gap-3 border-b px-4 pt-3">
+          <div className="flex items-center gap-5 text-[10px] font-semibold uppercase tracking-wider">
+            <span className="pb-3 text-foreground">Summary</span>
+            <span className="relative pb-3 text-foreground after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-primary">Transactions</span>
+            <span className="pb-3 text-muted-foreground">Journal</span>
           </div>
-          <span className="text-[10px] uppercase tracking-[.18em] text-muted-foreground">{state.results.length} transaction{state.results.length === 1 ? "" : "s"}</span>
+          <TrendingUp className="mb-3 h-4 w-4 text-primary" />
+        </div>
+        <div className="grid grid-cols-3 gap-px bg-border">
+          <ResultSummary label="Transactions" value={String(state.results.length)} />
+          <ResultSummary label="Settled" value={String(settledCount)} />
+          <ResultSummary label="Net P/L" value={settledCount ? formatSignedMoney(netProfit, currency) : "Not settled"} tone={netProfit >= 0 ? "text-success" : "text-destructive"} />
         </div>
       </CardHeader>
       <CardContent className="p-0">
         {state.results.length === 0 ? (
           <div className="flex items-center gap-3 p-5 text-sm text-muted-foreground" data-testid="empty-settlement-stream">
             <BarChart3 className="h-5 w-5 text-primary/70" />
-            <div><p className="font-medium text-foreground">No contracts submitted yet.</p><p className="mt-0.5 text-xs">Accepted contracts, provider status, and authoritative P/L will appear here.</p></div>
+            <div><p className="font-medium text-foreground">No transactions yet.</p><p className="mt-0.5 text-xs">Settled contracts and authoritative P/L will appear here.</p></div>
           </div>
         ) : (
           <div className="divide-y">
@@ -529,6 +574,15 @@ function SettlementStream({ state, currency, selectedMarket }: {
         )}
       </CardContent>
     </Card>
+  )
+}
+
+function ResultSummary({ label, value, tone = "text-foreground" }: { label: string; value: string; tone?: string }) {
+  return (
+    <div className="bg-background p-3">
+      <div className="text-[9px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className={`mt-1 font-mono text-xs font-semibold ${tone}`}>{value}</div>
+    </div>
   )
 }
 

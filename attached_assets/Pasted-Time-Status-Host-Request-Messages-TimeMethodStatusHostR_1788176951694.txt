@@ -1,0 +1,906 @@
+Time
+Status
+Host
+Request
+Messages
+TimeMethodStatusHostRequestMessage
+Aug 31 14:48:29.71
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176910154,"pid":4,"hostname":"169.254.25.41","req":{"id":375,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":314,"msg":"request completed"}
+Aug 31 14:48:24.02
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176904413,"pid":4,"hostname":"169.254.25.41","req":{"id":374,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":258,"msg":"request completed"}
+Aug 31 14:48:18.62
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176898827,"pid":4,"hostname":"169.254.25.41","req":{"id":373,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":72,"msg":"request completed"}
+Aug 31 14:48:18.23
+GET
+200
+www.protradersfx.com
+/api/market/candles/R_100
+{"level":30,"time":1788176898488,"pid":4,"hostname":"169.254.25.41","req":{"id":372,"method":"GET","url":"/api/market/candles/R_100"},"res":{"statusCode":200},"responseTime":131,"msg":"request completed"}
+Aug 31 14:48:18.09
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176898478,"pid":4,"hostname":"169.254.25.41","req":{"id":371,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":249,"msg":"request completed"}
+Aug 31 14:48:11.90
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176892306,"pid":4,"hostname":"169.254.25.41","req":{"id":370,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":269,"msg":"request completed"}
+Aug 31 14:48:05.86
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176886331,"pid":4,"hostname":"169.254.25.41","req":{"id":369,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":335,"msg":"request completed"}
+Aug 31 14:48:02.75
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176883045,"pid":4,"hostname":"169.254.25.41","req":{"id":368,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":155,"msg":"request completed"}
+Aug 31 14:48:00.06
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176880414,"pid":4,"hostname":"169.254.25.41","req":{"id":367,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":213,"msg":"request completed"}
+Aug 31 14:47:51.19
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176871578,"pid":4,"hostname":"169.254.25.41","req":{"id":366,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":252,"msg":"request completed"}
+Aug 31 14:47:47.66
+GET
+200
+www.protradersfx.com
+/api/market/candles/R_100
+{"level":30,"time":1788176867917,"pid":4,"hostname":"169.254.25.41","req":{"id":365,"method":"GET","url":"/api/market/candles/R_100"},"res":{"statusCode":200},"responseTime":105,"msg":"request completed"}
+Aug 31 14:47:47.15
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176867400,"pid":4,"hostname":"169.254.25.41","req":{"id":364,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":103,"msg":"request completed"}
+Aug 31 14:47:45.42
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176865789,"pid":4,"hostname":"169.254.25.41","req":{"id":363,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":226,"msg":"request completed"}
+Aug 31 14:47:39.61
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176860075,"pid":4,"hostname":"169.254.25.41","req":{"id":362,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":331,"msg":"request completed"}
+Aug 31 14:47:33.84
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176854221,"pid":4,"hostname":"169.254.25.41","req":{"id":361,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":239,"msg":"request completed"}
+Aug 31 14:47:31.16
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176851363,"pid":4,"hostname":"169.254.25.41","req":{"id":360,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":60,"msg":"request completed"}
+Aug 31 14:47:27.99
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176848417,"pid":4,"hostname":"169.254.25.41","req":{"id":359,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":291,"msg":"request completed"}
+Aug 31 14:47:21.74
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176842152,"pid":4,"hostname":"169.254.25.41","req":{"id":358,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":265,"msg":"request completed"}
+Aug 31 14:47:17.03
+GET
+200
+www.protradersfx.com
+/api/market/candles/R_100
+{"level":30,"time":1788176837253,"pid":4,"hostname":"169.254.25.41","req":{"id":357,"method":"GET","url":"/api/market/candles/R_100"},"res":{"statusCode":200},"responseTime":88,"msg":"request completed"}
+Aug 31 14:47:15.90
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176836327,"pid":4,"hostname":"169.254.25.41","req":{"id":356,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":283,"msg":"request completed"}
+Aug 31 14:47:15.58
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176835776,"pid":4,"hostname":"169.254.25.41","req":{"id":355,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":59,"msg":"request completed"}
+Aug 31 14:47:10.27
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176830625,"pid":4,"hostname":"169.254.25.41","req":{"id":354,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":220,"msg":"request completed"}
+Aug 31 14:47:02.81
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176823331,"pid":4,"hostname":"169.254.25.41","req":{"id":353,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":367,"msg":"request completed"}
+Aug 31 14:47:00.02
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176820234,"pid":4,"hostname":"169.254.25.41","req":{"id":352,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":78,"msg":"request completed"}
+Aug 31 14:46:57.08
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176817496,"pid":4,"hostname":"169.254.25.41","req":{"id":351,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":282,"msg":"request completed"}
+Aug 31 14:46:49.59
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176810052,"pid":4,"hostname":"169.254.25.41","req":{"id":350,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":331,"msg":"request completed"}
+Aug 31 14:46:46.10
+GET
+200
+www.protradersfx.com
+/api/market/candles/R_100
+{"level":30,"time":1788176806331,"pid":4,"hostname":"169.254.25.41","req":{"id":349,"method":"GET","url":"/api/market/candles/R_100"},"res":{"statusCode":200},"responseTime":89,"msg":"request completed"}
+Aug 31 14:46:44.41
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176804628,"pid":4,"hostname":"169.254.25.41","req":{"id":348,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":79,"msg":"request completed"}
+Aug 31 14:46:43.89
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176804293,"pid":4,"hostname":"169.254.25.41","req":{"id":347,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":259,"msg":"request completed"}
+Aug 31 14:46:38.13
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176798535,"pid":4,"hostname":"169.254.25.41","req":{"id":346,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":267,"msg":"request completed"}
+Aug 31 14:46:32.41
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176792871,"pid":4,"hostname":"169.254.25.41","req":{"id":345,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":325,"msg":"request completed"}
+Aug 31 14:46:28.90
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176789164,"pid":4,"hostname":"169.254.25.41","req":{"id":344,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":126,"msg":"request completed"}
+Aug 31 14:46:26.64
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176787123,"pid":4,"hostname":"169.254.25.41","req":{"id":343,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":346,"msg":"request completed"}
+Aug 31 14:46:20.75
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176781137,"pid":4,"hostname":"169.254.25.41","req":{"id":342,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":244,"msg":"request completed"}
+Aug 31 14:46:15.28
+GET
+200
+www.protradersfx.com
+/api/market/candles/R_100
+{"level":30,"time":1788176775523,"pid":4,"hostname":"169.254.25.41","req":{"id":341,"method":"GET","url":"/api/market/candles/R_100"},"res":{"statusCode":200},"responseTime":104,"msg":"request completed"}
+Aug 31 14:46:14.62
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176774957,"pid":4,"hostname":"169.254.25.41","req":{"id":340,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":204,"msg":"request completed"}
+Aug 31 14:46:12.88
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176773106,"pid":4,"hostname":"169.254.25.41","req":{"id":339,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":83,"msg":"request completed"}
+Aug 31 14:46:08.01
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176768572,"pid":4,"hostname":"169.254.25.41","req":{"id":338,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":420,"msg":"request completed"}
+Aug 31 14:46:02.62
+GET
+304
+www.protradersfx.com
+/api/market/symbols
+{"level":30,"time":1788176762839,"pid":4,"hostname":"169.254.25.41","req":{"id":337,"method":"GET","url":"/api/market/symbols"},"res":{"statusCode":200},"responseTime":77,"msg":"request completed"}
+Aug 31 14:46:02.09
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176762470,"pid":4,"hostname":"169.254.25.41","req":{"id":336,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":239,"msg":"request completed"}
+Aug 31 14:45:57.18
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176757375,"pid":4,"hostname":"169.254.25.41","req":{"id":335,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":59,"msg":"request completed"}
+Aug 31 14:45:56.10
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176756495,"pid":4,"hostname":"169.254.25.41","req":{"id":334,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":251,"msg":"request completed"}
+Aug 31 14:45:50.39
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176750781,"pid":4,"hostname":"169.254.25.41","req":{"id":333,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":246,"msg":"request completed"}
+Aug 31 14:45:44.32
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176744812,"pid":4,"hostname":"169.254.25.41","req":{"id":332,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":228,"msg":"request completed"}
+Aug 31 14:45:44.30
+GET
+200
+www.protradersfx.com
+/api/market/candles/R_100
+{"level":30,"time":1788176744574,"pid":4,"hostname":"169.254.25.41","req":{"id":331,"method":"GET","url":"/api/market/candles/R_100"},"res":{"statusCode":200},"responseTime":122,"msg":"request completed"}
+Aug 31 14:45:41.48
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176741696,"pid":4,"hostname":"169.254.25.41","req":{"id":330,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":77,"msg":"request completed"}
+Aug 31 14:45:38.71
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176739037,"pid":4,"hostname":"169.254.25.41","req":{"id":329,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":192,"msg":"request completed"}
+Aug 31 14:45:32.89
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176733286,"pid":4,"hostname":"169.254.25.41","req":{"id":328,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":245,"msg":"request completed"}
+Aug 31 14:45:27.02
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176727382,"pid":4,"hostname":"169.254.25.41","req":{"id":327,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":225,"msg":"request completed"}
+Aug 31 14:45:26.03
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176726256,"pid":4,"hostname":"169.254.25.41","req":{"id":326,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":81,"msg":"request completed"}
+Aug 31 14:45:21.05
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176721413,"pid":4,"hostname":"169.254.25.41","req":{"id":325,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":219,"msg":"request completed"}
+Aug 31 14:45:15.19
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176715632,"pid":4,"hostname":"169.254.25.41","req":{"id":324,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":300,"msg":"request completed"}
+Aug 31 14:45:13.52
+GET
+200
+www.protradersfx.com
+/api/market/candles/R_100
+{"level":30,"time":1788176713780,"pid":4,"hostname":"169.254.25.41","req":{"id":323,"method":"GET","url":"/api/market/candles/R_100"},"res":{"statusCode":200},"responseTime":118,"msg":"request completed"}
+Aug 31 14:45:10.60
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176710804,"pid":4,"hostname":"169.254.25.41","req":{"id":322,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":53,"msg":"request completed"}
+Aug 31 14:45:09.58
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176709953,"pid":4,"hostname":"169.254.25.41","req":{"id":321,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":234,"msg":"request completed"}
+Aug 31 14:45:02.86
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176703372,"pid":4,"hostname":"169.254.25.41","req":{"id":320,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":362,"msg":"request completed"}
+Aug 31 14:44:57.18
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176697553,"pid":4,"hostname":"169.254.25.41","req":{"id":319,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":227,"msg":"request completed"}
+Aug 31 14:44:54.72
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176694934,"pid":4,"hostname":"169.254.25.41","req":{"id":318,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":72,"msg":"request completed"}
+Aug 31 14:44:51.51
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176691932,"pid":4,"hostname":"169.254.25.41","req":{"id":317,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":281,"msg":"request completed"}
+Aug 31 14:44:44.38
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176684866,"pid":4,"hostname":"169.254.25.41","req":{"id":316,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":351,"msg":"request completed"}
+Aug 31 14:44:41.70
+GET
+200
+www.protradersfx.com
+/api/market/candles/R_100
+{"level":30,"time":1788176681933,"pid":4,"hostname":"169.254.25.41","req":{"id":315,"method":"GET","url":"/api/market/candles/R_100"},"res":{"statusCode":200},"responseTime":90,"msg":"request completed"}
+Aug 31 14:44:37.43
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176677636,"pid":4,"hostname":"169.254.25.41","req":{"id":314,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":60,"msg":"request completed"}
+Aug 31 14:44:36.44
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176676817,"pid":4,"hostname":"169.254.25.41","req":{"id":313,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":236,"msg":"request completed"}
+Aug 31 14:44:27.01
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176667413,"pid":4,"hostname":"169.254.25.41","req":{"id":312,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":266,"msg":"request completed"}
+Aug 31 14:44:21.81
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176662009,"pid":4,"hostname":"169.254.25.41","req":{"id":311,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":58,"msg":"request completed"}
+Aug 31 14:44:21.16
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176661620,"pid":4,"hostname":"169.254.25.41","req":{"id":310,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":230,"msg":"request completed"}
+Aug 31 14:44:13.82
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176654223,"pid":4,"hostname":"169.254.25.41","req":{"id":309,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":256,"msg":"request completed"}
+Aug 31 14:44:10.71
+GET
+200
+www.protradersfx.com
+/api/market/candles/R_100
+{"level":30,"time":1788176650939,"pid":4,"hostname":"169.254.25.41","req":{"id":308,"method":"GET","url":"/api/market/candles/R_100"},"res":{"statusCode":200},"responseTime":87,"msg":"request completed"}
+Aug 31 14:44:07.42
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176647850,"pid":4,"hostname":"169.254.25.41","req":{"id":307,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":290,"msg":"request completed"}
+Aug 31 14:44:06.06
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176646250,"pid":4,"hostname":"169.254.25.41","req":{"id":306,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":60,"msg":"request completed"}
+Aug 31 14:44:01.17
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176641536,"pid":4,"hostname":"169.254.25.41","req":{"id":305,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":220,"msg":"request completed"}
+Aug 31 14:43:55.18
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176635581,"pid":4,"hostname":"169.254.25.41","req":{"id":304,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":261,"msg":"request completed"}
+Aug 31 14:43:49.35
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176629569,"pid":4,"hostname":"169.254.25.41","req":{"id":303,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":89,"msg":"request completed"}
+Aug 31 14:43:47.74
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176628137,"pid":4,"hostname":"169.254.25.41","req":{"id":302,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":251,"msg":"request completed"}
+Aug 31 14:43:41.99
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176622411,"pid":4,"hostname":"169.254.25.41","req":{"id":301,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":236,"msg":"request completed"}
+Aug 31 14:43:40.12
+GET
+200
+www.protradersfx.com
+/api/market/candles/R_100
+{"level":30,"time":1788176620369,"pid":4,"hostname":"169.254.25.41","req":{"id":300,"method":"GET","url":"/api/market/candles/R_100"},"res":{"statusCode":200},"responseTime":99,"msg":"request completed"}
+Aug 31 14:43:36.15
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176616648,"pid":4,"hostname":"169.254.25.41","req":{"id":299,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":354,"msg":"request completed"}
+Aug 31 14:43:33.86
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176614067,"pid":4,"hostname":"169.254.25.41","req":{"id":298,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":61,"msg":"request completed"}
+Aug 31 14:43:30.35
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176610791,"pid":4,"hostname":"169.254.25.41","req":{"id":297,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":297,"msg":"request completed"}
+Aug 31 14:43:24.51
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176604933,"pid":4,"hostname":"169.254.25.41","req":{"id":296,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":290,"msg":"request completed"}
+Aug 31 14:43:18.31
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176598962,"pid":4,"hostname":"169.254.25.41","req":{"id":295,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":517,"msg":"request completed"}
+Aug 31 14:43:17.99
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176598188,"pid":4,"hostname":"169.254.25.41","req":{"id":294,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":66,"msg":"request completed"}
+Aug 31 14:43:12.38
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176592791,"pid":4,"hostname":"169.254.25.41","req":{"id":293,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":276,"msg":"request completed"}
+Aug 31 14:43:09.35
+GET
+200
+www.protradersfx.com
+/api/market/candles/R_100
+{"level":30,"time":1788176589575,"pid":4,"hostname":"169.254.25.41","req":{"id":292,"method":"GET","url":"/api/market/candles/R_100"},"res":{"statusCode":200},"responseTime":88,"msg":"request completed"}
+Aug 31 14:43:06.63
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176587024,"pid":4,"hostname":"169.254.25.41","req":{"id":291,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":246,"msg":"request completed"}
+Aug 31 14:43:02.42
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176582699,"pid":4,"hostname":"169.254.25.41","req":{"id":290,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":122,"msg":"request completed"}
+Aug 31 14:43:00.82
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176581385,"pid":4,"hostname":"169.254.25.41","req":{"id":289,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":416,"msg":"request completed"}
+Aug 31 14:42:54.96
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176575374,"pid":4,"hostname":"169.254.25.41","req":{"id":288,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":266,"msg":"request completed"}
+Aug 31 14:42:49.28
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176569625,"pid":4,"hostname":"169.254.25.41","req":{"id":287,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":202,"msg":"request completed"}
+Aug 31 14:42:46.87
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176567074,"pid":4,"hostname":"169.254.25.41","req":{"id":286,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":66,"msg":"request completed"}
+Aug 31 14:42:43.17
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176563613,"pid":4,"hostname":"169.254.25.41","req":{"id":285,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":306,"msg":"request completed"}
+Aug 31 14:42:38.86
+GET
+200
+www.protradersfx.com
+/api/market/candles/R_100
+{"level":30,"time":1788176559078,"pid":4,"hostname":"169.254.25.41","req":{"id":284,"method":"GET","url":"/api/market/candles/R_100"},"res":{"statusCode":200},"responseTime":91,"msg":"request completed"}
+Aug 31 14:42:37.37
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176557815,"pid":4,"hostname":"169.254.25.41","req":{"id":283,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":301,"msg":"request completed"}
+Aug 31 14:42:31.65
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176552042,"pid":4,"hostname":"169.254.25.41","req":{"id":282,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":255,"msg":"request completed"}
+Aug 31 14:42:31.23
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176551433,"pid":4,"hostname":"169.254.25.41","req":{"id":281,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":65,"msg":"request completed"}
+Aug 31 14:42:25.80
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176546354,"pid":4,"hostname":"169.254.25.41","req":{"id":280,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":415,"msg":"request completed"}
+Aug 31 14:42:19.89
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176540312,"pid":4,"hostname":"169.254.25.41","req":{"id":279,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":283,"msg":"request completed"}
+Aug 31 14:42:15.63
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176535844,"pid":4,"hostname":"169.254.25.41","req":{"id":278,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":76,"msg":"request completed"}
+Aug 31 14:42:14.01
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176534395,"pid":4,"hostname":"169.254.25.41","req":{"id":277,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":239,"msg":"request completed"}
+Aug 31 14:42:07.73
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176528096,"pid":4,"hostname":"169.254.25.41","req":{"id":276,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":236,"msg":"request completed"}
+Aug 31 14:42:07.60
+GET
+200
+www.protradersfx.com
+/api/market/candles/R_100
+{"level":30,"time":1788176527866,"pid":4,"hostname":"169.254.25.41","req":{"id":275,"method":"GET","url":"/api/market/candles/R_100"},"res":{"statusCode":200},"responseTime":124,"msg":"request completed"}
+Aug 31 14:42:01.76
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176522238,"pid":4,"hostname":"169.254.25.41","req":{"id":274,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":333,"msg":"request completed"}
+Aug 31 14:41:59.36
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176519569,"pid":4,"hostname":"169.254.25.41","req":{"id":273,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":69,"msg":"request completed"}
+Aug 31 14:41:55.79
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176516140,"pid":4,"hostname":"169.254.25.41","req":{"id":272,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":203,"msg":"request completed"}
+Aug 31 14:41:49.95
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176510343,"pid":4,"hostname":"169.254.25.41","req":{"id":271,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":248,"msg":"request completed"}
+Aug 31 14:41:43.28
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176503746,"pid":4,"hostname":"169.254.25.41","req":{"id":270,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":323,"msg":"request completed"}
+Aug 31 14:41:42.74
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176502982,"pid":4,"hostname":"169.254.25.41","req":{"id":269,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":95,"msg":"request completed"}
+Aug 31 14:41:37.11
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176497458,"pid":4,"hostname":"169.254.25.41","req":{"id":268,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":213,"msg":"request completed"}
+Aug 31 14:41:35.49
+GET
+200
+www.protradersfx.com
+/api/market/candles/R_100
+{"level":30,"time":1788176495754,"pid":4,"hostname":"169.254.25.41","req":{"id":267,"method":"GET","url":"/api/market/candles/R_100"},"res":{"statusCode":200},"responseTime":118,"msg":"request completed"}
+Aug 31 14:41:30.52
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176490949,"pid":4,"hostname":"169.254.25.41","req":{"id":266,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":294,"msg":"request completed"}
+Aug 31 14:41:26.46
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176486704,"pid":4,"hostname":"169.254.25.41","req":{"id":265,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":105,"msg":"request completed"}
+Aug 31 14:41:23.32
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176483776,"pid":4,"hostname":"169.254.25.41","req":{"id":264,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":311,"msg":"request completed"}
+Aug 31 14:41:16.84
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176477249,"pid":4,"hostname":"169.254.25.41","req":{"id":263,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":278,"msg":"request completed"}
+Aug 31 14:41:11.16
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176471546,"pid":4,"hostname":"169.254.25.41","req":{"id":262,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":242,"msg":"request completed"}
+Aug 31 14:41:10.88
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176471088,"pid":4,"hostname":"169.254.25.41","req":{"id":261,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":67,"msg":"request completed"}
+Aug 31 14:41:05.03
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176465411,"pid":4,"hostname":"169.254.25.41","req":{"id":260,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":241,"msg":"request completed"}
+Aug 31 14:41:02.89
+GET
+200
+www.protradersfx.com
+/api/market/candles/R_100
+{"level":30,"time":1788176463122,"pid":4,"hostname":"169.254.25.41","req":{"id":259,"method":"GET","url":"/api/market/candles/R_100"},"res":{"statusCode":200},"responseTime":92,"msg":"request completed"}
+Aug 31 14:41:01.65
+GET
+304
+www.protradersfx.com
+/api/market/symbols
+{"level":30,"time":1788176461890,"pid":4,"hostname":"169.254.25.41","req":{"id":258,"method":"GET","url":"/api/market/symbols"},"res":{"statusCode":200},"responseTime":91,"msg":"request completed"}
+Aug 31 14:40:58.60
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176459233,"pid":4,"hostname":"169.254.25.41","req":{"id":257,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":494,"msg":"request completed"}
+Aug 31 14:40:55.18
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176455389,"pid":4,"hostname":"169.254.25.41","req":{"id":256,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":63,"msg":"request completed"}
+Aug 31 14:40:52.77
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176453155,"pid":4,"hostname":"169.254.25.41","req":{"id":255,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":245,"msg":"request completed"}
+Aug 31 14:40:46.81
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176447184,"pid":4,"hostname":"169.254.25.41","req":{"id":254,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":222,"msg":"request completed"}
+Aug 31 14:40:40.98
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176441487,"pid":4,"hostname":"169.254.25.41","req":{"id":253,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":356,"msg":"request completed"}
+Aug 31 14:40:39.45
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176439653,"pid":4,"hostname":"169.254.25.41","req":{"id":252,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":60,"msg":"request completed"}
+Aug 31 14:40:34.99
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176435443,"pid":4,"hostname":"169.254.25.41","req":{"id":251,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":310,"msg":"request completed"}
+Aug 31 14:40:31.88
+GET
+200
+www.protradersfx.com
+/api/market/candles/R_100
+{"level":30,"time":1788176432140,"pid":4,"hostname":"169.254.25.41","req":{"id":250,"method":"GET","url":"/api/market/candles/R_100"},"res":{"statusCode":200},"responseTime":120,"msg":"request completed"}
+Aug 31 14:40:29.06
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176429504,"pid":4,"hostname":"169.254.25.41","req":{"id":249,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":314,"msg":"request completed"}
+Aug 31 14:40:23.95
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176424151,"pid":4,"hostname":"169.254.25.41","req":{"id":248,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":62,"msg":"request completed"}
+Aug 31 14:40:23.25
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176423634,"pid":4,"hostname":"169.254.25.41","req":{"id":247,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":231,"msg":"request completed"}
+Aug 31 14:40:17.51
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176417882,"pid":4,"hostname":"169.254.25.41","req":{"id":246,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":238,"msg":"request completed"}
+Aug 31 14:40:11.51
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176412095,"pid":4,"hostname":"169.254.25.41","req":{"id":245,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":443,"msg":"request completed"}
+Aug 31 14:40:08.40
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176408685,"pid":4,"hostname":"169.254.25.41","req":{"id":244,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":114,"msg":"request completed"}
+Aug 31 14:40:05.36
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176405732,"pid":4,"hostname":"169.254.25.41","req":{"id":243,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":237,"msg":"request completed"}
+Aug 31 14:40:00.38
+GET
+200
+www.protradersfx.com
+/api/market/candles/R_100
+{"level":30,"time":1788176400690,"pid":4,"hostname":"169.254.25.41","req":{"id":242,"method":"GET","url":"/api/market/candles/R_100"},"res":{"statusCode":200},"responseTime":177,"msg":"request completed"}
+Aug 31 14:39:59.12
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176399494,"pid":4,"hostname":"169.254.25.41","req":{"id":241,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":233,"msg":"request completed"}
+Aug 31 14:39:53.44
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176393874,"pid":4,"hostname":"169.254.25.41","req":{"id":240,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":258,"msg":"request completed"}
+Aug 31 14:39:52.79
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176393001,"pid":4,"hostname":"169.254.25.41","req":{"id":239,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":70,"msg":"request completed"}
+Aug 31 14:39:47.23
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176387598,"pid":4,"hostname":"169.254.25.41","req":{"id":238,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":236,"msg":"request completed"}
+Aug 31 14:39:41.37
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176381800,"pid":4,"hostname":"169.254.25.41","req":{"id":237,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":283,"msg":"request completed"}
+Aug 31 14:39:37.21
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176377433,"pid":4,"hostname":"169.254.25.41","req":{"id":236,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":82,"msg":"request completed"}
+Aug 31 14:39:35.47
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176375840,"pid":4,"hostname":"169.254.25.41","req":{"id":235,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":232,"msg":"request completed"}
+Aug 31 14:39:29.84
+GET
+200
+www.protradersfx.com
+/api/market/candles/R_100
+{"level":30,"time":1788176370086,"pid":4,"hostname":"169.254.25.41","req":{"id":234,"method":"GET","url":"/api/market/candles/R_100"},"res":{"statusCode":200},"responseTime":114,"msg":"request completed"}
+Aug 31 14:39:29.42
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176370044,"pid":4,"hostname":"169.254.25.41","req":{"id":233,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":455,"msg":"request completed"}
+Aug 31 14:39:23.79
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176364161,"pid":4,"hostname":"169.254.25.41","req":{"id":232,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":232,"msg":"request completed"}
+Aug 31 14:39:21.76
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176361960,"pid":4,"hostname":"169.254.25.41","req":{"id":231,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":55,"msg":"request completed"}
+Aug 31 14:39:17.91
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176358428,"pid":4,"hostname":"169.254.25.41","req":{"id":230,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":378,"msg":"request completed"}
+Aug 31 14:39:11.87
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176352239,"pid":4,"hostname":"169.254.25.41","req":{"id":229,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":235,"msg":"request completed"}
+Aug 31 14:39:06.25
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788176346486,"pid":4,"hostname":"169.254.25.41","req":{"id":228,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":111,"msg":"request completed"}
+Aug 31 14:39:06.12
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176346602,"pid":4,"hostname":"169.254.25.41","req":{"id":227,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":343,"msg":"request completed"}
+Aug 31 14:39:00.45
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788176340817,"pid":4,"hostname":"169.254.25.41","req":{"id":226,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":224,"msg":"request completed"}

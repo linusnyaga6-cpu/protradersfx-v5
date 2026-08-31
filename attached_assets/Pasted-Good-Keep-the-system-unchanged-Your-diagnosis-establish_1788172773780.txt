@@ -1,0 +1,146 @@
+Good. Keep the system unchanged.
+
+Your diagnosis establishes that `public.consumed_trade_proposals` is NOT the root cause based on the evidence currently available.
+
+Now continue with a **strict read-only investigation of the `/api/trades` 502**.
+
+### Objective
+
+Determine the exact runtime stage producing the HTTP 502.
+
+Do NOT:
+
+* modify code
+* modify the database
+* insert test trades
+* delete records
+* change environment variables
+* deploy anything
+* unfreeze or modify the frozen Replit production replica
+
+### 1. Trace the complete `/api/trades` execution path
+
+Starting from the `/api/trades` route in:
+
+`artifacts/api-server/src/routes/protraders.ts`
+
+document every stage in execution order, including:
+
+```text
+request validation
+→ authentication/session/account lookup
+→ account policy/balance validation
+→ contract availability
+→ proposal generation/review
+→ consumed_trade_proposals reservation
+→ bot-plan reservation if applicable
+→ Deriv buy request
+→ transaction persistence
+→ HTTP response
+```
+
+For each stage, identify:
+
+* function/file
+* external dependency
+* possible thrown errors
+* HTTP status returned
+* whether the error can become 502
+
+### 2. Inspect the 502 handling
+
+Find the exact code that converts an internal exception or upstream failure into HTTP `502`.
+
+Determine whether the response body contains a sanitized diagnostic identifier such as:
+
+```text
+proposal_review_db_error
+```
+
+or another stage/error code.
+
+Report the exact response format without exposing secrets.
+
+### 3. Inspect the Deriv buy request
+
+Read-only inspect the code that sends the actual Deriv buy request.
+
+Determine:
+
+* endpoint/API method
+* WebSocket/request mechanism
+* required authentication
+* proposal ID/token used
+* amount/currency parameters
+* contract parameters
+* timeout behavior
+* error handling
+* mapping of Deriv errors to HTTP status
+
+Pay particular attention to whether a Deriv API rejection is being incorrectly converted to a generic 502.
+
+### 4. Inspect transaction persistence
+
+After a successful Deriv buy, inspect the database transaction insertion path.
+
+Verify whether an error here could cause the user to receive 502 **after Deriv has already accepted/bought the contract**.
+
+This is critical because we must not create a situation where the UI reports a failed trade even though Deriv executed it.
+
+### 5. Find the safest available way to retrieve Vercel runtime logs
+
+The previous Vercel API connection returned `403 Forbidden`.
+
+Do not bypass authentication or weaken security.
+
+Instead determine whether the current environment has any legitimate read-only source for:
+
+* Vercel function logs
+* deployment runtime logs
+* request logs
+* server-side error logs
+
+If none is available, explicitly report:
+
+```text
+Vercel runtime logs unavailable through current authorized connection.
+```
+
+Do not fabricate a root cause.
+
+### 6. Analyze the browser's failed request
+
+If the project contains frontend code for `/api/trades`, inspect what the frontend does when the request returns 502.
+
+Determine whether it exposes:
+
+* HTTP status
+* response JSON
+* diagnostic code
+* request ID
+* error message
+
+If useful, identify the exact browser Network-panel information that should be captured during a failed request.
+
+### 7. Produce a stage matrix
+
+Return a table like:
+
+| Stage                    | Code location | Failure possible? | Can produce 502? | Evidence |
+| ------------------------ | ------------- | ----------------: | ---------------: | -------- |
+| Authentication           | ...           |            Yes/No |           Yes/No | ...      |
+| Account lookup           | ...           |            Yes/No |           Yes/No | ...      |
+| Proposal review          | ...           |            Yes/No |           Yes/No | ...      |
+| consumed_trade_proposals | ...           |            Yes/No |           Yes/No | ...      |
+| Deriv buy                | ...           |            Yes/No |           Yes/No | ...      |
+| Transaction persistence  | ...           |            Yes/No |           Yes/No | ...      |
+
+### Final requirement
+
+Do not conclude that the cause is the database unless there is an actual PostgreSQL error.
+
+Do not conclude that the cause is Deriv unless there is an actual Deriv API error.
+
+Do not make a code change until we have identified the failing stage and the smallest safe correction.
+
+Report the investigation findings only.

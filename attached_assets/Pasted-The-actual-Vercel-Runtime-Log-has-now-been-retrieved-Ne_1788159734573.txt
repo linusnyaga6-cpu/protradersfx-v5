@@ -1,0 +1,79 @@
+The actual Vercel Runtime Log has now been retrieved.
+
+### New evidence
+
+At `Aug 31 10:01:01.12`:
+
+`POST /api/trades` → `502`
+
+Request ID: `7`
+
+Response time: `2289 ms`
+
+Vercel's runtime logger reports only:
+
+`Error: failed with status code 502`
+
+with the stack inside the deployed `api-server/dist/app.mjs`.
+
+There is still NO PostgreSQL SQLSTATE, PostgreSQL error message, constraint, detail, hint, or application-level `proposal review database insert failed` diagnostic in the Runtime Log.
+
+### Important surrounding evidence
+
+At `10:00:58.56`:
+
+`POST /api/trades/preview` → `200`
+
+The preview request also emitted the pg-connection-string SSL warning, but completed successfully.
+
+Immediately around the failed trade:
+
+* `/api/account` → 200/304
+* `/api/market/ticker/R_100` → 200
+* `/api/market/candles/R_100` → 200
+* `/api/track` → 204
+
+Therefore the deployment is running and the database connection is not generally unavailable.
+
+### Do NOT apply a fix yet
+
+We still need the actual exception thrown inside the `/api/trades` proposal-review INSERT.
+
+Now inspect the source responsible for:
+
+`INSERT INTO consumed_trade_proposals`
+
+and the surrounding `try/catch`.
+
+Determine exactly how the database exception is currently logged and why only the generic 502 appears in Vercel Runtime Logs.
+
+Specifically inspect the production source corresponding to the deployed `api-server/dist/app.mjs` and its source files. Do NOT modify production yet.
+
+We need to establish:
+
+1. The exact INSERT statement and parameters (show structure/placeholders only; do not expose secrets).
+2. The exact catch block around that INSERT.
+3. Whether the original PostgreSQL error is being swallowed/replaced by the generic 502.
+4. Whether the application logger is configured to emit the PostgreSQL error's `code`, `message`, `detail`, `constraint`, `table`, and `column`.
+5. Whether `consumed_trade_proposals` is accessed differently by `/api/trades` than by `/api/trades/preview`.
+6. Whether the 2.289-second duration suggests a timeout/connection wait, while treating that only as a clue—not proof.
+
+### Diagnostic-only change consideration
+
+If the original database exception is currently being swallowed, propose the SMALLEST possible diagnostic logging change that would expose only sanitized PostgreSQL metadata in Vercel Runtime Logs.
+
+Do NOT apply that change automatically.
+
+Do NOT change:
+
+* database schema
+* permissions
+* ON CONFLICT behavior
+* transaction behavior
+* trading logic
+* Deriv buy flow
+* deployment configuration
+
+No trade should be submitted.
+
+First report the relevant source code/catch block and explain exactly why the original PostgreSQL exception is not appearing in the Runtime Log. Then propose the minimal diagnostic change for approval.

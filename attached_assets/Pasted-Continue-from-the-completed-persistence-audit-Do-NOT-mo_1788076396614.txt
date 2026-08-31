@@ -1,0 +1,68 @@
+Continue from the completed persistence audit.
+
+Do NOT modify the trading code and do NOT bypass the persistence safety gate.
+
+We need to connect a legitimate Vercel-reachable PostgreSQL database to the existing Vercel project:
+
+Project: protradersfx-v5
+GitHub: linusnyaga6-cpu/protradersfx-v5
+Branch: main
+Production: https://www.protradersfx.com
+
+Use the existing authorized Vercel connection.
+
+First inspect which PostgreSQL/database integrations are available to this Vercel project/account.
+
+If an appropriate Vercel-compatible PostgreSQL provider is already connected or available through the authorized integration, use that existing connection.
+
+If no database provider is available, STOP and tell me exactly what database provider/connection needs to be created. Do not invent credentials and do not use the workspace/development database as a substitute for production.
+
+Once a legitimate production PostgreSQL connection is available:
+
+1. Configure the secure connection as DATABASE_URL or POSTGRES_URL in Vercel Production and Preview.
+2. Never expose the connection string.
+3. Run the existing Drizzle schema migration/push against the production database.
+4. Verify all required tables exist:
+   activity_events
+   analyses
+   bot_events
+   bot_runs
+   bot_templates
+   bots
+   consumed_trade_proposals
+   recovery_incidents
+   risk_acknowledgements
+   snapshots
+   transactions
+5. Verify persistence from Vercel serverless invocations.
+6. Verify proposal nonce/duplicate protection.
+7. Verify transaction and settlement recording.
+8. Verify Stop Loss metadata persistence.
+9. Verify rejected-order recording.
+10. Redeploy through the existing GitHub → Vercel workflow if necessary.
+11. Verify /api/preflight reports persistenceConfigured:true.
+
+After persistence is confirmed, configure ONLY the conservative initial symbol allowlist:
+
+R_10,R_25,R_50,R_75,R_100
+
+Do NOT yet set:
+TRADING_LIVE_ENABLED=true
+TRADING_DEMO_ONLY=false
+
+Do not place a real-money trade.
+
+Stop after confirming the infrastructure is ready for controlled live activation and report:
+
+persistenceConfigured
+allowedSymbols
+liveTradingEnabled
+demoOnly
+readyForControlledLiveTest
+readyForRealTrading
+
+No Replit Publishing.
+No new Vercel project.
+No DNS changes.
+No credential exposure.
+No unsolicited trades.

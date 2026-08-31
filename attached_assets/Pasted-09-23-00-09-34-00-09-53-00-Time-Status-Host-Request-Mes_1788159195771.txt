@@ -1,0 +1,70 @@
+09:23:00
+09:34:00
+09:53:00
+Time
+Status
+Host
+Request
+Messages
+TimeMethodStatusHostRequestMessage
+Aug 31 09:52:30.58
+GET
+404
+www.protradersfx.com
+/api/trades
+{"level":30,"time":1788159150646,"pid":4,"hostname":"169.254.82.235","req":{"id":18,"method":"GET","url":"/api/trades"},"res":{"statusCode":404},"responseTime":2,"msg":"request completed"}
+Aug 31 09:52:23.28
+GET
+200
+www.protradersfx.com
+/health
+{"level":30,"time":1788159143354,"pid":4,"hostname":"169.254.82.235","req":{"id":17,"method":"GET","url":"/health"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+Aug 31 09:52:22.98
+OPTIONS
+200
+www.protradersfx.com
+/api/trades
+{"level":30,"time":1788159143045,"pid":4,"hostname":"169.254.82.235","req":{"id":16,"method":"OPTIONS","url":"/api/trades"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+Aug 31 09:52:22.75
+GET
+404
+www.protradersfx.com
+/api/trades
+{"level":30,"time":1788159142834,"pid":4,"hostname":"169.254.82.235","req":{"id":15,"method":"GET","url":"/api/trades"},"res":{"statusCode":404},"responseTime":2,"msg":"request completed"}
+Aug 31 09:51:58.79
+POST
+204
+www.protradersfx.com
+/api/track
+2
+{"level":30,"time":1788159119596,"pid":4,"hostname":"169.254.82.235","req":{"id":14,"method":"POST","url":"/api/track"},"res":{"statusCode":204},"responseTime":662,"msg":"request completed"}
+Aug 31 09:51:56.13
+GET
+200
+www.protradersfx.com
+/api/market/ticker/R_100
+{"level":30,"time":1788159116391,"pid":4,"hostname":"169.254.82.235","req":{"id":13,"method":"GET","url":"/api/market/ticker/R_100"},"res":{"statusCode":200},"responseTime":78,"msg":"request completed"}
+Aug 31 09:51:55.36
+GET
+200
+www.protradersfx.com
+/api/market/candles/R_100
+{"level":30,"time":1788159115581,"pid":4,"hostname":"169.254.82.235","req":{"id":12,"method":"GET","url":"/api/market/candles/R_100"},"res":{"statusCode":200},"responseTime":84,"msg":"request completed"}
+Aug 31 09:51:54.98
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788159115341,"pid":4,"hostname":"169.254.82.235","req":{"id":11,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":217,"msg":"request completed"}
+Aug 31 09:51:49.39
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788159109737,"pid":4,"hostname":"169.254.82.235","req":{"id":10,"method":"GET","url":"/api/account"},"res":{"statusCode":200},"responseTime":211,"msg":"request completed"}
+Aug 31 09:51:43.75
+GET
+304
+www.protradersfx.com
+/api/account
+{"level":30,"time":1788159104141,"pid":4,"ho

@@ -1,0 +1,57 @@
+This read-only investigation is accepted.
+
+The confirmed failure boundary is:
+
+POST /api/trades
+→ account lookup
+→ Deriv contract availability
+→ proposal validation
+→ INSERT into consumed_trade_proposals
+→ failure
+→ Deriv buy is NOT reached
+
+The response:
+
+“Proposal review could not be recorded. No purchase request was sent.”
+
+confirms that the caught `proposal_review` database-insert branch is producing the 502.
+
+Do NOT claim a specific PostgreSQL cause yet. The exact SQLSTATE, PostgreSQL error message, constraint, permission issue, connection issue, timeout, or schema incompatibility has NOT been established.
+
+### Next action: diagnosis only
+
+Retrieve the runtime log for the failed POST from Vercel:
+
+Project: `protradersfx-v5`
+Production deployment: `e76c368`
+Deployment description: `Log sanitized proposal database diagnostics`
+
+Open Vercel → Runtime Logs and search/filter around the failed POST timestamp for:
+
+`proposal review database insert failed`
+
+We need the complete sanitized diagnostic containing, if available:
+
+* PostgreSQL SQLSTATE
+* PostgreSQL error message
+* constraint/table/column involved
+* error detail/hint
+* stack trace
+* timestamp/request correlation
+
+Do NOT expose or request API keys, session secrets, OAuth tokens, Deriv credentials, database passwords, or other secrets.
+
+The existing evidence already establishes that:
+
+* GET /api/trades returning 404 is expected.
+* OPTIONS /api/trades returns 200 with Allow: POST.
+* The frontend uses POST correctly.
+* The Deriv proposal was generated.
+* The database insert occurs before `buy`.
+* The failed request did not reach Deriv `buy`.
+* No real-money trade was submitted.
+* No schema, deployment setting, trading logic, nonce protection, or ON CONFLICT behavior should be changed yet.
+
+If Vercel Runtime Logs cannot be accessed because the connected API-key integration returns 403, report that access limitation rather than changing production or guessing the PostgreSQL cause.
+
+Once the actual PostgreSQL diagnostic is obtained, stop and report the exact root cause and the smallest targeted fix before applying any production change.

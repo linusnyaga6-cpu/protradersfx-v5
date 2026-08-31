@@ -529,6 +529,12 @@ components:
     TradePreviewInput:
       type: object
       properties:
+        account_id:
+          type: string
+          description: Exact Deriv account selected when the run starts.
+        bot_id:
+          type: string
+          description: Saved bot bound to a bot-assisted execution plan.
         symbol:
           type: string
         contract_type:
@@ -541,6 +547,15 @@ components:
         stop_loss:
           type: number
           exclusiveMinimum: 0
+        run_count:
+          type: number
+          minimum: 1
+          maximum: 10
+          description: Required for bot-assisted sessions.
+        risk_cap:
+          type: number
+          exclusiveMinimum: 0
+          description: Maximum configured exposure for a bot-assisted session.
         stake:
           type: number
           exclusiveMinimum: 0
@@ -564,6 +579,7 @@ components:
           type: string
           description: Signed short-lived token returned by the proposal preview.
       required:
+        - account_id
         - symbol
         - contract_type
         - stake
@@ -571,6 +587,12 @@ components:
     TradeExecutionInput:
       type: object
       properties:
+        account_id:
+          type: string
+          description: Exact Deriv account selected when the run starts.
+        bot_id:
+          type: string
+          description: Saved bot bound to a bot-assisted execution plan.
         symbol: { type: string }
         contract_type:
           type: string
@@ -581,6 +603,15 @@ components:
         stop_loss:
           type: number
           exclusiveMinimum: 0
+        run_count:
+          type: number
+          minimum: 1
+          maximum: 10
+          description: Required for bot-assisted sessions.
+        risk_cap:
+          type: number
+          exclusiveMinimum: 0
+          description: Maximum configured exposure for a bot-assisted session.
         stake:
           type: number
           exclusiveMinimum: 0
@@ -602,7 +633,7 @@ components:
         proposal_token:
           type: string
           description: Required signed single-use token returned by proposal preview.
-      required: [symbol, contract_type, stake, duration, proposal_token]
+      required: [account_id, symbol, contract_type, stake, duration, proposal_token]
     TradePreview:
       type: object
       properties:

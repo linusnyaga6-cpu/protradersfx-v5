@@ -127,6 +127,10 @@ export const GetAccountResponse = zod.object({
 export const createTradeBodyBarrierRegExp = new RegExp('^[0-9]$');
 export const createTradeBodyStopLossExclusiveMin = 0;
 
+export const createTradeBodyRunCountMax = 10;
+
+export const createTradeBodyRiskCapExclusiveMin = 0;
+
 export const createTradeBodyStakeExclusiveMin = 0;
 
 
@@ -137,10 +141,14 @@ export const createTradeBodySessionIdMax = 80;
 
 
 export const CreateTradeBody = zod.object({
+  "account_id": zod.string().describe('Exact Deriv account selected when the run starts.'),
+  "bot_id": zod.string().optional().describe('Saved bot bound to a bot-assisted execution plan.'),
   "symbol": zod.string(),
   "contract_type": zod.enum(['CALL', 'PUT', 'DIGITOVER', 'DIGITUNDER', 'DIGITEVEN', 'DIGITODD']),
   "barrier": zod.string().regex(createTradeBodyBarrierRegExp).optional(),
   "stop_loss": zod.number().gt(createTradeBodyStopLossExclusiveMin).optional(),
+  "run_count": zod.number().min(1).max(createTradeBodyRunCountMax).optional().describe('Required for bot-assisted sessions.'),
+  "risk_cap": zod.number().gt(createTradeBodyRiskCapExclusiveMin).optional().describe('Maximum configured exposure for a bot-assisted session.'),
   "stake": zod.number().gt(createTradeBodyStakeExclusiveMin),
   "duration": zod.number().min(1),
   "source": zod.enum(['manual', 'bulk', 'ai_assisted', 'bot_assisted']).optional(),
@@ -168,6 +176,10 @@ export const CreateTradeResponse = zod.object({
 export const previewTradeBodyBarrierRegExp = new RegExp('^[0-9]$');
 export const previewTradeBodyStopLossExclusiveMin = 0;
 
+export const previewTradeBodyRunCountMax = 10;
+
+export const previewTradeBodyRiskCapExclusiveMin = 0;
+
 export const previewTradeBodyStakeExclusiveMin = 0;
 
 
@@ -178,10 +190,14 @@ export const previewTradeBodySessionIdMax = 80;
 
 
 export const PreviewTradeBody = zod.object({
+  "account_id": zod.string().describe('Exact Deriv account selected when the run starts.'),
+  "bot_id": zod.string().optional().describe('Saved bot bound to a bot-assisted execution plan.'),
   "symbol": zod.string(),
   "contract_type": zod.enum(['CALL', 'PUT', 'DIGITOVER', 'DIGITUNDER', 'DIGITEVEN', 'DIGITODD']),
   "barrier": zod.string().regex(previewTradeBodyBarrierRegExp).optional().describe('Required for digit over and digit under contracts.'),
   "stop_loss": zod.number().gt(previewTradeBodyStopLossExclusiveMin).optional(),
+  "run_count": zod.number().min(1).max(previewTradeBodyRunCountMax).optional().describe('Required for bot-assisted sessions.'),
+  "risk_cap": zod.number().gt(previewTradeBodyRiskCapExclusiveMin).optional().describe('Maximum configured exposure for a bot-assisted session.'),
   "stake": zod.number().gt(previewTradeBodyStakeExclusiveMin),
   "duration": zod.number().min(1),
   "source": zod.enum(['manual', 'bulk', 'ai_assisted', 'bot_assisted']).optional(),

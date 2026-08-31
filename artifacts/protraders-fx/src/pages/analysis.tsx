@@ -4,6 +4,8 @@ import { Link } from "wouter"
 import {
   getGetMarketCandlesQueryKey,
   getGetMarketTickerQueryKey,
+  getGetAccountQueryKey,
+  useGetAccount,
   useGetMarketCandles,
   useGetMarketTicker,
   useScanBestMarket,
@@ -14,11 +16,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatVolatility } from "@/lib/format"
 import { DEFAULT_MARKET_SYMBOL, marketLabel } from "@/lib/markets"
 import { useDerivMarkets } from "@/hooks/use-deriv-markets"
+import { DigitRail } from "@/components/trading/digit-rail"
+import { TradingTabs } from "@/components/trading/trading-tabs"
+import { AccountStrip } from "@/components/trading/account-strip"
 
 export default function Analysis() {
   const [selectedSymbol, setSelectedSymbol] = useState(DEFAULT_MARKET_SYMBOL)
   const marketQuery = useDerivMarkets()
   const bestScan = useScanBestMarket()
+  const account = useGetAccount(undefined, {
+    query: { queryKey: getGetAccountQueryKey(), refetchInterval: 5000 },
+  })
   useEffect(() => {
     if (marketQuery.markets.length && !marketQuery.markets.some(item => item.symbol === selectedSymbol)) setSelectedSymbol(marketQuery.defaultSymbol)
   }, [marketQuery.markets, marketQuery.defaultSymbol, selectedSymbol])
@@ -36,6 +44,8 @@ export default function Analysis() {
   const tick = ticker.data as any
   const history = candles.data as any
   const price = tick?.quote ?? tick?.price
+  const quoteDigits = String(price ?? "").replace(/\D/g, "")
+  const liveLastDigit = quoteDigits ? Number(quoteDigits.at(-1)) : null
   const offline = tick?.available === false || ticker.isError
   const latest = Array.isArray(history?.candles) ? history.candles.at(-1) : undefined
   const scanBest = () => bestScan.mutate(undefined, {
@@ -62,6 +72,8 @@ export default function Analysis() {
       </section>
 
       <main className="mx-auto max-w-6xl space-y-6 px-5 py-10 md:px-10 md:py-14">
+        <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} />
+        <TradingTabs active="analysis" />
         <div className="grid gap-3 sm:grid-cols-3">
           <InfoTile label="Source" value="Deriv live endpoint" />
           <InfoTile label="Refresh" value={ticker.isFetching ? "Syncing" : "Every 15 seconds"} />
@@ -130,6 +142,7 @@ export default function Analysis() {
               </div>
 
               <CompactChart candles={history?.candles} />
+              <DigitRail activeDigit={liveLastDigit} />
 
               <div className="grid gap-3 sm:grid-cols-4">
                 <DataTile label="Open" value={latest?.open} />

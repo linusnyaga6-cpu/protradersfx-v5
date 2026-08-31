@@ -1,0 +1,55 @@
+Proceed with the next read-only verification.
+
+We now have a concrete lead:
+
+* Aiven PG Studio: `defaultdb`, user `avnadmin`, zero application tables.
+* Repository schema defines `consumed_trade_proposals`.
+* No migration creates that table.
+* `pnpm --filter @workspace/db run push` is required to apply the schema.
+* Vercel does not automatically run `db push`.
+
+### Task #19 — Establish whether Vercel production uses this exact database
+
+Do NOT reveal or print the full `DATABASE_URL`, password, credentials, tokens, or complete connection string.
+
+Use the safest available method to compare only non-secret connection metadata between Vercel production and the Aiven PG Studio database.
+
+We need to establish, where possible:
+
+* database name
+* database host/endpoint identity, without exposing credentials
+* PostgreSQL service/database identity
+* whether Vercel production and PG Studio reach the same Aiven database
+
+If Vercel environment-variable access is blocked by the existing 403, do NOT attempt to bypass it and do NOT request the secret.
+
+### If production is confirmed to use this Aiven `defaultdb`
+
+Then report:
+
+“Production database is confirmed to be the empty Aiven defaultdb.”
+
+At that point, the missing application schema becomes the leading explanation for the `consumed_trade_proposals` INSERT failure.
+
+However, do NOT create the schema yet.
+
+### If production cannot be confirmed
+
+Report that the database target remains unknown.
+
+Do NOT change DATABASE_URL or Vercel environment variables.
+
+### Also prepare the schema deployment plan, but do not execute it
+
+Determine exactly what command would provision the existing repository schema and what tables it would create.
+
+Before any schema change, report:
+
+1. exact command,
+2. exact expected schema changes,
+3. whether it is additive,
+4. whether it could modify/drop existing data,
+5. whether a backup/snapshot should be taken first,
+6. how we would verify the result afterward.
+
+No migrations, `db push`, table creation, permission changes, or production deployment yet.

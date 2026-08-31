@@ -179,7 +179,7 @@ export default function BulkTrader() {
         : "Market scan has not returned yet."
 
   return (
-        <Workspace title="Bulk Trader" eyebrow="Fast, bounded execution" description={`Set a stake and run count for a bounded ${accountSessionLabel} session.`}>
+        <Workspace title="Bulk Trader" eyebrow={selectedAccountType === "real" ? "Real-account execution" : "Fast, bounded execution"} description={`Run a bounded ${accountSessionLabel} session.`}>
       <TradingTabs active="bulk" />
       <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} switchingDisabled={runSession.isBusy} />
 
@@ -222,7 +222,7 @@ export default function BulkTrader() {
         </Alert>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
+        <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
         <Card>
           <CardHeader className="border-b bg-secondary/10">
             <CardTitle className="flex items-center gap-2 text-lg"><ScanSearch className="h-5 w-5 text-primary" />What Bulk Trader is doing</CardTitle>

@@ -1,0 +1,77 @@
+Finish the ProTraders FX production repair from the current project state.
+
+Do NOT rebuild the application from scratch and do NOT change the DNS, Vercel domain configuration, branding, working market-data APIs, or existing Deriv OAuth implementation unless your inspection proves a change is necessary.
+
+Current status:
+
+* Production website: https://www.protradersfx.com
+* Vercel deployment is READY.
+* `/api/session` works.
+* `/api/market/symbols` works.
+* `/api/market/ticker/R_100` works.
+* `/api/market/candles/R_100` works.
+* `/api/track` has been corrected and now returns 204 when optional persistence is unavailable.
+* `/api/deriv/login` returns 503 because production configuration values are empty.
+* `BASE_URL` is correct.
+* Deriv OAuth code and callback implementation have already been inspected and appear intact.
+
+The current required production configuration is:
+
+* DERIV_CLIENT_ID — now populated
+* DERIV_PUBLIC_APP_ID — now populated
+* DERIV_AFFILIATE_PARAM
+* DERIV_AFFILIATE_TOKEN
+* DERIV_AFFILIATE_ID
+* DERIV_CAMPAIGN
+* DERIV_SCOPE
+* SESSION_SECRET
+
+Verify the code to determine EXACTLY what each variable is expected to contain. In particular, distinguish:
+
+* Deriv OAuth client ID
+* Deriv public application ID
+* Deriv affiliate/referral parameter
+* Deriv affiliate token
+* referral code
+* affiliate/tracking link
+* session secret
+
+Do not assume that a referral code or referral URL is the same thing as DERIV_AFFILIATE_TOKEN.
+
+Verify that the OAuth authorization request uses:
+https://protradersfx.com/oauth/callback
+
+Verify that the registered Deriv web application has the required:
+
+* Trade scope
+* Account management scope
+* HTTPS redirect URL
+
+Verify that the production OAuth flow will support an EXISTING Deriv user, not only new account creation.
+
+Verify that the callback:
+
+1. receives the authorization code,
+2. exchanges it correctly,
+3. retrieves the authenticated Deriv account,
+4. creates the application session,
+5. redirects back to ProTraders FX,
+6. allows the dashboard to obtain account/balance information.
+
+Do not expose any secret values in your response, logs, commits, or source files.
+
+Do not invent credentials or tokens.
+
+Run all available typechecks, builds, tests, and local endpoint checks.
+
+Then report:
+
+1. Exact root cause(s).
+2. Exact files changed, if any.
+3. Exact environment variables still missing or incorrectly configured, by NAME ONLY.
+4. Whether `/api/deriv/login` returns a valid Deriv OAuth redirect locally.
+5. Whether `/api/track` returns 204.
+6. Whether market APIs remain operational.
+7. Whether the project is ready for Vercel production deployment.
+
+If code changes are required, make the smallest safe changes and commit them. Do not claim production OAuth is fixed merely because the build passes; distinguish code readiness from production environment configuration.

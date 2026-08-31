@@ -1,0 +1,94 @@
+Proceed with a READ-ONLY Aiven/PostgreSQL investigation.
+
+Do NOT change production code, database schema, permissions, SSL settings, connection strings, deployment settings, trading logic, or Deriv behavior. Do NOT submit any trade.
+
+The goal is only to determine whether the Aiven PostgreSQL environment can explain the failure at the `consumed_trade_proposals` INSERT.
+
+### Run these read-only SQL checks
+
+First identify the actual database/session/server:
+
+```sql
+SELECT
+  current_database(),
+  current_user,
+  inet_server_addr(),
+  inet_server_port(),
+  version();
+```
+
+Then check recovery/read-only state and privileges:
+
+```sql
+SELECT
+  current_database(),
+  current_user,
+  pg_is_in_recovery();
+
+SELECT has_schema_privilege(
+  current_user,
+  'public',
+  'USAGE'
+);
+
+SELECT has_table_privilege(
+  current_user,
+  'public.consumed_trade_proposals',
+  'INSERT'
+);
+```
+
+### Also inspect the table metadata read-only
+
+```sql
+SELECT
+  column_name,
+  data_type,
+  is_nullable,
+  column_default
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = 'consumed_trade_proposals'
+ORDER BY ordinal_position;
+```
+
+And confirm the primary key/constraints:
+
+```sql
+SELECT
+  conname,
+  contype,
+  pg_get_constraintdef(oid)
+FROM pg_constraint
+WHERE conrelid = 'public.consumed_trade_proposals'::regclass;
+```
+
+### Important
+
+Do NOT attempt an INSERT merely to test it.
+
+Do NOT grant privileges.
+
+Do NOT change the database.
+
+Do NOT alter `sslmode`.
+
+Do NOT rotate or expose credentials.
+
+Do NOT paste the Aiven password or full Service URI into chat.
+
+### Report results
+
+Return only the sanitized query results and clearly state:
+
+1. `pg_is_in_recovery()` result
+2. Schema USAGE privilege result
+3. Table INSERT privilege result
+4. Actual database/user reached
+5. Table columns/defaults
+6. Constraints
+7. Whether any result provides evidence for an Aiven-side cause
+
+If all read-only checks pass, explicitly say that these checks did NOT identify the cause and do not invent one.
+
+The PostgreSQL SQLSTATE from the failed production INSERT remains the definitive missing diagnostic.

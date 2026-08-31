@@ -6,6 +6,7 @@ import { useGetSessionStatus } from "@workspace/api-client-react"
 import { Button } from "@/components/ui/button"
 import { GlobalSearch } from "./global-search"
 import { endSession } from "@/lib/logout"
+import { WorkforceNav } from "./workforce-nav"
 
 export function Navbar() {
   const [location] = useLocation()
@@ -29,6 +30,10 @@ export function Navbar() {
   const handleLogout = async () => {
     setIsLoggingOut(true)
     await endSession()
+  }
+
+  if (location === "/bots") {
+    return <WorkforceNav authenticated={session?.authenticated} />
   }
 
   return (

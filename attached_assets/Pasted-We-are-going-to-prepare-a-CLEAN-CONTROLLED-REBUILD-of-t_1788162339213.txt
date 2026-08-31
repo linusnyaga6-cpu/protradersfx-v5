@@ -1,0 +1,185 @@
+We are going to prepare a CLEAN, CONTROLLED REBUILD of the ProTradersFX production setup.
+
+This is a fresh implementation pass, but do NOT blindly rewrite working trading logic. Preserve the existing application architecture and functionality unless a specific defect requires change.
+
+### SECURITY FIRST
+
+A database password was accidentally exposed during troubleshooting.
+
+Do NOT use, display, log, commit, or reproduce that password.
+
+The database credential must be rotated in Aiven before production is reconnected.
+
+Do NOT ask me to paste the new password into chat.
+
+### OBJECTIVE
+
+Prepare ProTradersFX so that:
+
+1. The production PostgreSQL database is correctly provisioned.
+2. The complete Drizzle schema is reproducible.
+3. `consumed_trade_proposals` definitely exists.
+4. `/api/trades` can record proposal consumption before Deriv `buy`.
+5. Duplicate proposal protection remains intact.
+6. PostgreSQL errors are safely diagnosable.
+7. No secrets are hard-coded.
+8. No real-money trade is submitted during setup/testing.
+9. Production configuration is explicit and reproducible.
+
+### PRESERVE
+
+Do NOT remove or redesign:
+
+* Deriv OAuth/login flow
+* account loading
+* balance display
+* market data
+* instrument selection
+* proposal generation
+* sealed proposal validation
+* nonce protection
+* `consumed_trade_proposals`
+* Deriv buy sequencing
+* existing frontend trading UI
+
+The critical trade order must remain:
+
+proposal validation
+→ consumed_trade_proposals INSERT
+→ successful consumption confirmation
+→ Deriv buy
+
+If the INSERT fails, Deriv buy MUST NOT execute.
+
+### DATABASE
+
+The known Aiven service currently has:
+
+database: `defaultdb`
+user: `avnadmin`
+host: `pg-1adc34e2-linusnyaga6-cc81.b.aivencloud.com`
+port: `15673`
+SSL: `require`
+
+The inspected database currently contains zero application tables and:
+
+`public.consumed_trade_proposals` does not exist.
+
+Do NOT assume this database is production until the Vercel target is confirmed.
+
+### SCHEMA
+
+Use the existing Drizzle schema as the source of truth.
+
+The complete schema currently contains:
+
+* activity_events
+* analyses
+* bot_events
+* bot_runs
+* bot_templates
+* consumed_trade_proposals
+* recovery_incidents
+* risk_acknowledgements
+* snapshots
+* transactions
+
+Do NOT hand-create only `consumed_trade_proposals`.
+
+Do NOT use `push-force`.
+
+Do NOT create or alter the production database yet.
+
+### MIGRATION/PROVISIONING
+
+Prepare a clean, reproducible database provisioning strategy.
+
+Review:
+
+`lib/db/src/schema/**`
+`lib/db/src/schema/index.ts`
+`lib/db/drizzle.config.ts`
+`lib/db/package.json`
+`lib/db/migrations/**`
+
+Determine whether the current Drizzle schema can safely provision the empty Aiven database with:
+
+`pnpm --filter @workspace/db run push`
+
+Do NOT execute it yet.
+
+Do NOT generate migrations yet.
+
+### TRADE ERROR DIAGNOSTICS
+
+Keep the existing sanitized PostgreSQL diagnostic behavior.
+
+The diagnostic must expose only safe metadata such as:
+
+* SQLSTATE/code
+* constraint
+* sanitized/truncated message
+
+Never log:
+
+* DATABASE_URL
+* password
+* access tokens
+* OAuth tokens
+* cookies
+* session secrets
+* card/payment information
+* complete request payloads
+
+The client may continue receiving:
+
+“Proposal review could not be recorded. No purchase request was sent.”
+
+### PRODUCTION CONFIGURATION
+
+The application must use:
+
+`DATABASE_URL`
+
+with:
+
+`POSTGRES_URL`
+
+as fallback if already supported.
+
+Do not hard-code an Aiven host or password.
+
+Review `DB_HOST` only as configuration metadata if the application already uses it; do not introduce a second competing database configuration unnecessarily.
+
+### VERCEL
+
+Do not modify Vercel environment variables yet.
+
+Do not deploy yet.
+
+Do not expose or print the production DATABASE_URL.
+
+### DELIVERABLE
+
+Before changing anything, inspect the entire relevant repository and provide:
+
+1. Current database architecture
+2. Current schema source of truth
+3. Missing/incomplete migration issues
+4. Exact files that need modification
+5. Exact proposed changes
+6. Exact database provisioning command
+7. Expected tables/indexes/constraints
+8. How production will be verified afterward
+9. How the `/api/trades` flow will be tested safely without real-money execution
+10. Rollback plan
+
+Then STOP.
+
+No files changed.
+No database changes.
+No Vercel changes.
+No deployment.
+No trades.
+
+Wait for approval before executing the rebuild.

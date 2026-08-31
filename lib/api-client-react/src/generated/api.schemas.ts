@@ -240,6 +240,10 @@ export const TradePreviewInputLiveConfirmation = {
 } as const;
 
 export interface TradePreviewInput {
+  /** Exact Deriv account selected when the run starts. */
+  account_id: string;
+  /** Saved bot bound to a bot-assisted execution plan. */
+  bot_id?: string;
   symbol: string;
   contract_type: TradePreviewInputContractType;
   /**
@@ -249,6 +253,17 @@ export interface TradePreviewInput {
   barrier?: string;
   /** @exclusiveMinimum 0 */
   stop_loss?: number;
+  /**
+     * Required for bot-assisted sessions.
+     * @minimum 1
+     * @maximum 10
+     */
+  run_count?: number;
+  /**
+     * Maximum configured exposure for a bot-assisted session.
+     * @exclusiveMinimum 0
+     */
+  risk_cap?: number;
   /** @exclusiveMinimum 0 */
   stake: number;
   /** @minimum 1 */
@@ -294,12 +309,27 @@ export const TradeExecutionInputLiveConfirmation = {
 } as const;
 
 export interface TradeExecutionInput {
+  /** Exact Deriv account selected when the run starts. */
+  account_id: string;
+  /** Saved bot bound to a bot-assisted execution plan. */
+  bot_id?: string;
   symbol: string;
   contract_type: TradeExecutionInputContractType;
   /** @pattern ^[0-9]$ */
   barrier?: string;
   /** @exclusiveMinimum 0 */
   stop_loss?: number;
+  /**
+     * Required for bot-assisted sessions.
+     * @minimum 1
+     * @maximum 10
+     */
+  run_count?: number;
+  /**
+     * Maximum configured exposure for a bot-assisted session.
+     * @exclusiveMinimum 0
+     */
+  risk_cap?: number;
   /** @exclusiveMinimum 0 */
   stake: number;
   /** @minimum 1 */

@@ -1,0 +1,106 @@
+The Vercel connection repair is the next step.
+
+Do not modify the application, database, deployment, environment variables, or schema.
+
+### Execute this now
+
+1. Check the existing Vercel connection in the Replit Project Editor/Connectors.
+2. If a **Manage**, **Reconnect**, or **Replace credentials** option is available, use the supported connection flow.
+3. The credential must have read access to the Vercel account/team that owns:
+   `protradersfx-v5`
+4. It must be able to:
+
+   * view the project
+   * list deployments
+   * inspect deployment events
+   * read runtime/function logs
+5. Do not ask me to paste any API token into chat.
+6. Do not create a second Vercel integration because an existing Vercel connection is already attached.
+7. Do not rotate or modify credentials from the agent environment.
+
+### After the connection is repaired
+
+Immediately retry the authorized Vercel log lookup for the existing `/api/trades` 502.
+
+Inspect the relevant Production deployment and look around the timestamp of the failed request.
+
+Search specifically for:
+
+```text
+proposal_review_db_error
+trade execution failed
+PostgreSQL
+SQLSTATE
+constraint
+Deriv
+buy
+persistence
+```
+
+Retrieve only sanitized diagnostic information.
+
+I need the following:
+
+```text
+Deployment ID:
+Request ID:
+Execution stage:
+HTTP status:
+Error category:
+PostgreSQL code/constraint, if any:
+Deriv error code/message, if any:
+Persistence error, if any:
+Sanitized error message:
+```
+
+Do NOT expose:
+
+```text
+cookies
+authorization headers
+API keys
+access tokens
+proposal tokens
+request bodies containing credentials
+DATABASE_URL
+environment variables
+session secrets
+```
+
+### If the Vercel connection cannot be repaired
+
+Stop. Do not change anything.
+
+Tell me exactly:
+
+```text
+Vercel connection cannot be repaired through the available Replit connector.
+```
+
+Then give me the exact manual Vercel dashboard steps required to retrieve the runtime log.
+
+### Critical safety requirement
+
+Do not submit another trade to reproduce the problem.
+
+Do not make a code fix based on speculation.
+
+Do not change the database.
+
+Do not deploy.
+
+The objective is ONLY to obtain the actual Vercel runtime error responsible for the existing `/api/trades` 502.
+
+Current known state:
+
+```text
+Aiven connection: VERIFIED
+Aiven schema: VERIFIED
+consumed_trade_proposals: VERIFIED
+Database insert schema compatibility: VERIFIED
+Vercel production deployment: WORKING
+/api/trades: 502
+Root cause: NOT YET PROVEN
+```
+
+Return the result of the connection check and, if successful, the sanitized Vercel runtime-log diagnosis.

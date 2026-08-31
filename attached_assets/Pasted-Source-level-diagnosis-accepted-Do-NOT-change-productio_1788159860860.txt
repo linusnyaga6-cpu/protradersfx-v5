@@ -1,0 +1,46 @@
+Source-level diagnosis accepted.
+
+Do NOT change production database schema, permissions, transaction behavior, ON CONFLICT behavior, Deriv logic, or trading logic.
+
+The confirmed architecture is:
+
+POST /api/trades
+→ account lookup
+→ contract availability
+→ sealed proposal validation
+→ INSERT consumed_trade_proposals
+→ Deriv purchase helper
+
+The INSERT is:
+
+INSERT INTO "consumed_trade_proposals"
+("nonce", "owner_key", "proposal_id", "consumed_at")
+VALUES ($1, $2, $3, DEFAULT)
+ON CONFLICT ("nonce") DO NOTHING
+RETURNING "nonce";
+
+The INSERT is caught locally and converted into the intentional 502:
+
+“Proposal review could not be recorded. No purchase request was sent.”
+
+The Vercel `failed with status code 502` stack is only the response-completion logger and is NOT the PostgreSQL exception.
+
+### Next diagnostic task
+
+Before making any further change, verify deployment `e76c368` itself.
+
+1. Confirm that the deployed build contains the diagnostic logging code in `artifacts/api-server/src/routes/protraders.ts`.
+2. Confirm that the generated production artifact `artifacts/api-server/dist/app.mjs` contains the corresponding diagnostic logic.
+3. Confirm that the deployed route actually executes that catch block for the failing INSERT.
+4. Confirm exactly what logger call is made and whether its log level is compatible with Vercel Runtime Logs.
+5. Confirm whether the diagnostic event should appear as a structured Pino log.
+6. Determine whether Vercel is filtering/suppressing that application log or whether the deployed runtime never emitted it.
+7. Compare the source/build/deployment commit so we know the runtime being tested actually corresponds to `e76c368`.
+
+Do NOT redeploy merely to test this.
+
+If all of the above confirms that `e76c368` contains the diagnostic logger and executes it, then the remaining problem is log visibility/access—not yet a proven PostgreSQL failure.
+
+Only after establishing that should we decide whether a minimal diagnostic-only logging deployment is necessary.
+
+No trading or database behavior should be altered.

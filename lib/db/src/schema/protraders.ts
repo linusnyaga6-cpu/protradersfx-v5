@@ -1,5 +1,5 @@
 import { createInsertSchema } from "drizzle-zod";
-import { boolean, index, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, integer, jsonb, numeric, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
 
 const owned = {
@@ -33,6 +33,17 @@ export const botRuns = pgTable("bot_runs", {
   botId: uuid("bot_id").notNull().references(() => bots.id, { onDelete: "cascade" }),
   mode: text("mode").notNull(),
   status: text("status").notNull(),
+  contractType: text("contract_type"),
+  duration: integer("duration"),
+  barrier: text("barrier"),
+  stopLoss: numeric("stop_loss", { precision: 14, scale: 2 }),
+  accountId: text("account_id"),
+  accountType: text("account_type"),
+  stake: numeric("stake", { precision: 14, scale: 2 }),
+  runCount: integer("run_count"),
+  riskCap: numeric("risk_cap", { precision: 14, scale: 2 }),
+  acceptedRuns: integer("accepted_runs").default(0).notNull(),
+  settledLoss: numeric("settled_loss", { precision: 14, scale: 2 }).default("0").notNull(),
   result: jsonb("result"),
   startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
   completedAt: timestamp("completed_at", { withTimezone: true }),

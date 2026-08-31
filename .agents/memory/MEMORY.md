@@ -6,3 +6,12 @@
 - [Logout cookie reliability](logout-cookie-reliability.md) — use an explicit credentialed logout request and a guaranteed redirect; clear session cookies with an expired value and no-store headers.
 - [Mockup sandbox production builds](mockup-sandbox-builds.md) — Vite build config must not require workflow-only PORT or BASE_PATH variables.
 - [Deriv proposal purchase flow](deriv-buy-payload.md) — create and buy each proposal on one OAuth OTP WebSocket, using top-level buy and price fields.
+- [Vercel legacy entrypoint diagnosis](vercel-legacy-entrypoint.md) — a `/var/task/server.js` parse error can come from a linked legacy Vercel project even when the current Git tree uses a TypeScript entrypoint.
+- [Vercel pnpm monorepo builds](vercel-pnpm-monorepo-builds.md) — legacy `builds` projects may need Corepack opt-in, API prebundling, and rewrites for workspace-mounted static output.
+- [ProTraders production path](protraders-production-path.md) — production is GitHub `protradersfx-v5` main → Vercel project `protradersfx-v5`; reconcile remote history without force-pushing.
+- [Account selection cache race](account-selection-cache.md) — cancel polling before switching accounts and update the shared cache without an immediate refetch.
+- [GitHub tree completeness](github-tree-completeness.md) — partial API commits can omit tracked workspace files; compare the remote tree before relying on local build success.
+- [Proposal retry idempotency](proposal-retry-idempotency.md) — retries must start a fresh provider proposal while duplicate nonces remain safely blocked and readable.
+- [Vercel runtime-log access](vercel-log-access.md) — a connected Vercel API key may return 403 for deployment/runtime logs; use the dashboard or repair read access.
+- [External Aiven verification](external-aiven-verification.md) — Replit Production SQL targets its own replica and cannot verify an external Aiven database; use Aiven's read-only SQL tools.
+- [Vercel static asset imports](vercel-static-assets.md) — in legacy monorepo routing, import critical images through Vite so they emit under the hashed assets path instead of relying on root public rewrites.

@@ -1,0 +1,70 @@
+The authenticated production diagnostic has now confirmed the Vercel runtime is connected to the intended Aiven primary:
+
+database = defaultdb
+user = avnadmin
+server = 143.244.143.135/32
+port = 15673
+PostgreSQL = 18.6
+isInRecovery = false
+
+Therefore stop investigating database-target/connection identity as the cause.
+
+Perform a READ-ONLY code/data-path investigation of the `transaction_persistence` stage.
+
+Inspect the exact object/value construction immediately before:
+
+`db.insert(transactions)`
+
+in `artifacts/api-server/src/routes/protraders.ts`.
+
+Compare EVERY inserted field against the live `public.transactions` schema.
+
+For each field report:
+
+* application field name
+* database column
+* runtime data type
+* database type
+* nullable/default status
+* whether the value can be NULL
+* whether the value can be NaN/Infinity
+* whether serialization/transformation occurs
+* any possible enum/length/precision/type violation
+
+Pay particular attention to:
+
+* timestamps such as opened_at, settled_at, created_at, updated_at
+* numeric stake/payout/profit/balance values
+* contract ID and transaction identifiers
+* metadata JSON/JSONB
+* account ID/type
+* symbol
+* contract type
+* duration/barrier/stop-loss fields
+* any value returned by Deriv that is transformed before insertion
+
+Do NOT:
+
+* submit `/api/trades`
+* execute another trade
+* modify the database
+* run migrations
+* change environment variables
+* change the INSERT
+* deploy
+* alter trading/risk/authentication logic
+
+If possible, statically identify any value that can cause PostgreSQL to reject the INSERT.
+
+Also inspect whether the current diagnostic catch is capable of exposing the PostgreSQL SQLSTATE/constraint/message from this specific INSERT. Do not expose secrets or trade credentials.
+
+Report:
+
+1. EXACT INSERT OBJECT
+2. FIELD-BY-FIELD TYPE COMPARISON
+3. SUSPECTED VALUE, if any
+4. EXPECTED POSTGRESQL FAILURE, if determinable
+5. SQLSTATE, if already available
+6. SAFE MINIMAL FIX, but DO NOT APPLY IT
+
+Stop after the read-only investigation.

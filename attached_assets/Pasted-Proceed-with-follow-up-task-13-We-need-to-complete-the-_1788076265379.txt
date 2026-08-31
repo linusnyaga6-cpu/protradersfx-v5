@@ -1,0 +1,80 @@
+Proceed with follow-up task #13.
+
+We need to complete the remaining production infrastructure required for REAL Deriv account trading.
+
+Use the existing workflow only:
+
+GitHub:
+linusnyaga6-cpu/protradersfx-v5
+Branch:
+main
+
+Vercel:
+protradersfx-v5
+
+Production:
+https://www.protradersfx.com
+
+Do NOT use Replit Publishing.
+Do NOT create a new Vercel project.
+Do NOT disable the persistence safety gate.
+Do NOT enable real-money trading until persistence is verified.
+
+First inspect the existing persistence implementation and schema requirements.
+
+Determine exactly what PostgreSQL configuration the application expects:
+
+* DATABASE_URL
+* POSTGRES_URL
+* required tables/schema
+* migrations
+* connection requirements
+
+Use an existing authorized Vercel-compatible PostgreSQL integration if one is already available.
+
+If no database provider is currently connected, do NOT invent credentials or create an unsafe workaround. Tell me exactly which database connection needs to be established.
+
+Once a legitimate PostgreSQL database is available:
+
+1. Configure its connection securely in Vercel Production and Preview.
+2. Never expose the connection string.
+3. Run/migrate the existing required schema.
+4. Verify the application can create and retrieve proposal/order/transaction/settlement records.
+5. Verify persistence survives separate serverless invocations.
+6. Verify duplicate-order protection.
+7. Verify rejected orders are recorded correctly.
+8. Verify settlement/reconciliation records.
+9. Verify Stop Loss/Take Profit data is preserved.
+10. Do not place a real-money trade during testing.
+
+Then review the current trading configuration.
+
+Do NOT enable unrestricted symbols.
+
+Prepare a conservative reviewed TRADING_ALLOWED_SYMBOLS configuration based on symbols that the current implementation actually supports correctly.
+
+Do NOT enable:
+TRADING_LIVE_ENABLED=true
+or
+TRADING_DEMO_ONLY=false
+
+until persistence and the allowlist have been verified.
+
+After persistence is confirmed, report exactly:
+
+* persistenceConfigured
+* tradingEnabled
+* liveTradingEnabled
+* demoOnly
+* allowedSymbols
+* readyForControlledLiveTest
+* readyForRealTrading
+
+If all technical requirements are satisfied, stop BEFORE enabling real-money trading and tell me the exact final configuration that is ready for explicit approval.
+
+Then commit all code/schema changes to GitHub main and deploy through the existing Vercel connection.
+
+No Replit Publishing.
+No DNS changes.
+No credential exposure.
+No unsolicited real trades.

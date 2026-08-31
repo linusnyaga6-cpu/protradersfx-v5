@@ -1,0 +1,66 @@
+Finish the ProTraders FX repair completely.
+
+You have already identified that the source code is correct and that the remaining production failure is configuration.
+
+Do NOT rebuild the application.
+
+First inspect whether this Replit project has an authorized Vercel integration or deployment connection to the Vercel project `protradersfx-v5`.
+
+If Vercel access is available:
+
+1. Inspect the Vercel Production environment variables by NAME and configuration status only. Never print secret values.
+2. Make sure these variables are actually available to the ACTIVE PRODUCTION deployment:
+
+   * DERIV_CLIENT_ID
+   * DERIV_PUBLIC_APP_ID
+   * DERIV_AFFILIATE_TOKEN
+   * SESSION_SECRET
+3. Do not overwrite a valid existing secret or credential with a guessed value.
+4. Do not use my referral code as DERIV_AFFILIATE_TOKEN unless the application/Deriv documentation explicitly confirms that it is the required token.
+5. Confirm that BASE_URL is:
+   https://protradersfx.com
+6. Confirm the OAuth callback is:
+   https://protradersfx.com/oauth/callback
+7. Confirm DERIV_SCOPE is:
+   trade account_manage
+   unless the existing application requires something different.
+8. Redeploy after any legitimate environment-variable correction.
+9. After deployment, test:
+
+   * /api/preflight
+   * /api/session
+   * /api/market/symbols
+   * /api/market/ticker/R_100
+   * /api/market/candles/R_100
+   * /api/track
+   * /api/deriv/login
+
+For `/api/deriv/login`, verify that it returns a valid OAuth redirect rather than 503.
+
+If Vercel access is NOT available, do not pretend to have changed Vercel. Instead, tell me exactly which four values still need to be entered into Vercel and why.
+
+For SESSION_SECRET:
+
+* If the application does not already have one, generate a cryptographically secure high-entropy value using a secure random generator.
+* Never print the generated secret in the response or commit it to source control.
+* Only configure it through the secure Vercel environment if authorized Vercel access exists.
+
+For Deriv credentials:
+
+* Never invent or guess DERIV_CLIENT_ID, DERIV_PUBLIC_APP_ID, or DERIV_AFFILIATE_TOKEN.
+* Use only values already securely configured in the authorized environment or values explicitly supplied through the secure configuration interface.
+
+Do not expose any secret values in logs, commits, screenshots, or your final report.
+
+The final goal is:
+
+ProTraders FX
+→ Connect/Login with Deriv
+→ existing Deriv user authenticates
+→ Deriv OAuth callback
+→ authenticated ProTraders FX session
+→ account/balance
+→ market data
+→ trading
+
+Only report the system as COMPLETE if `/api/preflight` confirms the required production configuration and `/api/deriv/login` returns a valid OAuth redirect in production.

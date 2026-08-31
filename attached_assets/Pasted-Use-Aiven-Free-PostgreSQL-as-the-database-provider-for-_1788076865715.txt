@@ -1,0 +1,72 @@
+Use Aiven Free PostgreSQL as the database provider for ProTraders FX.
+
+Important:
+
+* Do NOT use Neon.
+* Do NOT require Replit Core.
+* Do NOT use Replit Publishing.
+* Do NOT use the Replit development database as production.
+* Do NOT bypass the persistence safety gate.
+* Do NOT enable real-money trading yet.
+* Do NOT expose any credentials.
+
+Existing infrastructure:
+
+* GitHub: linusnyaga6-cpu/protradersfx-v5
+* Branch: main
+* Vercel project: protradersfx-v5
+* Production: https://www.protradersfx.com
+
+Aiven Free PostgreSQL is the intended $0 provider. It currently offers a free PostgreSQL tier without requiring a credit card.
+
+Proceed as follows:
+
+1. Open the Aiven authorization/signup flow.
+2. If Aiven requires my login or authorization, STOP and show me exactly what I need to click.
+3. Do not ask me to upgrade to a paid plan.
+4. Create/select a FREE PostgreSQL service only.
+5. Verify that the service is PostgreSQL and that it provides a secure TLS connection.
+6. Do not display the database password or connection string.
+7. Connect the database to the existing Vercel project.
+8. Configure the secure connection as DATABASE_URL or POSTGRES_URL for Vercel Production and Preview.
+9. Run the existing Drizzle schema migration/push.
+10. Verify all required tables:
+    activity_events
+    analyses
+    bot_events
+    bot_runs
+    bot_templates
+    bots
+    consumed_trade_proposals
+    recovery_incidents
+    risk_acknowledgements
+    snapshots
+    transactions
+11. Test persistence from actual Vercel serverless invocations.
+12. Verify proposal nonce/duplicate protection.
+13. Verify transaction and settlement records.
+14. Verify rejected-order recording.
+15. Verify Stop Loss metadata persistence.
+16. Redeploy through the existing GitHub → Vercel workflow if required.
+17. Check /api/preflight and report the results.
+
+After persistence is successfully verified, configure only:
+
+TRADING_ALLOWED_SYMBOLS=R_10,R_25,R_50,R_75,R_100
+
+Do NOT change:
+TRADING_LIVE_ENABLED
+TRADING_DEMO_ONLY
+
+Do NOT place any real-money or unsolicited Demo trades.
+
+Stop after infrastructure readiness is confirmed and report:
+
+* persistenceConfigured
+* allowedSymbols
+* liveTradingEnabled
+* demoOnly
+* readyForControlledLiveTest
+* readyForRealTrading
+
+If Aiven cannot be connected without payment, STOP and tell me rather than changing the architecture or bypassing safety controls.

@@ -1,0 +1,114 @@
+Vercel authorization is now confirmed and working.
+
+Do NOT make any code, database, environment, or deployment changes.
+
+The connector successfully confirmed:
+
+```text
+Project: protradersfx-v5
+Team: melody10467-8101s-projects
+Deployment: dpl_5SgofjWjPcT4aaP75CZECLEeeYbr
+Commit: e76c368
+Status: READY
+```
+
+However, the runtime-log query returned only:
+
+```text
+Exceeded query duration limit of 5 minutes
+source: delimiter
+level: error
+requestPath: empty
+responseStatusCode: 0
+```
+
+This is a log-query timeout, NOT the `/api/trades` application error.
+
+### Next objective
+
+Do not run another broad five-minute log query.
+
+Use the Vercel dashboard's filtered Logs view for:
+
+```text
+Project: protradersfx-v5
+Production deployment
+```
+
+Narrow the time range as tightly as possible around the existing failed request:
+
+```text
+POST /api/trades
+Request ID: 7
+Response time: approximately 2289 ms
+HTTP 502
+```
+
+Search/filter for these terms individually:
+
+```text
+/api/trades
+trade execution failed
+proposal_review_db_error
+Deriv
+persistence
+PostgreSQL
+```
+
+If the dashboard permits filtering by deployment, use:
+
+```text
+dpl_5SgofjWjPcT4aaP75CZECLEeeYbr
+```
+
+### If logs are still unavailable
+
+Do NOT guess the root cause.
+
+Report exactly what Vercel exposes and whether the log retention/filtering prevents retrieving the original event.
+
+### If the application error is found
+
+Return only sanitized information:
+
+```text
+Request ID:
+Deployment ID:
+Timestamp:
+Execution stage:
+HTTP status:
+Error category:
+PostgreSQL code/constraint:
+Deriv error:
+Persistence error:
+Sanitized message:
+```
+
+Do not expose:
+
+```text
+API keys
+access tokens
+cookies
+authorization headers
+DATABASE_URL
+session secrets
+proposal tokens
+request bodies containing credentials
+```
+
+### Critical
+
+Do not deploy the local SSL fix.
+
+Do not submit another trade.
+
+Do not alter Aiven.
+
+Do not modify `/api/trades`.
+
+Do not implement a speculative fix.
+
+We now have authorized Vercel access; the priority is to retrieve the actual application runtime error from the existing 502.
+
+If the connector cannot perform a sufficiently narrow query, tell me exactly how to locate the event manually in the Vercel dashboard rather than running another broad query.

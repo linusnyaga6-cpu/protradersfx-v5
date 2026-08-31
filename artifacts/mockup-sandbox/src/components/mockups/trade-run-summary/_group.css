@@ -1,0 +1,69 @@
+:root {
+  --app-font-sans: "DM Sans", sans-serif;
+  --app-font-mono: "Space Mono", monospace;
+  --background: 210 33% 97%;
+  --foreground: 215 46% 17%;
+  --border: 210 24% 88%;
+  --card: 210 33% 99%;
+  --card-foreground: 215 46% 17%;
+  --popover: 210 33% 99%;
+  --popover-foreground: 215 46% 17%;
+  --primary: 174 69% 35%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 204 31% 93%;
+  --secondary-foreground: 215 46% 17%;
+  --muted: 210 25% 93%;
+  --muted-foreground: 214 19% 46%;
+  --accent: 37 86% 54%;
+  --accent-foreground: 215 46% 17%;
+  --destructive: 3 67% 48%;
+  --destructive-foreground: 0 0% 100%;
+  --success: 164 63% 35%;
+  --success-foreground: 0 0% 100%;
+  --input: 210 24% 82%;
+  --ring: 174 69% 35%;
+  --font-sans: var(--app-font-sans);
+  --font-mono: var(--app-font-mono);
+  --radius: 0.25rem;
+}
+
+.dark {
+  --background: 214 42% 9%;
+  --foreground: 204 25% 93%;
+  --border: 214 25% 20%;
+  --card: 214 35% 13%;
+  --card-foreground: 204 25% 93%;
+  --popover: 214 35% 13%;
+  --popover-foreground: 204 25% 93%;
+  --primary: 174 61% 47%;
+  --primary-foreground: 214 42% 9%;
+  --secondary: 214 28% 17%;
+  --secondary-foreground: 204 25% 93%;
+  --muted: 214 28% 17%;
+  --muted-foreground: 214 15% 66%;
+  --accent: 37 86% 58%;
+  --accent-foreground: 214 42% 9%;
+  --destructive: 3 67% 58%;
+  --destructive-foreground: 204 25% 93%;
+  --success: 164 63% 45%;
+  --success-foreground: 214 42% 9%;
+  --input: 214 25% 23%;
+  --ring: 174 61% 47%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--app-font-sans);
+}
+
+.trade-run-mockup {
+  min-height: 100vh;
+  padding: 24px;
+}

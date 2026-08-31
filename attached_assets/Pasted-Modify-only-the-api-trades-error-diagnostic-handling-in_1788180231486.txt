@@ -1,0 +1,64 @@
+Modify only the /api/trades error-diagnostic handling in artifacts/api-server/src/routes/protraders.ts.
+
+Do not modify the transaction INSERT, trading logic, Deriv buy/proposal flow, schema, environment variables, authentication, risk controls, or response status.
+
+Make three diagnostic improvements:
+
+In tradeErrorDiagnostic / error-chain extraction, prefer the deepest error record containing a PostgreSQL SQLSTATE, constraint, or useful PostgreSQL message instead of always using the outer Drizzle "Failed query: insert into..." message.
+Make logTradeStageError() non-throwing. Wrap the req.log?.warn(...) call in a safe try/catch so diagnostic logging can never interrupt the original /api/trades error handling.
+If req.log is unavailable, emit the same sanitized scalar diagnostic fields through the safest available fallback application logger. Do not log the raw error object.
+
+The diagnostic record must contain only:
+
+requestId
+stage
+accountType
+symbol
+postgresCode
+postgresConstraint
+sanitizedErrorMessage
+derivErrorCode
+
+Continue redacting credentials, cookies, tokens, URLs, UUIDs, proposal identifiers, secrets, and request bodies.
+
+After the change:
+
+1. Run typecheck
+2. Run API build
+3. Run diff inspection
+4. Verify the local API starts
+5. Do NOT call POST /api/trades
+6. Do NOT modify the database
+7. Do NOT modify environment variables
+8. Do NOT deploy
+
+Report the exact files changed and verification results. Stop for approval before deployment.
+
+Why this is the right move
+
+Your latest evidence has narrowed the problem considerably:
+
+Deriv execution → transaction persistence → PostgreSQL INSERT → error caught → generic 502.
+
+The remaining problem isn't necessarily the database itself; it's that we're not getting the actual PostgreSQL error out of the production runtime logs.
+
+This diagnostic change should make the next controlled failure tell us something like:
+
+stage: transaction_persistence
+postgresCode: 23505
+postgresConstraint: ...
+sanitizedErrorMessage: ...
+
+or:
+
+postgresCode: 08006
+
+or:
+
+postgresCode: 57014
+
+etc.
+
+That gives us the evidence needed to choose the actual fix, rather than guessing.
+
+Important: because the Deriv purchase can occur before the database persistence step, I agree with the current restriction: do not repeatedly test /api/trades with a real order until we have a safe testing strategy.

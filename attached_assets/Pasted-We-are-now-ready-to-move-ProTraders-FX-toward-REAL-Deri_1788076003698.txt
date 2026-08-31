@@ -1,0 +1,116 @@
+We are now ready to move ProTraders FX toward REAL Deriv account trading.
+
+Use ONLY the existing production workflow:
+
+GitHub:
+linusnyaga6-cpu/protradersfx-v5
+Branch:
+main
+
+Vercel project:
+protradersfx-v5
+
+Production:
+https://www.protradersfx.com
+
+Do NOT use Replit Publishing.
+Do NOT create a new Vercel project.
+Do NOT change DNS.
+Do NOT bypass safety controls just to make real trading work.
+
+Your task is to make the existing real-account trading functionality production-ready through the GitHub → Vercel pipeline.
+
+FIRST inspect the current code and identify exactly why production real trading is currently blocked.
+
+Then fix the underlying configuration/code issue rather than simply deleting safety checks.
+
+Requirements:
+
+1. Existing Deriv OAuth login must remain working.
+2. Existing Demo/Real account selection must remain working.
+3. Existing Deriv authentication/session handling must remain working.
+4. Real-account execution must use the authenticated user's Deriv account and OAuth authorization.
+5. Never hard-code credentials, account IDs, tokens, or balances.
+6. Never expose secrets in source code, logs, GitHub, browser responses, or the final report.
+7. Preserve all existing risk/safety checks.
+8. Do not silently convert Demo trades into Real trades.
+9. Do not automatically place a real trade during testing.
+10. Real trading must require an explicit user action.
+11. Validate symbol, contract parameters, stake, direction, and account type before submitting an order.
+12. Preserve/verify Stop Loss and Take Profit handling.
+13. Preserve/verify error handling so a rejected Deriv order is clearly reported instead of appearing successful.
+14. Ensure duplicate clicks/retries cannot unintentionally submit duplicate real orders.
+15. Ensure the authenticated account/session is the account actually selected by the user.
+16. If production persistence is required for transaction protection, implement/configure it properly rather than bypassing the requirement.
+17. Verify that transaction/order state can be reconciled after an order is submitted.
+18. Do not claim real trading is ready unless the required production configuration is actually present.
+
+For Vercel configuration:
+
+Inspect the existing production environment variables by NAME and readiness only.
+
+Do not print secret values.
+
+Identify any missing configuration required for authenticated real-account trading and tell me exactly what must be configured.
+
+If an existing secure value is already available through the authorized Vercel connection, preserve it.
+
+If a required secret/value is missing, do not invent it.
+
+For PostgreSQL/persistence:
+If POSTGRES_URL or another persistence configuration is genuinely required by the current trading architecture, configure it through the authorized Vercel connection if the required secure database is already available.
+If no database is available, tell me exactly what is required rather than disabling the persistence safety gate.
+
+Testing:
+
+Use Demo/test functionality wherever possible.
+
+DO NOT place an unsolicited real-money trade.
+
+Run:
+
+* typecheck
+* production build
+* relevant trading tests
+* OAuth/session tests
+* account selection tests
+* market-data tests
+* order validation tests
+* SL/TP validation tests
+* duplicate-submission protection tests
+* persistence/reconciliation tests
+
+Then commit the completed correction to GitHub main.
+
+Allow the existing Vercel integration to deploy that commit.
+
+Verify the resulting Vercel deployment is READY.
+
+Verify production:
+
+* /api/deriv/login
+* /api/session
+* account endpoint
+* market symbols
+* ticker
+* candles
+* trading/order endpoints
+* persistence/transaction endpoints
+
+IMPORTANT:
+
+Do not remove safety gates merely to make the UI say "Live Trading Enabled."
+
+If the only remaining blocker is a missing production environment variable, database connection, Deriv permission, or other external configuration, stop and identify the exact blocker.
+
+The final report must clearly separate:
+
+A. CODE FIXES
+B. VERCEL CONFIGURATION
+C. DERIV CONFIGURATION
+D. TEST RESULTS
+E. ANY REMAINING BLOCKER
+
+Do not expose any secret values.
+
+The goal is a genuinely functional and safely protected REAL-account trading system, not merely removing the disabled-live-trading message.
