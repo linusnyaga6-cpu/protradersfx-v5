@@ -20,7 +20,6 @@ import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { AccountStrip } from "@/components/trading/account-strip"
 import { RunSessionSummary } from "@/components/trading/run-session-summary"
-import { TradingTabs } from "@/components/trading/trading-tabs"
 import { useTradingRunSession } from "@/hooks/use-trading-run-session"
 import { DEFAULT_MARKET_SYMBOL, CONTRACT_LABELS, marketLabel } from "@/lib/markets"
 import { formatVolatility } from "@/lib/format"
@@ -180,7 +179,6 @@ export default function BulkTrader() {
 
   return (
         <Workspace title="Bulk Trader" eyebrow={selectedAccountType === "real" ? "Real-account execution" : "Fast, bounded execution"} description={`Run a bounded ${accountSessionLabel} session.`}>
-      <TradingTabs active="bulk" />
       <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} switchingDisabled={runSession.isBusy} />
 
       <div className="overflow-hidden rounded-2xl border border-primary/20 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/.18),transparent_38%),linear-gradient(135deg,hsl(var(--card)),hsl(var(--secondary)/.45))] shadow-[0_18px_60px_rgba(0,0,0,.16)]">
