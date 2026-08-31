@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import {
   ArrowRight, Bot as BotIcon, CheckCircle2, Copy, Pause, Play, Plus, ShieldCheck,
   Settings, Save, Archive, Clock, Activity, Loader2, AlertTriangle, AlertCircle, Search,
-  Gauge, HandCoins, Sparkles, Download, FileText
+  Sparkles, Download, FileText, Eye, ShieldAlert
 } from "lucide-react"
 import {
   useListBots, getListBotsQueryKey,
@@ -74,7 +74,7 @@ export default function Bots() {
     create.mutate({
       data: {
         name: template.botNumber
-          ? `Bot ${template.botNumber} · ${template.name ?? "Observation"}`
+          ? `Bot ${template.botNumber} · ${sourceBotName(template)}`
           : `${template.name ?? "Observation"} / ${template.id ?? "new"}`,
          symbol: String(template.symbol ?? template.strategy?.symbol ?? requestedSymbol),
         config: {
@@ -164,19 +164,18 @@ export default function Bots() {
   return (
        <Workspace title="Bot Workspace" eyebrow={account.data?.accountType === "real" ? "Real account" : "Bots"} description="Build, review, run.">
       <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} switchingDisabled={runSession.isBusy} />
-       <section className="overflow-hidden rounded-2xl border border-[#234159] bg-[#091a2d] text-white shadow-[0_18px_60px_rgba(7,19,33,.18)]">
+        <section className="overflow-hidden rounded-2xl border border-[#234159] bg-[#091a2d] text-white shadow-[0_18px_60px_rgba(7,19,33,.18)]">
          <div className="flex flex-col gap-3 border-b border-white/10 px-5 py-5 md:flex-row md:items-end md:justify-between md:px-7">
            <div>
-             <div className="font-mono text-[10px] uppercase tracking-[.2em] text-[#20c7c2]">Workspace</div>
-             <h2 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">What do you want to open?</h2>
+              <div className="font-mono text-[10px] uppercase tracking-[.2em] text-[#20c7c2]">Free bot library</div>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Start with one of two review-first bots.</h2>
            </div>
-           <p className="max-w-sm text-sm text-white/55">Pick a tool. Review every setting before you run.</p>
+            <p className="max-w-sm text-sm text-white/55">Vertex Bot observes market direction. Recovery Bot watches for interruptions. Both stay under your control.</p>
          </div>
-         <div className="grid gap-px bg-white/10 sm:grid-cols-2 lg:grid-cols-4">
-           <LauncherTile href="#saved-bots" icon={<BotIcon className="h-5 w-5" />} title="Load Bot" detail="Open a saved setup" />
-           <LauncherTile href="#premium-ai-bots" icon={<Sparkles className="h-5 w-5" />} title="Premium Bots" detail="Browse strategy templates" tone="gold" />
-           <LauncherTile href="/bulk-trade" icon={<Gauge className="h-5 w-5" />} title="Speed Bot" detail="Run a bounded scan" />
-           <LauncherTile href="/create-bot" icon={<HandCoins className="h-5 w-5" />} title="Manual Trading" detail="Trade from the terminal" tone="coral" />
+          <div className="grid gap-px bg-white/10 sm:grid-cols-3">
+            <LauncherTile href="#free-bots" icon={<BotIcon className="h-5 w-5" />} title="Free Bots" detail="Vertex + Recovery" />
+            <LauncherTile href="#saved-bots" icon={<Settings className="h-5 w-5" />} title="My Bots" detail="Your saved setups" />
+            <LauncherTile href="#premium-ai-bots" icon={<Sparkles className="h-5 w-5" />} title="Premium Templates" detail="Browse the strategy library" tone="gold" />
          </div>
        </section>
        <div className="flex items-center justify-between gap-3">
@@ -194,44 +193,66 @@ export default function Bots() {
         </Alert>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-[380px_1fr] items-start">
+       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] items-start">
         <div className="space-y-5">
            <Card id="free-bots" className="scroll-mt-28 shadow-sm">
             <CardHeader className="pb-4 border-b bg-secondary/10">
-               <CardTitle className="text-lg">Free bots</CardTitle>
-               <p className="text-xs text-muted-foreground">Ready-made starting points.</p>
+               <div className="flex items-start justify-between gap-3">
+                 <div>
+                   <CardTitle className="text-lg">Free bots</CardTitle>
+                   <p className="mt-1 text-xs text-muted-foreground">Two source bots, clearly separated by purpose.</p>
+                 </div>
+                 <Badge variant="outline" className="shrink-0 text-[10px] uppercase tracking-wider">2 available</Badge>
+               </div>
             </CardHeader>
-            <CardContent className="space-y-3 pt-4">
-                 {templates.isLoading ? <SkeletonList /> : sourceBots.map((template: any) => (
-                 <div key={template.id} className="rounded-lg border border-primary/25 bg-primary/[.045] p-4" data-testid={`source-bot-${template.botNumber}`}>
-                    {template.botNumber === 1 && <FreeVertexPreview />}
-                   <div className="flex items-start gap-3">
-                     <div className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-primary/10">
-                       <BotIcon className="h-5 w-5 text-primary" />
-                     </div>
-                     <div className="min-w-0 flex-1">
-                       <div className="flex flex-wrap items-center gap-2">
-                         <Badge variant="outline" className="text-[10px] border-primary/30 text-primary">BOT {template.botNumber}</Badge>
-                         <div className="font-semibold">{template.name}</div>
-                       </div>
-                       <div className="mt-1 text-xs text-muted-foreground">{template.description}</div>
-                       {template.source && (
-                         <div className="mt-2 text-[10px] uppercase tracking-wider text-muted-foreground">
-                           Source:{" "}
-                           {template.sourceUrl ? (
-                             <a href={template.sourceUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">
-                               {template.source}
-                             </a>
-                           ) : template.source}
+             <CardContent className="pt-4">
+               {templates.isLoading ? <SkeletonList /> : sourceBots.length ? (
+                 <div className="grid gap-4 md:grid-cols-2">
+                   {sourceBots.map((template: any) => (
+                     <div key={template.id} className={`flex flex-col rounded-xl border p-4 ${template.botNumber === 2 ? "border-amber-500/30 bg-amber-500/[.045]" : "border-primary/25 bg-primary/[.045]"}`} data-testid={`source-bot-${template.botNumber}`}>
+                       {template.botNumber === 1 ? <FreeVertexPreview compact /> : (
+                         <div className="rounded-lg border border-amber-500/20 bg-amber-500/[.06] p-3">
+                           <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.16em] text-amber-600">
+                             <ShieldAlert className="h-4 w-4" /> Monitor-only recovery
+                           </div>
+                           <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[9px] uppercase tracking-wider">
+                             <div className="rounded-md border border-amber-500/15 bg-background/60 p-2"><Eye className="mx-auto h-3.5 w-3.5 text-amber-600" /><span className="mt-1 block text-muted-foreground">Watch</span></div>
+                             <div className="rounded-md border border-amber-500/15 bg-background/60 p-2"><ShieldCheck className="mx-auto h-3.5 w-3.5 text-amber-600" /><span className="mt-1 block text-muted-foreground">Pause</span></div>
+                             <div className="rounded-md border border-amber-500/15 bg-background/60 p-2"><Activity className="mx-auto h-3.5 w-3.5 text-amber-600" /><span className="mt-1 block text-muted-foreground">Review</span></div>
+                           </div>
                          </div>
                        )}
+                       <div className="mt-4 flex flex-1 flex-col">
+                         <div className="flex items-center justify-between gap-2">
+                           <div className="flex items-center gap-2">
+                             <Badge variant="outline" className={template.botNumber === 2 ? "border-amber-500/30 text-amber-600" : "border-primary/30 text-primary"}>FREE</Badge>
+                             <div className="font-semibold">{sourceBotName(template)}</div>
+                           </div>
+                           <span className="text-[10px] font-mono text-muted-foreground">BOT {template.botNumber}</span>
+                         </div>
+                         <div className="mt-2 text-sm font-medium text-foreground">{template.botNumber === 2 ? "Protect the review process after an interruption." : "Review EMA direction before making a decision."}</div>
+                         <div className="mt-2 text-xs leading-5 text-muted-foreground">{template.botNumber === 2 ? "Checks account and market freshness plus recent failures. It never increases stake, retries an order, or places a trade." : "A market-observer starting point from traderscheme.com. It stays dry-run and leaves the final decision with you."}</div>
+                         <div className="mt-4 flex flex-wrap items-center gap-2">
+                           <Badge variant="secondary" className="text-[10px] uppercase tracking-wider">{template.botNumber === 2 ? "Observation only" : "Demo-first"}</Badge>
+                           {template.source && (
+                             <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                               Source:{" "}
+                               {template.sourceUrl ? (
+                                 <a href={template.sourceUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                                   {template.source}
+                                 </a>
+                               ) : template.source}
+                             </span>
+                           )}
+                         </div>
+                         <Button size="sm" variant="outline" className="mt-4 w-full bg-background" onClick={() => add(template)} disabled={create.isPending} data-testid={`button-use-source-bot-${template.botNumber}`}>
+                           <Copy className="mr-2 h-3 w-3" />{create.isPending ? "Creating..." : `Add ${sourceBotName(template)}`}
+                         </Button>
+                       </div>
                      </div>
-                   </div>
-                   <Button size="sm" variant="outline" className="mt-3 w-full bg-background" onClick={() => add(template)} disabled={create.isPending} data-testid={`button-use-source-bot-${template.botNumber}`}>
-                     <Copy className="mr-2 h-3 w-3" />{create.isPending ? "Creating..." : `Use Bot ${template.botNumber}`}
-                   </Button>
+                   ))}
                  </div>
-               ))}
+               ) : null}
                 {!bots.isLoading && sourceBots.length > 0 && list.length > 0 && (
                   <div id="saved-bots" className="scroll-mt-28 border-t pt-3 text-[10px] font-semibold uppercase tracking-[.18em] text-muted-foreground">Saved bots</div>
                )}
@@ -867,4 +888,8 @@ function LauncherTile({
       </span>
     </Link>
   )
+}
+
+function sourceBotName(template: any) {
+  return template.botNumber === 1 ? "Vertex Bot" : template.botNumber === 2 ? "Recovery Bot" : template.name ?? "Free Bot"
 }

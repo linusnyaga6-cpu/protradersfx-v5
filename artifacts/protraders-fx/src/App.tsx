@@ -122,10 +122,10 @@ function PublicBotPreview() {
   const sourceBots = [
     {
       number: 1,
-      name: "FreeVertex",
+      name: "Vertex Bot",
       source: "traderscheme.com",
       sourceUrl: "https://traderscheme.com",
-      description: "A free market-observer bot that helps you review EMA direction before starting.",
+      description: "A free market-observer bot from traderscheme.com that helps you review EMA direction before starting.",
       badgeClass: "border-primary/30 text-primary",
     },
     {
