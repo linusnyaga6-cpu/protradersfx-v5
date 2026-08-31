@@ -28,6 +28,7 @@ import { DEFAULT_MARKET_SYMBOL, CONTRACT_LABELS, SUPPORTED_VOLATILITY_SYMBOLS } 
 import { useDerivMarkets } from "@/hooks/use-deriv-markets"
 import { useTradingRunSession } from "@/hooks/use-trading-run-session"
 import { RunSessionSummary } from "@/components/trading/run-session-summary"
+import { FreeVertexPreview } from "@/components/bots/freevertex-preview"
 
 export default function Bots() {
   const client = useQueryClient();
@@ -183,8 +184,9 @@ export default function Bots() {
               <CardTitle className="text-lg">Your bots</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 pt-4">
-               {templates.isLoading ? <SkeletonList /> : sourceBots.map((template: any) => (
+                 {templates.isLoading ? <SkeletonList /> : sourceBots.map((template: any) => (
                  <div key={template.id} className="rounded-lg border border-primary/25 bg-primary/[.045] p-4" data-testid={`source-bot-${template.botNumber}`}>
+                    {template.botNumber === 1 && <FreeVertexPreview />}
                    <div className="flex items-start gap-3">
                      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-primary/10">
                        <BotIcon className="h-5 w-5 text-primary" />
@@ -539,6 +541,7 @@ function BotBuilder({ bot, accountCurrency, accountBalance, onUpdate }: { bot: a
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
+           {String(bot.name || "").startsWith("Bot 1") && <FreeVertexPreview compact />}
           {notice && (
             <Alert variant="default" className="bg-success/10 border-success/30 text-success">
               <CheckCircle2 className="h-4 w-4 !text-success" />
