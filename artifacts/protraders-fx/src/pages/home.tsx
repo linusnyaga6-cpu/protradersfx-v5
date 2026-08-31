@@ -4,6 +4,7 @@ import { Link } from "wouter"
 import { useGetMarketCandles, getGetMarketCandlesQueryKey, useGetMarketTicker, getGetMarketTickerQueryKey, useGetSessionStatus, getGetSessionStatusQueryKey, useTrackEvent } from "@workspace/api-client-react"
 import { DEFAULT_MARKET_SYMBOL } from "@/lib/markets"
 import { useDerivMarkets } from "@/hooks/use-deriv-markets"
+import traderHeroImage from "@/assets/trader-hero.jpg"
 
 export default function Home() {
   const { data: session } = useGetSessionStatus({
@@ -70,7 +71,7 @@ export default function Home() {
             <div className="relative mx-auto w-full max-w-[600px] animate-in fade-in slide-in-from-right-4 duration-1000 lg:justify-self-end">
               <div className="absolute -inset-4 rounded-[2.25rem] bg-[#f8d7ce]/65 blur-[1px]" aria-hidden="true" />
               <div className="relative aspect-square overflow-hidden rounded-[1.8rem] border-[9px] border-white bg-[#102945] shadow-[0_25px_70px_rgba(20,36,58,.22)]">
-                <img src="/images/protraders-trader-hero.jpg" alt="Trader reviewing live market charts at a workstation" className="h-full w-full object-cover" />
+                <img src={traderHeroImage} alt="Trader reviewing live market charts at a workstation" className="h-full w-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#08182a]/80 via-transparent to-[#102945]/10" />
                 <div className="absolute left-5 right-5 top-5 flex items-center justify-between text-white">
                   <div className="flex items-center gap-2 rounded-full bg-[#0b2844]/75 px-3 py-1.5 backdrop-blur">
