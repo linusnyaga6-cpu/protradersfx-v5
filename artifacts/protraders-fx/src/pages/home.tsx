@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { Activity, ArrowRight, Bot, CheckCircle2, ChevronRight, Crosshair, LineChart, LockKeyhole, Radio, ShieldCheck, TerminalSquare } from "lucide-react"
+import { Activity, ArrowRight, Bot, CheckCircle2, ChevronRight, Crosshair, Layers3, LineChart, LockKeyhole, Radio, ShieldCheck, TerminalSquare } from "lucide-react"
 import { Link } from "wouter"
 import { useGetMarketCandles, getGetMarketCandlesQueryKey, useGetMarketTicker, getGetMarketTickerQueryKey, useGetSessionStatus, getGetSessionStatusQueryKey, useTrackEvent } from "@workspace/api-client-react"
 import { DEFAULT_MARKET_SYMBOL } from "@/lib/markets"
@@ -147,46 +147,30 @@ export default function Home() {
            </div>
          </section>
 
-        {/* FEATURES GRID */}
-        <section className="px-5 py-24 md:px-10 border-b border-border bg-secondary/5">
+         {/* TRADING TYPES */}
+         <section className="border-b border-border bg-[#fcfaf8] px-5 py-20 md:px-10 md:py-24">
            <div className="mx-auto max-w-7xl">
-            <div className="mb-12 md:mb-16">
-              <h2 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Workspace Capabilities</h2>
-            </div>
-            
-             <div className="grid gap-px overflow-hidden rounded-sm border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
-               <Link href="/analysis" className="group relative bg-card p-8 transition-colors hover:bg-primary/[.055]">
-                <div className="mb-6 inline-flex h-10 w-10 items-center justify-center rounded-sm bg-primary/10 border border-primary/20 text-primary">
-                  <Activity className="h-5 w-5" />
-                </div>
-                <h3 className="mb-2 font-display text-lg font-medium text-foreground">Market Context</h3>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  Inspect live quotes, candles, and deterministic indicators. See the setup clearly before committing capital.
-                </p>
-              </Link>
-              
-               <Link href="/dashboard" className="group relative bg-card p-8 transition-colors hover:bg-primary/[.055]">
-                <div className="mb-6 inline-flex h-10 w-10 items-center justify-center rounded-sm bg-primary/10 border border-primary/20 text-primary">
-                  <TerminalSquare className="h-5 w-5" />
-                </div>
-                <h3 className="mb-2 font-display text-lg font-medium text-foreground">Bounded Execution</h3>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  Trade on Demo first. Test setups with controlled stakes and mandatory review steps built into the interface.
-                </p>
-              </Link>
+             <div className="mb-10 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+               <div>
+                 <div className="font-mono text-[10px] font-semibold uppercase tracking-[.22em] text-[#c84c3d]">Choose your view</div>
+                 <h2 className="mt-3 font-display text-3xl font-semibold tracking-tight text-[#14243a] sm:text-4xl">One workspace. Different ways to trade.</h2>
+               </div>
+               <p className="max-w-sm text-sm leading-6 text-[#748092]">Every tool stays review-first. Use the mode that matches the decision in front of you.</p>
+             </div>
 
-               <Link href="/bots" className="group relative bg-card p-8 transition-colors hover:bg-primary/[.055]">
-                <div className="mb-6 inline-flex h-10 w-10 items-center justify-center rounded-sm bg-primary/10 border border-primary/20 text-primary">
-                  <Bot className="h-5 w-5" />
-                </div>
-                <h3 className="mb-2 font-display text-lg font-medium text-foreground">Transparent Bots</h3>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  Run transparent, cost-free bot templates. Automation without hiding the underlying market risks.
-                </p>
-              </Link>
-            </div>
-          </div>
-        </section>
+             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+               <ToolCard href="/create-bot" icon={<Activity className="h-5 w-5" />} title="Manual Trader" text="One market, one reviewed plan, one controlled decision." accent />
+               <ToolCard href="/bulk-trader" icon={<Layers3 className="h-5 w-5" />} title="Bulk Trader" text="Scan fresh markets and run a bounded sequence." />
+               <button type="button" onClick={() => window.dispatchEvent(new Event("protraders:open-scanner"))} className="group flex min-h-[190px] flex-col rounded-2xl border border-[#dce3e7] bg-white p-5 text-left transition-all hover:-translate-y-1 hover:border-[#159884]/45 hover:shadow-[0_14px_30px_rgba(20,36,58,.1)]" data-testid="button-home-ai-scanner">
+                 <span className="grid h-11 w-11 place-items-center rounded-xl bg-[#e9f8f4] text-[#159884]"><Activity className="h-5 w-5" /></span>
+                 <span className="mt-6 flex items-center justify-between gap-2 font-semibold text-[#14243a]">AI Scanner <ArrowRight className="h-4 w-4 text-[#9aa5b0] transition-transform group-hover:translate-x-1" /></span>
+                 <span className="mt-2 text-xs leading-5 text-[#748092]">Advisory market context with no automatic execution.</span>
+                 <span className="mt-auto pt-4 font-mono text-[9px] uppercase tracking-[.16em] text-[#159884]">Open floating scanner</span>
+               </button>
+               <ToolCard href="/bots" icon={<Bot className="h-5 w-5" />} title="Trading Robots" text="Transparent bot templates with visible boundaries." />
+             </div>
+           </div>
+         </section>
 
         {/* METHODOLOGY SECTION */}
         <section className="px-5 py-24 md:px-10">
@@ -331,6 +315,17 @@ function PreviewMetric({ label, value }: { label: string; value: string }) {
       <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{label}</div>
       <div className="mt-1 font-mono text-[10px] text-foreground">{value}</div>
     </div>
+  )
+}
+
+function ToolCard({ href, icon, title, text, accent }: { href: string; icon: React.ReactNode; title: string; text: string; accent?: boolean }) {
+  return (
+    <Link href={href} className={`group flex min-h-[190px] flex-col rounded-2xl border p-5 transition-all hover:-translate-y-1 hover:shadow-[0_14px_30px_rgba(20,36,58,.1)] ${accent ? "border-[#e96751]/45 bg-[#fff0ec]" : "border-[#dce3e7] bg-white"}`}>
+      <span className={`grid h-11 w-11 place-items-center rounded-xl ${accent ? "bg-[#e96751] text-white" : "bg-[#e9f8f4] text-[#159884]"}`}>{icon}</span>
+      <span className="mt-6 flex items-center justify-between gap-2 font-semibold text-[#14243a]">{title}<ArrowRight className="h-4 w-4 text-[#9aa5b0] transition-transform group-hover:translate-x-1" /></span>
+      <span className="mt-2 text-xs leading-5 text-[#748092]">{text}</span>
+      <span className={`mt-auto pt-4 font-mono text-[9px] uppercase tracking-[.16em] ${accent ? "text-[#c84c3d]" : "text-[#159884]"}`}>Explore tool</span>
+    </Link>
   )
 }
 
