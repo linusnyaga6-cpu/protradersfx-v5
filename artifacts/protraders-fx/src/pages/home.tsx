@@ -4,7 +4,6 @@ import { Link } from "wouter"
 import { useGetMarketCandles, getGetMarketCandlesQueryKey, useGetMarketTicker, getGetMarketTickerQueryKey, useGetSessionStatus, getGetSessionStatusQueryKey, useTrackEvent } from "@workspace/api-client-react"
 import { DEFAULT_MARKET_SYMBOL } from "@/lib/markets"
 import { useDerivMarkets } from "@/hooks/use-deriv-markets"
-import traderHeroImage from "@/assets/trader-hero-personalized.jpg"
 
 export default function Home() {
   const { data: session } = useGetSessionStatus({
@@ -71,8 +70,10 @@ export default function Home() {
             <div className="relative mx-auto w-full max-w-[600px] animate-in fade-in slide-in-from-right-4 duration-1000 lg:justify-self-end">
               <div className="absolute -inset-4 rounded-[2.25rem] bg-[#f8d7ce]/65 blur-[1px]" aria-hidden="true" />
               <div className="relative aspect-square overflow-hidden rounded-[1.8rem] border-[9px] border-white bg-[#102945] shadow-[0_25px_70px_rgba(20,36,58,.22)]">
-                <img src={traderHeroImage} alt="Trader reviewing live market charts at a workstation" className="h-full w-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#08182a]/80 via-transparent to-[#102945]/10" />
+                <div className="absolute inset-0 bg-[#081b31]" />
+                <div className="absolute inset-x-5 bottom-16 top-16 overflow-hidden rounded-xl border border-white/10 bg-[#0a223b]/90 shadow-inner">
+                  <LiveCandleChart candles={pulseData?.candles} isLoading={pulseCandles.isLoading} quote={pulsePrice} />
+                </div>
                 <div className="absolute left-5 right-5 top-5 flex items-center justify-between text-white">
                   <div className="flex items-center gap-2 rounded-full bg-[#0b2844]/75 px-3 py-1.5 backdrop-blur">
                     <span className="h-1.5 w-1.5 rounded-full bg-[#56dec4]" />
@@ -82,12 +83,12 @@ export default function Home() {
                 </div>
                 <div className="absolute bottom-5 left-5 right-5 flex items-end justify-between gap-4 text-white">
                   <div>
-                    <div className="font-mono text-[9px] uppercase tracking-[.18em] text-white/65">Decision before action</div>
+                    <div className="font-mono text-[9px] uppercase tracking-[.18em] text-white/65">Live candle movement</div>
                     <div className="mt-1 font-display text-xl tracking-tight">Read the setup clearly.</div>
                   </div>
                   <div className="hidden rounded-xl border border-white/15 bg-[#0b2844]/80 p-2.5 backdrop-blur sm:block">
                     <div className="font-mono text-[8px] uppercase tracking-wider text-white/55">Status</div>
-                    <div className="mt-1 flex items-center gap-1.5 font-mono text-xs text-[#6ee2cb]"><span className="h-1.5 w-1.5 rounded-full bg-[#6ee2cb]" /> Ready</div>
+                    <div className="mt-1 flex items-center gap-1.5 font-mono text-xs text-[#6ee2cb]"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#6ee2cb]" /> Live</div>
                   </div>
                 </div>
               </div>
@@ -343,5 +344,78 @@ function PulseChart({ candles }: { candles?: any[] }) {
       <defs><linearGradient id="chart-fill-live" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="hsl(var(--primary))" stopOpacity=".15" /><stop offset="1" stopColor="hsl(var(--primary))" stopOpacity="0" /></linearGradient></defs>
       <polyline points={polyline} fill="none" stroke="hsl(var(--primary))" strokeWidth="2" vectorEffect="non-scaling-stroke" />
     </svg>
+  )
+}
+
+function LiveCandleChart({ candles, isLoading, quote }: { candles?: any[]; isLoading?: boolean; quote?: number }) {
+  const rawPoints = Array.isArray(candles) ? candles : []
+  const points = rawPoints
+    .map((point) => {
+      const open = Number(point?.open)
+      const close = Number(point?.close)
+      const high = Number(point?.high)
+      const low = Number(point?.low)
+      if (![open, close].every(Number.isFinite)) return null
+      return {
+        open,
+        close,
+        high: Number.isFinite(high) ? Math.max(high, open, close) : Math.max(open, close),
+        low: Number.isFinite(low) ? Math.min(low, open, close) : Math.min(open, close),
+      }
+    })
+    .filter(Boolean)
+    .slice(-32) as Array<{ open: number; close: number; high: number; low: number }>
+
+  if (points.length < 2) {
+    return (
+      <div className="grid h-full place-items-center px-4 text-center font-mono text-[10px] uppercase tracking-[.16em] text-white/45">
+        {isLoading ? "Loading live candles" : "Waiting for candle history"}
+      </div>
+    )
+  }
+
+  const values = points.flatMap((point) => [point.high, point.low])
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const range = max - min || 1
+  const width = 640
+  const height = 240
+  const paddingX = 18
+  const paddingY = 18
+  const chartWidth = width - paddingX * 2
+  const chartHeight = height - paddingY * 2
+  const xStep = chartWidth / points.length
+  const bodyWidth = Math.max(4, Math.min(13, xStep * 0.58))
+  const y = (value: number) => paddingY + ((max - value) / range) * chartHeight
+  const latest = points.at(-1)!
+  const displayQuote = quote ?? latest.close
+
+  return (
+    <div className="relative h-full w-full">
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(115,183,207,.09)_1px,transparent_1px),linear-gradient(90deg,rgba(115,183,207,.09)_1px,transparent_1px)] bg-[size:25%_25%]" aria-hidden="true" />
+      <svg viewBox={`0 0 ${width} ${height}`} className="absolute inset-0 h-full w-full" role="img" aria-label="Live Deriv candlestick chart">
+        {points.map((point, index) => {
+          const x = paddingX + xStep * index + xStep / 2
+          const rising = point.close >= point.open
+          const candleColor = rising ? "#56dec4" : "#f58d7a"
+          const bodyTop = y(Math.max(point.open, point.close))
+          const bodyHeight = Math.max(2, Math.abs(y(point.open) - y(point.close)))
+          return (
+            <g key={`${index}-${point.close}`}>
+              <line x1={x} x2={x} y1={y(point.high)} y2={y(point.low)} stroke={candleColor} strokeWidth="2" opacity=".9" />
+              <rect x={x - bodyWidth / 2} y={bodyTop} width={bodyWidth} height={bodyHeight} rx="1.5" fill={candleColor} opacity={index === points.length - 1 ? "1" : ".82"} />
+            </g>
+          )
+        })}
+        <line x1={paddingX} x2={width - paddingX} y1={y(latest.close)} y2={y(latest.close)} stroke="#ffffff" strokeDasharray="4 5" strokeWidth="1" opacity=".45" />
+      </svg>
+      <div className="absolute right-3 top-3 rounded-md border border-[#56dec4]/35 bg-[#0b2844]/90 px-2 py-1 font-mono text-[10px] font-semibold tabular-nums text-[#6ee2cb]">
+        {Number(displayQuote).toFixed(2)}
+      </div>
+      <div className="absolute bottom-3 left-3 font-mono text-[9px] uppercase tracking-[.14em] text-white/40">1m · {points.length} candles</div>
+      <div className="absolute bottom-3 right-3 flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[.14em] text-white/45">
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#56dec4]" /> updating
+      </div>
+    </div>
   )
 }
