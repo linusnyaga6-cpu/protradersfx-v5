@@ -131,53 +131,115 @@ function errorResponse(
 }
 
 function safeErrorMessage(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error || "Unknown error");
+  const message = error instanceof Error ? error.message : "Unknown error";
   return message
+    .split(/\r?\n/, 1)[0]
+    .replace(/postgres(?:ql)?:\/\/\S+/gi, "[redacted]")
     .replace(/Bearer\s+[^\s]+/gi, "Bearer [redacted]")
-    .replace(/(access[_-]?token|refresh[_-]?token|authorization|cookie)=?[^\s,;]+/gi, "$1=[redacted]");
+    .replace(
+      /\b(access[\s_-]?token|refresh[\s_-]?token|authorization|cookie|session[\s_-]?secret|database[\s_-]?url|proposal[\s_-]?token|password|passwd|pwd|api[\s_-]?key|secret)\b\s*[=:]?\s*[^\s,;]*/gi,
+      "[redacted]",
+    )
+    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/gi, "[redacted]")
+    .replace(/\b[0-9a-f]{32,}\b/gi, "[redacted]")
+    .replace(/\b(nonce|owner_key|proposal_id)\s*[=:]\s*[^\s,;]+/gi, "$1=[redacted]")
+    .slice(0, 240);
 }
 
-function proposalReviewDatabaseDiagnostic(error: unknown) {
-  let cause = error && typeof error === "object" && "cause" in error
-    ? (error as { cause?: unknown }).cause
-    : undefined;
+type TradeErrorRecord = {
+  code?: unknown;
+  constraint?: unknown;
+  error_code?: unknown;
+  errorCode?: unknown;
+  derivErrorCode?: unknown;
+  message?: unknown;
+  cause?: unknown;
+};
+
+function tradeErrorChain(error: unknown) {
+  const records: TradeErrorRecord[] = [];
+  let current: unknown = error;
   let depth = 0;
 
-  while (cause && typeof cause === "object" && depth < 4) {
-    const candidate = cause as {
-      code?: unknown;
-      constraint?: unknown;
-      message?: unknown;
-      cause?: unknown;
-    };
-    const code = typeof candidate.code === "string" && /^[0-9A-Z]{5}$/i.test(candidate.code)
-      ? candidate.code
-      : "UNKNOWN";
-    const constraint = typeof candidate.constraint === "string" && /^[a-zA-Z0-9_]{1,128}$/.test(candidate.constraint)
-      ? candidate.constraint
-      : null;
-    const rawMessage = typeof candidate.message === "string" ? candidate.message.split(/\r?\n/, 1)[0] : "";
-    const message = (/failed query|parameters?:/i.test(rawMessage)
-      ? "PostgreSQL operation failed"
-      : rawMessage
-          .replace(/postgres(?:ql)?:\/\/\S+/gi, "[redacted]")
-          .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/gi, "[redacted]")
-          .replace(/\b[0-9a-f]{32,}\b/gi, "[redacted]")
-          .replace(/\b(nonce|owner_key|proposal_id)\s*[=:]\s*[^\s,;]+/gi, "$1=[redacted]")
-          .slice(0, 240)) || "PostgreSQL operation failed";
-
-    if (code !== "UNKNOWN" || constraint || (rawMessage && !candidate.cause)) {
-      return { code, constraint, message };
-    }
-    cause = candidate.cause;
+  while (current && typeof current === "object" && depth < 5) {
+    const candidate = current as TradeErrorRecord;
+    records.push(candidate);
+    current = candidate.cause;
     depth += 1;
   }
 
+  return records;
+}
+
+function safeDiagnosticCode(value: unknown) {
+  return typeof value === "string" && /^[a-zA-Z0-9_.-]{1,80}$/.test(value)
+    ? value
+    : null;
+}
+
+function tradeErrorDiagnostic(error: unknown) {
+  const records = tradeErrorChain(error);
+  const rawMessage = records
+    .map((record) => typeof record.message === "string" ? record.message : "")
+    .find(Boolean) || "Unknown error";
+
+  let postgresCode: string | null = null;
+  let postgresConstraint: string | null = null;
+  let derivErrorCode: string | null = null;
+
+  for (const record of records) {
+    if (!postgresCode && typeof record.code === "string" && /^[0-9A-Z]{5}$/i.test(record.code)) {
+      postgresCode = record.code;
+    }
+    if (!postgresConstraint && typeof record.constraint === "string" && /^[a-zA-Z0-9_]{1,128}$/.test(record.constraint)) {
+      postgresConstraint = record.constraint;
+    }
+    if (!derivErrorCode) {
+      for (const candidate of [record.derivErrorCode, record.error_code, record.errorCode]) {
+        const safeCode = safeDiagnosticCode(candidate);
+        if (safeCode) {
+          derivErrorCode = safeCode;
+          break;
+        }
+      }
+    }
+    if (!derivErrorCode && typeof record.message === "string") {
+      const match = record.message.match(/^\[([a-zA-Z0-9_.-]{1,80})\]/);
+      if (match) derivErrorCode = match[1];
+    }
+  }
+
   return {
-    code: "UNKNOWN",
-    constraint: null,
-    message: "PostgreSQL error details unavailable",
+    postgresCode,
+    postgresConstraint,
+    sanitizedErrorMessage: safeErrorMessage(new Error(rawMessage)) || "Unknown error",
+    derivErrorCode,
   };
+}
+
+function logTradeStageError(
+  req: Request,
+  stage: string,
+  error: unknown,
+  accountType: string | undefined,
+  symbol: string,
+) {
+  const requestIdValue = (req as Request & { id?: unknown }).id;
+  const requestId = typeof requestIdValue === "string" || typeof requestIdValue === "number"
+    ? String(requestIdValue)
+    : "unknown";
+  const diagnostic = tradeErrorDiagnostic(error);
+
+  req.log?.warn({
+    requestId,
+    stage,
+    accountType: accountType || null,
+    symbol: symbol.slice(0, 80),
+    postgresCode: diagnostic.postgresCode,
+    postgresConstraint: diagnostic.postgresConstraint,
+    sanitizedErrorMessage: diagnostic.sanitizedErrorMessage,
+    derivErrorCode: diagnostic.derivErrorCode,
+  });
 }
 
 function isConsumedProposalConflict(error: unknown) {
@@ -1196,19 +1258,25 @@ router.post("/trades", async (req, res) => {
   }
   const validatedContractType = contractType as string;
 
-  let executionStage = "account_lookup";
+  let executionStage = "list_deriv_accounts";
   let executionAccountType: string | undefined;
   try {
     const accounts = await listDerivAccounts(session.accessToken);
+    executionStage = "account_selection";
     const account = chooseAccount(accounts, undefined, session.accountId);
     const loginId = String(account?.account_id || "");
     const isDemoAccount = account?.account_type === "demo";
-    if (!loginId || !account) return errorResponse(res, 502, "Account identity unavailable");
+    if (!loginId || !account) {
+      logTradeStageError(req, executionStage, new Error("Account identity unavailable"), executionAccountType, symbol);
+      return errorResponse(res, 502, "Account identity unavailable");
+    }
     executionAccountType = account.account_type;
     const policy = accountTradingPolicy(account);
     if (!policy.allowed) return errorResponse(res, isDemoAccount ? 503 : 403, policy.error || "Account trading unavailable", policy.message);
+    executionStage = "balance_validation";
     const availableBalance = Number(account.balance);
     if (!Number.isFinite(availableBalance) || availableBalance <= 0) {
+      logTradeStageError(req, executionStage, new Error("Account balance unavailable"), executionAccountType, symbol);
       return errorResponse(res, 502, "Account balance unavailable", "Reconnect or refresh the selected Deriv account.");
     }
     if (stake >= availableBalance) {
@@ -1245,7 +1313,10 @@ router.post("/trades", async (req, res) => {
       }
     }
     const currency = account.currency;
-    if (!currency) return errorResponse(res, 502, "Account currency unavailable");
+    if (!currency) {
+      logTradeStageError(req, executionStage, new Error("Account currency unavailable"), executionAccountType, symbol);
+      return errorResponse(res, 502, "Account currency unavailable");
+    }
 
     executionStage = "contract_availability";
     const availability = await derivRequest(session.accessToken, { contracts_for: symbol }, session.accountId);
@@ -1257,6 +1328,7 @@ router.post("/trades", async (req, res) => {
       return errorResponse(res, 400, "Contract unavailable", `${validatedContractType} is not offered by Deriv for ${symbol}.`);
     }
 
+    executionStage = "proposal_unseal";
     if (!req.body?.proposal_token) return errorResponse(res, 409, "Proposal review required", "Review a provider-backed proposal before execution.");
     const reviewed = unseal(req.body.proposal_token);
     const matches = reviewed?.accountId === loginId && reviewed?.source === source && reviewed?.symbol === symbol && reviewed?.contractType === validatedContractType
@@ -1264,7 +1336,7 @@ router.post("/trades", async (req, res) => {
       && reviewed?.stopLoss === (stopLoss ?? null) && reviewed?.botId === botId && reviewed?.runCount === runCount && reviewed?.riskCap === riskCap
       && reviewed?.sessionId === sessionId && reviewed?.expiresAt > Date.now();
     if (!matches || !reviewed?.id || !reviewed?.nonce || !Number.isFinite(reviewed?.askPrice) || reviewed.askPrice <= 0) return errorResponse(res, 409, "Proposal expired or changed", "Review the current order again before execution.");
-    executionStage = "proposal_review";
+    executionStage = "consumed_trade_proposals_insert";
     let consumed: Array<{ nonce: string }>;
     try {
       consumed = await db.insert(consumedTradeProposals).values({
@@ -1273,12 +1345,7 @@ router.post("/trades", async (req, res) => {
         proposalId: reviewed.id,
       }).onConflictDoNothing({ target: consumedTradeProposals.nonce }).returning({ nonce: consumedTradeProposals.nonce });
     } catch (error) {
-      const diagnostic = proposalReviewDatabaseDiagnostic(error);
-      console.error("proposal_review_db_error", diagnostic);
-      req.log?.warn(
-        diagnostic,
-        "proposal review database insert failed",
-      );
+      logTradeStageError(req, executionStage, error, executionAccountType, symbol);
       if (isConsumedProposalConflict(error)) {
         return errorResponse(res, 409, "Proposal already used", "Request a fresh Deriv proposal before running this session again.");
       }
@@ -1291,6 +1358,7 @@ router.post("/trades", async (req, res) => {
     }
     if (!consumed.length) return errorResponse(res, 409, "Proposal already used", "This proposal has already been submitted. Review a fresh proposal before another order.");
     if (reviewed.source === "bot_assisted") {
+      executionStage = "bot_runs_lookup";
       const [plan] = await db.select().from(botRuns).where(and(
         eq(botRuns.id, sessionId as string),
         eq(botRuns.ownerKey, ownerKeyFor(loginId)),
@@ -1310,6 +1378,7 @@ router.post("/trades", async (req, res) => {
       ) {
         return errorResponse(res, 409, "Bot plan changed", "The saved bot execution plan no longer matches this proposal.");
       }
+      executionStage = "bot_reservation";
       const reserved = await db.update(botRuns).set({
         acceptedRuns: sql`${botRuns.acceptedRuns} + 1`,
         updatedAt: new Date(),
@@ -1326,7 +1395,7 @@ router.post("/trades", async (req, res) => {
         return errorResponse(res, 409, "Bot plan limit reached", "This bot session has no remaining reviewed runs or risk capacity.");
       }
     }
-    executionStage = "buy";
+    executionStage = "deriv_proposal_and_buy";
     const buy = await derivProposalAndBuy(session.accessToken, {
       proposal: 1,
       amount: stake,
@@ -1338,9 +1407,13 @@ router.post("/trades", async (req, res) => {
       underlying_symbol: symbol,
       ...(barrierContractTypes.has(validatedContractType) ? { barrier } : {}),
     }, reviewed.askPrice, session.accountId);
-    if (buy.error) return errorResponse(res, 502, "Trade request failed", buy.error.message);
+    if (buy.error) {
+      logTradeStageError(req, executionStage, buy.error, executionAccountType, symbol);
+      return errorResponse(res, 502, "Trade request failed", buy.error.message);
+    }
     const contractId = buy.buy?.contract_id ? Number(buy.buy.contract_id) : null;
     if (!contractId || !Number.isFinite(contractId)) {
+      logTradeStageError(req, executionStage, new Error("Deriv did not return an accepted contract ID"), executionAccountType, symbol);
       return errorResponse(res, 502, "Trade not accepted", "Deriv did not return an accepted contract ID. No transaction was recorded.");
     }
     const buyPrice = transactionNumber(buy.buy?.buy_price ?? reviewed.askPrice);
@@ -1357,11 +1430,12 @@ router.post("/trades", async (req, res) => {
         }, session.accountId);
         stopLossApplied = true;
       } catch (error) {
+        logTradeStageError(req, executionStage, error, executionAccountType, symbol);
         stopLossApplied = false;
         stopLossMessage = error instanceof Error ? error.message : "Deriv rejected the stop loss";
       }
     }
-    executionStage = "persistence";
+    executionStage = "transaction_persistence";
     const transaction = await db.insert(transactions).values({
       ownerKey: ownerKeyFor(loginId),
       source: ["manual", "bulk", "ai_assisted", "bot_assisted"].includes(String(req.body?.source))
@@ -1416,7 +1490,7 @@ router.post("/trades", async (req, res) => {
     });
   } catch (error) {
     const message = safeErrorMessage(error);
-    req.log?.warn({ stage: executionStage, accountType: executionAccountType, symbol, contractType: validatedContractType, message }, "trade execution failed");
+    logTradeStageError(req, executionStage, error, executionAccountType, symbol);
     return errorResponse(
       res,
       502,
