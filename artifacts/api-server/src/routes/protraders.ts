@@ -1514,13 +1514,17 @@ router.post("/trades", async (req, res) => {
       stopLossMessage,
     });
   } catch (error) {
-    const message = safeErrorMessage(error);
+    const diagnostic = tradeErrorDiagnostic(error);
     logTradeStageError(req, executionStage, error, executionAccountType, symbol);
+    const diagnosticDetails = [
+      diagnostic.postgresCode ? `postgresCode=${diagnostic.postgresCode}` : "",
+      diagnostic.postgresConstraint ? `postgresConstraint=${diagnostic.postgresConstraint}` : "",
+    ].filter(Boolean).join(" ");
     return errorResponse(
       res,
       502,
       "Trade request failed",
-      `${executionStage}: ${message}`,
+      `${executionStage}: ${diagnostic.sanitizedErrorMessage}${diagnosticDetails ? ` (${diagnosticDetails})` : ""}`,
     );
   }
 });
