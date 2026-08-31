@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { ArrowLeft, ArrowRight, BookOpen, Check, Circle, Clock3, LockKeyhole, RotateCcw, ShieldCheck } from "lucide-react"
 import { Link } from "wouter"
+import traderHeroImage from "@/assets/trader-hero.jpg"
 
 type Lesson = { id: string; index: string; title: string; duration: string; kicker: string; summary: string; points: string[] }
 
@@ -70,7 +71,7 @@ export default function Course() {
             <div className="relative mx-auto w-full max-w-[560px]">
               <div className="absolute -inset-4 rounded-[2rem] bg-[#e96751]/15" aria-hidden="true" />
               <div className="relative aspect-[1.12/1] overflow-hidden rounded-[1.7rem] border-[8px] border-white/10 bg-[#102945] shadow-[0_25px_70px_rgba(0,0,0,.3)]">
-                <img src="/images/protraders-trader-hero.jpg" alt="Trader learning from live market charts" className="h-full w-full object-cover" />
+                <img src={traderHeroImage} alt="Trader learning from live market charts" className="h-full w-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#061525]/90 via-transparent to-[#102945]/10" />
                 <div className="absolute left-5 right-5 top-5 flex items-center justify-between">
                   <span className="rounded-full border border-white/20 bg-[#081c32]/70 px-3 py-1.5 font-mono text-[9px] uppercase tracking-[.16em] text-white/80 backdrop-blur">Learn the sequence</span>
