@@ -62,17 +62,27 @@ export default function Bots() {
 
   const add = (template: any) => {
     const isCustom = custom.some((c: any) => c.id === template.id);
+    const templateStake = Number(template.strategy?.stake) || 10;
+    const templateRunCount = Number(template.strategy?.runCount) || 1;
+    const templateRiskCap = Number(template.strategy?.riskCap) || Math.max(100, templateStake * templateRunCount);
     create.mutate({
       data: {
-        name: `${template.name ?? "Observation"} / ${template.id ?? "new"}`,
+        name: template.botNumber
+          ? `Bot ${template.botNumber} · ${template.name ?? "Observation"}`
+          : `${template.name ?? "Observation"} / ${template.id ?? "new"}`,
          symbol: String(template.symbol ?? template.strategy?.symbol ?? requestedSymbol),
         config: {
           indicator: template.strategy?.indicator || "ema",
           direction: "BOTH",
            mode: template.strategy?.mode || "market_observer",
-          stake: Number(template.strategy?.stake) || 10,
+          contractType: template.strategy?.contractType || "CALL",
+          barrier: template.strategy?.barrier || "5",
+          stopLoss: Number(template.strategy?.stopLoss) || 1,
+          runCount: templateRunCount,
+          takeProfit: Number(template.strategy?.takeProfit) || 1,
+          stake: templateStake,
           duration: Number(template.strategy?.duration) || 1,
-          riskCap: Number(template.strategy?.riskCap) || 100,
+          riskCap: Math.max(templateRiskCap, templateStake * templateRunCount),
           ...(template.strategy?.notes ? { notes: String(template.strategy.notes).substring(0, 1000) } : {}),
           execution: "dry_run"
         },
@@ -81,7 +91,7 @@ export default function Bots() {
     }, {
       onSuccess: (bot: any) => {
         client.invalidateQueries({ queryKey: getListBotsQueryKey() });
-        setNotice("Bot created in dry-run mode.");
+        setNotice("Bot created. Review its settings before starting a session.");
         setSelectedBotId(String(bot.id));
         setTimeout(() => setNotice(""), 4000);
       },
@@ -105,7 +115,7 @@ export default function Bots() {
       : account.data?.accountType === "demo" && preflight.data?.tradingEnabled
     if (!accountCanTrade) {
       setNotice(account.data?.accountType === "real"
-        ? "Bot execution requires the reviewed real-trading gate and selected real account."
+          ? "Real trading is not ready for this account."
         : account.data?.accountType === "demo"
           ? "Bot execution requires enabled Demo trading."
           : "Select a Demo or Real account before starting a bot.");
@@ -115,16 +125,28 @@ export default function Bots() {
     try {
       const contractType = String(bot.config?.contractType || "CALL");
       const orderData = {
+          bot_id: String(bot.id),
+          account_id: String(account.data?.loginid || ""),
+          account_type: account.data?.accountType,
           symbol: String(bot.symbol),
           contract_type: contractType as any,
           ...(CONTRACT_LABELS[contractType]?.needsBarrier ? { barrier: String(bot.config?.barrier || "5") } : {}),
           stake: Number(bot.config?.stake || 1),
           duration: Number(bot.config?.duration || 1),
           stop_loss: Number(bot.config?.stopLoss || 1),
+          run_count: Number(bot.config?.runCount || 1),
+          risk_cap: Number(bot.config?.riskCap || 0),
           source: "bot_assisted",
           request_label: `${bot.name} user-started bot session`,
       };
-      await runSession.start(orderData, Number(bot.config?.runCount || 1), Number(bot.config?.takeProfit || 1));
+      const runCount = Number(bot.config?.runCount || 1);
+      const stake = Number(bot.config?.stake || 1);
+      const riskCap = Number(bot.config?.riskCap || 0);
+      if (!Number.isFinite(riskCap) || riskCap <= 0 || stake * runCount > riskCap) {
+        setNotice("Reduce the stake or run count to stay within this bot’s risk cap.");
+        return;
+      }
+      await runSession.start(orderData, runCount, Number(bot.config?.takeProfit || 1), riskCap);
     } catch (error) {
       setNotice(`Bot execution stopped: ${error instanceof Error ? error.message : "Deriv rejected the request"}`);
     } finally {
@@ -134,8 +156,8 @@ export default function Bots() {
   };
 
   return (
-       <Workspace title="Bots" eyebrow="User-started execution" description={`Configure a bot, then start one bounded ${accountSessionLabel} session. Nothing runs unattended.`}>
-      <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} />
+       <Workspace title="Bots" eyebrow={account.data?.accountType === "real" ? "Real-account execution" : "User-started execution"} description={`Start one bounded ${accountSessionLabel} session.`}>
+      <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} switchingDisabled={runSession.isBusy} />
       <div className="flex items-center justify-between">
         <Badge variant="outline" className="bg-background"><ShieldCheck className="mr-1 h-3 w-3" />User-started sessions</Badge>
         <Button onClick={() => add({name:"Blank observation",id:"blank",strategy:{}})} data-testid="button-create-bot">
@@ -191,7 +213,18 @@ export default function Bots() {
                       </div>
                     </div>
                   </div>
+                   <div className="grid grid-cols-3 gap-px overflow-hidden rounded-md border bg-border text-[10px]">
+                     <BotDetail label="Market" value={String(bot.symbol || "—")} />
+                     <BotDetail label="Stake" value={`${Number(bot.config?.stake || 0)} ${account.data?.currency || ""}`.trim()} />
+                     <BotDetail label="Stop loss" value={String(bot.config?.stopLoss || "—")} />
+                     <BotDetail label="Take profit" value={String(bot.config?.takeProfit || "—")} />
+                     <BotDetail label="Runs" value={String(bot.config?.runCount || 1)} />
+                     <BotDetail label="Risk cap" value={String(bot.config?.riskCap || "—")} />
+                   </div>
                   <div className="flex w-full gap-2 mt-1">
+                      <Button size="sm" variant="outline" className="flex-1" onClick={(event) => { event.stopPropagation(); setSelectedBotId(String(bot.id)); }}>
+                        <Settings className="mr-2 h-3 w-3" />Edit details
+                      </Button>
                      {bot.config?.mode !== "recovery_guard" && selectedBotId !== String(bot.id) && executingBotId !== String(bot.id) && (
                        <Button size="sm" className="flex-1" onClick={(e) => { e.stopPropagation(); executeBot(bot); }} disabled={Boolean(executingBotId)} data-testid={`button-run-bot-${bot.id}`}>
                          <Play className="mr-2 h-3 w-3"/>Run Bot
@@ -208,13 +241,14 @@ export default function Bots() {
                         currency={account.data?.currency || "USD"}
                         onStart={() => executeBot(bot)}
                         onStop={runSession.stop}
+                        onReset={runSession.reset}
                          disabled={Boolean(executingBotId && executingBotId !== String(bot.id))}
                          runNoun="Bot"
                       />
                     </div>
                   )}
                 </div>
-              )) : <Empty title="No bots configured" text="Start with an observation bot. No trades will be placed by default." />}
+              )) : <Empty title="No bots configured" text="Choose a template, review its limits, then start it when ready." />}
             </CardContent>
           </Card>
 
@@ -242,12 +276,22 @@ export default function Bots() {
                          </Button>
                       )}
                     </div>
-                    <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">{t.description ?? "Server-defined strategy template"}</p>
+                     <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">{t.description ?? "Server-defined strategy template"}</p>
+                     {t.source && (
+                       <div className="mt-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+                         Source:{" "}
+                         {t.sourceUrl ? (
+                           <a href={t.sourceUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                             {t.source}
+                           </a>
+                         ) : t.source}
+                       </div>
+                     )}
                     <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] font-mono text-muted-foreground">
                       {t.strategy?.indicator && <div className="bg-background px-2 py-1 rounded border">Ind: {t.strategy.indicator}</div>}
                     </div>
                      <Button size="sm" variant="outline" className="mt-3 w-full bg-background" onClick={() => add(t)} disabled={create.isPending} data-testid={`button-use-template-${t.id ?? i}`}>
-                       <Copy className="mr-2 h-3 w-3"/>{create.isPending ? "Creating..." : t.botNumber ? `Use Bot ${t.botNumber}` : "Use as dry-run"}
+                        <Copy className="mr-2 h-3 w-3"/>{create.isPending ? "Creating..." : t.botNumber ? `Use Bot ${t.botNumber}` : "Use template"}
                     </Button>
                   </div>
                 )) : <Empty title="No templates found" text="Try a different search term." />}
@@ -645,3 +689,6 @@ function BotRunHistory({ botId, accountCurrency }: { botId: string; accountCurre
 
 function SkeletonList(){return <div className="space-y-3"><div className="h-20 animate-pulse rounded-lg bg-muted/50"/><div className="h-20 animate-pulse rounded-lg bg-muted/50"/></div>}
 function Empty({title,text}:{title:string,text:string}){return <div className="rounded-lg border border-dashed border-muted-foreground/30 p-8 text-center bg-secondary/5"><CheckCircle2 className="mx-auto h-8 w-8 text-muted-foreground/50"/><div className="mt-3 font-semibold text-foreground">{title}</div><p className="mt-1 text-sm text-muted-foreground max-w-[200px] mx-auto leading-relaxed">{text}</p></div>}
+function BotDetail({ label, value }: { label: string; value: string }) {
+  return <div className="min-w-0 bg-background/90 p-2"><div className="uppercase tracking-wider text-muted-foreground">{label}</div><div className="mt-1 truncate font-mono text-foreground">{value}</div></div>
+}
