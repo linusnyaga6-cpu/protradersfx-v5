@@ -9,6 +9,7 @@ import {
   CircleAlert,
   Clock3,
   Crosshair,
+  MoreHorizontal,
   Radio,
   RotateCcw,
   Send,
@@ -189,49 +190,31 @@ export default function BulkTrade() {
   const directionIsPut = contractType === "PUT"
 
   return (
-    <div className="mx-auto min-h-[100dvh] w-full max-w-7xl space-y-5 p-4 md:p-7">
+    <div className="mx-auto min-h-[100dvh] w-full max-w-[1480px] space-y-4 p-3 md:p-5">
       <TradingTabs active="manual" />
       <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} switchingDisabled={runSession.isBusy} />
 
-      <header className="flex flex-col gap-4 border-b border-border/70 pb-5 md:flex-row md:items-end md:justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.22em] text-primary">
-            <Crosshair className="h-3.5 w-3.5" />
-            Manual derivatives desk
-          </div>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight md:text-4xl">Trade from the tape</h1>
-          <p className={`mt-2 max-w-2xl text-sm leading-6 ${account.data?.accountType === "real" ? "text-amber-700 dark:text-amber-300" : "text-muted-foreground"}`}>
-            Read the latest quote, choose a direction, and watch the authoritative settlement arrive.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 self-start rounded-md border border-border/80 bg-card/70 px-3 py-2 text-xs text-muted-foreground md:self-auto">
-          <ShieldCheck className="h-4 w-4 text-success" />
-          <span>{accountSessionLabel} · Demo-first safeguards active</span>
-        </div>
-      </header>
-
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_350px]">
-        <Card className="overflow-hidden">
-          <CardHeader className="border-b bg-secondary/10 p-5">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.2em] text-muted-foreground">
-                  <Radio className="h-3.5 w-3.5 text-primary" />
-                  Live market
-                </div>
-                <CardTitle className="mt-1 text-xl">{marketLabel(marketQuery.markets.find(item => item.symbol === selectedMarket), selectedMarket)}</CardTitle>
-              </div>
-              <Badge variant={marketOffline ? "destructive" : "success"} data-testid="status-market-connection">
-                {marketOffline ? "OFFLINE" : ticker.isLoading ? "CONNECTING" : "LIVE"}
-              </Badge>
+      <section className="instrument-panel overflow-hidden rounded-xl" data-testid="manual-trader-workspace">
+        <div className="flex flex-col gap-4 border-b border-border/80 bg-card px-4 py-3 md:flex-row md:items-center md:justify-between md:px-5">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+              <Crosshair className="h-5 w-5" />
             </div>
-            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.2em] text-primary">
+                <Radio className="h-3 w-3" />
+                Manual trading
+              </div>
+              <h1 className="truncate text-lg font-semibold tracking-tight md:text-xl">{marketLabel(marketQuery.markets.find(item => item.symbol === selectedMarket), selectedMarket)}</h1>
+            </div>
+          </div>
+          <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
               <Label htmlFor="bulk-market" className="sr-only">Market</Label>
               <select
                 id="bulk-market"
                 value={selectedMarket}
                 onChange={event => setSelectedMarket(event.target.value)}
-                className="h-10 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-sm"
+                className="h-10 min-w-0 rounded-md border border-input bg-background px-3 text-sm sm:w-[280px]"
                 data-testid="select-bulk-market"
               >
                 {marketGroups.map(([group, markets]) => (
@@ -240,80 +223,97 @@ export default function BulkTrade() {
                   </optgroup>
                 ))}
               </select>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2 whitespace-nowrap text-xs text-muted-foreground">
                 <Clock3 className="h-3.5 w-3.5" />
                 Quote refreshes every 15s
               </div>
-            </div>
-            {marketQuery.isLoading && <p className="mt-2 text-xs text-muted-foreground">Loading active markets from Deriv.</p>}
-            {marketQuery.isError && <p className="mt-2 text-xs text-destructive">Deriv market discovery is unavailable.</p>}
-            {availabilityNotice && <p className="mt-2 text-xs text-amber-600">{availabilityNotice}</p>}
-          </CardHeader>
-          <CardContent className="space-y-5 p-5">
-            <DigitRail activeDigit={liveLastDigit} selectedDigit={needsBarrier ? Number(barrier) : null} />
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground md:ml-2">
+            <Badge variant={marketOffline ? "destructive" : "success"} data-testid="status-market-connection">
+              {marketOffline ? "OFFLINE" : ticker.isLoading ? "CONNECTING" : "LIVE"}
+            </Badge>
+            <span className="hidden whitespace-nowrap lg:inline">{accountSessionLabel} · safeguarded</span>
+          </div>
+        </div>
+        {(marketQuery.isLoading || marketQuery.isError || availabilityNotice) && (
+          <div className="border-b border-border/70 bg-secondary/15 px-4 py-2 text-xs md:px-5">
+            {marketQuery.isLoading && <p className="text-muted-foreground">Loading active markets from Deriv.</p>}
+            {marketQuery.isError && <p className="text-destructive">Deriv market discovery is unavailable.</p>}
+            {availabilityNotice && <p className="text-amber-600">{availabilityNotice}</p>}
+          </div>
+        )}
+        <div className="border-b border-border/80 bg-background/40 p-3 md:p-4">
+          <DigitRail activeDigit={liveLastDigit} selectedDigit={needsBarrier ? Number(barrier) : null} />
+        </div>
 
-            <div className="grid gap-3 sm:grid-cols-[minmax(150px,.65fr)_minmax(0,1.35fr)]">
-              <div className="rounded-lg border border-primary/20 bg-primary/5 p-4" data-testid="panel-market-quote">
-                <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.18em] text-muted-foreground">
+        <div className="grid lg:grid-cols-[minmax(0,1fr)_320px]">
+          <section className="min-w-0 border-b border-border/80 lg:border-b-0 lg:border-r" aria-label="Live market">
+            <div className="flex items-center justify-between gap-3 border-b border-border/70 px-4 py-3 md:px-5">
+              <div>
+                <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.2em] text-muted-foreground">
                   <Activity className="h-3.5 w-3.5 text-primary" />
                   Live market
                 </div>
-                <div className="mt-3 font-mono text-3xl font-bold tracking-tight" data-testid="text-market-quote">
-                  {marketQuote == null ? "—" : String(marketQuote)}
-                </div>
-                <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className={`h-1.5 w-1.5 rounded-full ${marketOffline ? "bg-destructive" : "bg-success"}`} />
-                  {marketOffline ? "Awaiting provider" : "Provider quote"}
+                <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <span className="font-mono text-2xl font-bold tracking-tight" data-testid="text-market-quote">{marketQuote == null ? "—" : String(marketQuote)}</span>
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span className={`h-1.5 w-1.5 rounded-full ${marketOffline ? "bg-destructive" : "bg-success"}`} />
+                    {marketOffline ? "Awaiting provider" : "Provider quote"}
+                  </span>
                 </div>
               </div>
+              <div className={`flex items-center gap-1 text-xs font-semibold uppercase tracking-wider ${quoteTrend === "down" ? "text-destructive" : quoteTrend === "up" ? "text-success" : "text-muted-foreground"}`}>
+                {quoteTrend === "down" ? <ArrowDownRight className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
+                {quoteTrend === "flat" ? "Waiting" : quoteTrend === "up" ? "Rising" : "Falling"}
+              </div>
+            </div>
+            <div className="bg-card/70 p-3 md:p-5">
               <QuoteChart values={candleCloses} trend={quoteTrend} isLoading={candles.isLoading} />
             </div>
-
-            <div className="grid gap-3 rounded-lg border border-border/80 bg-secondary/25 p-4 sm:grid-cols-[1fr_auto_1fr] sm:items-center" data-testid="panel-live-price-context">
+            <div className="grid gap-3 border-t border-border/70 bg-background/30 p-3 md:grid-cols-[1fr_auto_1fr] md:items-center md:p-4" data-testid="panel-live-price-context">
               <div>
                 <div className="text-[10px] font-semibold uppercase tracking-[.18em] text-muted-foreground">Latest tick context</div>
                 <p className="mt-1 text-sm text-foreground">The last digit is moving with the live quote.</p>
               </div>
-              <div className="hidden h-8 w-px bg-border sm:block" />
-              <div className="flex items-center justify-between gap-4 sm:justify-end">
+              <div className="hidden h-8 w-px bg-border md:block" />
+              <div className="flex items-center justify-between gap-4 md:justify-end">
                 <div className="text-right">
                   <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Last digit</div>
                   <div className="font-mono text-lg font-semibold text-primary" data-testid="text-live-last-digit">{liveLastDigit == null ? "—" : liveLastDigit}</div>
                 </div>
-                <div className={`flex items-center gap-1 text-xs font-semibold uppercase tracking-wider ${quoteTrend === "down" ? "text-destructive" : quoteTrend === "up" ? "text-success" : "text-muted-foreground"}`}>
-                  {quoteTrend === "down" ? <ArrowDownRight className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
-                  {quoteTrend === "flat" ? "Waiting" : quoteTrend === "up" ? "Rising" : "Falling"}
+                <div className="text-right">
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Balance</div>
+                  <div className="font-mono text-sm font-semibold">{Number.isFinite(availableBalance) ? formatMoney(availableBalance, accountCurrency) : "Unavailable"}</div>
                 </div>
               </div>
             </div>
-
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 border-t border-border/70 bg-background/20 p-3 sm:grid-cols-4 md:p-4">
               <MarketMetric label="Volatility" value={marketData?.indicators ? formatVolatility(marketData.indicators.volatilityLevel, marketData.indicators.volatilityPct) : "Unavailable"} />
               <MarketMetric label="Candle window" value={candleCloses.length ? `${candleCloses.length} closes` : "Waiting"} />
               <MarketMetric label="Duration cap" value={`${Number(preflight.data?.maxDuration || 3600)} ticks`} />
-              <MarketMetric label="Account balance" value={Number.isFinite(availableBalance) ? formatMoney(availableBalance, accountCurrency) : "Unavailable"} />
+              <MarketMetric label="Account" value={accountSessionLabel} />
             </div>
-          </CardContent>
-        </Card>
+          </section>
 
-        <Card className="h-fit">
-          <CardHeader className="border-b bg-secondary/10 p-5">
-            <div className="flex items-center justify-between gap-3">
+          <aside className="bg-card/90" aria-label="Order ticket">
+            <div className="flex items-center justify-between gap-3 border-b border-border/70 px-4 py-3 md:px-5">
               <div>
                 <div className="text-[10px] font-semibold uppercase tracking-[.2em] text-primary">Order ticket</div>
-                <CardTitle className="mt-1 text-xl">Choose your direction</CardTitle>
+                <h2 className="mt-1 text-lg font-semibold tracking-tight">Place a trade</h2>
               </div>
               <WalletCards className="h-5 w-5 text-muted-foreground" />
             </div>
-          </CardHeader>
-          <CardContent className="space-y-4 p-5">
-            <div className="space-y-2">
-              <Label>Direction</Label>
-              <div className="grid grid-cols-2 gap-2" data-testid="direction-selector">
+            <div className="space-y-4 p-4 md:p-5">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Direction</Label>
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Higher / Lower</span>
+                </div>
+                <div className="grid gap-2" data-testid="direction-selector">
                 <Button
                   type="button"
                   variant={directionIsCall ? "default" : "outline"}
-                  className={`h-14 justify-between px-4 ${directionIsCall ? "bg-success text-success-foreground hover:bg-success/90" : "border-success/40 text-success hover:bg-success/10"}`}
+                  className={`h-12 justify-between px-4 ${directionIsCall ? "bg-success text-success-foreground hover:bg-success/90" : "border-success/40 text-success hover:bg-success/10"}`}
                   onClick={() => setContractType("CALL")}
                   disabled={!availableTypes.includes("CALL") || runSession.isBusy}
                   aria-pressed={directionIsCall}
@@ -328,7 +328,7 @@ export default function BulkTrade() {
                 <Button
                   type="button"
                   variant={directionIsPut ? "default" : "outline"}
-                  className={`h-14 justify-between px-4 ${directionIsPut ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : "border-destructive/40 text-destructive hover:bg-destructive/10"}`}
+                  className={`h-12 justify-between px-4 ${directionIsPut ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : "border-destructive/40 text-destructive hover:bg-destructive/10"}`}
                   onClick={() => setContractType("PUT")}
                   disabled={!availableTypes.includes("PUT") || runSession.isBusy}
                   aria-pressed={directionIsPut}
@@ -340,93 +340,95 @@ export default function BulkTrade() {
                   </span>
                   <ArrowDownRight className="h-5 w-5" />
                 </Button>
+                </div>
+                {contracts.isLoading && <p className="text-xs text-muted-foreground">Checking contracts offered by Deriv.</p>}
+                {contracts.isError && <p className="text-xs text-amber-600">Contract availability is temporarily unavailable for this symbol.</p>}
+                {!contracts.isLoading && !contracts.isError && !availableTypes.length && <p className="text-xs text-amber-600">No supported contracts are available for this symbol yet.</p>}
               </div>
-              {contracts.isLoading && <p className="text-xs text-muted-foreground">Checking contracts offered by Deriv.</p>}
-              {contracts.isError && <p className="text-xs text-amber-600">Contract availability is temporarily unavailable for this symbol.</p>}
-              {!contracts.isLoading && !contracts.isError && !availableTypes.length && <p className="text-xs text-amber-600">No supported contracts are available for this symbol yet.</p>}
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="contract-choice">Other contract types</Label>
-              <select
-                id="contract-choice"
-                value={contractType}
-                onChange={event => setContractType(event.target.value)}
-                disabled={!availableTypes.length || runSession.isBusy}
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                data-testid="select-contract-type"
-              >
-                {availableTypes.map((type: string) => (
-                  <option key={type} value={type}>{CONTRACT_LABELS[type]?.action || type} · {CONTRACT_LABELS[type]?.family || "Contract"}</option>
-                ))}
-              </select>
-            </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Field label={`Stake (${accountCurrency})`} id="bulk-stake" value={stake} onChange={setStake} min="0.01" step="0.01" />
+                <div className="space-y-2">
+                  <Label htmlFor="bulk-duration">Duration</Label>
+                  <div className="relative">
+                    <Input id="bulk-duration" type="number" min="1" max={Number(preflight.data?.maxDuration || 3600)} step="1" value={duration} onChange={event => setDuration(event.target.value)} disabled={runSession.isBusy} data-testid="input-duration" className="pr-14" />
+                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[10px] uppercase text-muted-foreground">ticks</span>
+                  </div>
+                </div>
+              </div>
 
-            {needsBarrier && (
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>Digit barrier</Label>
-                  <span className="font-mono text-xs text-amber-600">selected: {barrier}</span>
-                </div>
-                <div className="grid grid-cols-5 gap-1.5">
-                  {Array.from({ length: 10 }, (_, digit) => String(digit)).map(digit => (
-                    <Button
-                      key={digit}
-                      type="button"
-                      size="sm"
-                      variant={barrier === digit ? "default" : "outline"}
-                      onClick={() => setBarrier(digit)}
-                      disabled={runSession.isBusy}
-                      data-testid={`button-barrier-${digit}`}
-                    >
-                      {digit}
-                    </Button>
+                <Label htmlFor="contract-choice">Contract type</Label>
+                <select
+                  id="contract-choice"
+                  value={contractType}
+                  onChange={event => setContractType(event.target.value)}
+                  disabled={!availableTypes.length || runSession.isBusy}
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  data-testid="select-contract-type"
+                >
+                  {availableTypes.map((type: string) => (
+                    <option key={type} value={type}>{CONTRACT_LABELS[type]?.action || type} · {CONTRACT_LABELS[type]?.family || "Contract"}</option>
                   ))}
+                </select>
+              </div>
+
+              {needsBarrier && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Digit barrier</Label>
+                    <span className="font-mono text-xs text-amber-600">selected: {barrier}</span>
+                  </div>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {Array.from({ length: 10 }, (_, digit) => String(digit)).map(digit => (
+                      <Button
+                        key={digit}
+                        type="button"
+                        size="sm"
+                        variant={barrier === digit ? "default" : "outline"}
+                        onClick={() => setBarrier(digit)}
+                        disabled={runSession.isBusy}
+                        data-testid={`button-barrier-${digit}`}
+                      >
+                        {digit}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2">
+                <Field label={`Stop loss (${accountCurrency})`} id="bulk-stop-loss" value={stopLoss} onChange={setStopLoss} min="0.01" step="0.01" />
+                <div className="flex items-end">
+                  <div className="flex h-10 w-full items-center justify-between rounded-md border border-border/80 bg-secondary/25 px-3 text-xs">
+                    <span className="text-muted-foreground">At risk</span>
+                    <span className="font-mono font-semibold">{formatMoney(Number(stake || 0), accountCurrency)}</span>
+                  </div>
                 </div>
               </div>
-            )}
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label={`Stake (${accountCurrency})`} id="bulk-stake" value={stake} onChange={setStake} min="0.01" step="0.01" />
-              <Field label={`Stop loss (${accountCurrency})`} id="bulk-stop-loss" value={stopLoss} onChange={setStopLoss} min="0.01" step="0.01" />
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Duration</Label>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {["1", "2", "3", "5"].map(ticks => (
-                    <Button key={ticks} type="button" size="sm" variant={duration === ticks ? "default" : "outline"} onClick={() => setDuration(ticks)} disabled={runSession.isBusy} data-testid={`button-duration-${ticks}`}>
-                      {ticks}
-                    </Button>
-                  ))}
-                </div>
-                <Input id="bulk-duration" type="number" min="1" max={Number(preflight.data?.maxDuration || 3600)} step="1" value={duration} onChange={event => setDuration(event.target.value)} disabled={runSession.isBusy} data-testid="input-duration" />
+              <div className="rounded-lg border border-border/80 bg-secondary/25 p-3 text-xs">
+                <div className="flex items-center justify-between gap-2"><span className="text-muted-foreground">Market</span><span className="font-mono">{selectedMarket}</span></div>
+                <div className="mt-1 flex items-center justify-between gap-2"><span className="text-muted-foreground">Contract</span><span className="font-semibold">{CONTRACT_LABELS[contractType]?.action || contractType}{needsBarrier ? ` · ${barrier}` : ""}</span></div>
+                <div className="mt-1 flex items-center justify-between gap-2"><span className="text-muted-foreground">Stop loss</span><span className="font-mono">{formatMoney(Number(stopLoss || 0), accountCurrency)}</span></div>
               </div>
+
+              {!session?.authenticated && <GateNotice icon={<CircleAlert className="h-4 w-4" />} text="Sign in and select an account before submitting an order." />}
+              {session?.authenticated && !accountCanTrade && <GateNotice icon={<ShieldCheck className="h-4 w-4" />} text="Trading is gated until the selected account passes the current preflight checks." />}
+
+              <SessionActions
+                state={runSession.state}
+                currency={accountCurrency}
+                contractType={contractType}
+                disabled={!canRun || !validOrder || marketOffline || runSession.isBusy}
+                onStart={() => runSession.start(orderData, totalRuns, targetProfit)}
+                onStop={runSession.stop}
+                onReset={runSession.reset}
+              />
             </div>
-
-            <div className="rounded-lg border border-border/80 bg-secondary/35 p-3 text-xs">
-              <div className="flex items-center justify-between gap-2"><span className="text-muted-foreground">Market</span><span className="font-mono">{selectedMarket}</span></div>
-              <div className="mt-1 flex items-center justify-between gap-2"><span className="text-muted-foreground">Contract</span><span className="font-semibold">{CONTRACT_LABELS[contractType]?.action || contractType}{needsBarrier ? ` · ${barrier}` : ""}</span></div>
-              <div className="mt-1 flex items-center justify-between gap-2"><span className="text-muted-foreground">At risk</span><span className="font-mono">{formatMoney(Number(stake || 0), accountCurrency)}</span></div>
-              <div className="mt-1 flex items-center justify-between gap-2"><span className="text-muted-foreground">Stop loss</span><span className="font-mono">{formatMoney(Number(stopLoss || 0), accountCurrency)}</span></div>
-            </div>
-
-            {!session?.authenticated && <GateNotice icon={<CircleAlert className="h-4 w-4" />} text="Sign in and select an account before submitting an order." />}
-            {session?.authenticated && !accountCanTrade && <GateNotice icon={<ShieldCheck className="h-4 w-4" />} text="Trading is gated until the selected account passes the current preflight checks." />}
-
-            <SessionActions
-              state={runSession.state}
-              currency={accountCurrency}
-              contractType={contractType}
-              disabled={!canRun || !validOrder || marketOffline || runSession.isBusy}
-              onStart={() => runSession.start(orderData, totalRuns, targetProfit)}
-              onStop={runSession.stop}
-              onReset={runSession.reset}
-            />
-          </CardContent>
-        </Card>
-      </div>
+          </aside>
+        </div>
+      </section>
 
       <SettlementStream state={runSession.state} currency={accountCurrency} selectedMarket={selectedMarket} />
     </div>
@@ -589,20 +591,37 @@ function QuoteChart({ values, trend, isLoading }: { values: number[]; trend: "up
     const y = 72 - ((value - min) / range) * 58
     return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`
   }).join(" ")
+  const lastValue = points.at(-1)
+  const lastY = lastValue == null ? 72 : 72 - ((lastValue - min) / range) * 58
   const stroke = trend === "down" ? "hsl(var(--destructive))" : "hsl(var(--primary))"
   return (
-    <div className="min-h-[130px] rounded-lg border border-border/80 bg-background/65 p-3" data-testid="chart-market-context">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.18em] text-muted-foreground"><BarChart3 className="h-3.5 w-3.5" />60-candle context</div>
-        <span className="font-mono text-[10px] text-muted-foreground">{isLoading ? "Loading" : points.length ? "1m" : "Waiting"}</span>
+    <div className="rounded-lg border border-border/80 bg-background/65" data-testid="chart-market-context">
+      <div className="flex items-center justify-between gap-3 border-b border-border/70 px-3 py-2.5">
+        <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.18em] text-muted-foreground"><BarChart3 className="h-3.5 w-3.5 text-primary" />Price chart</div>
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-[10px] text-muted-foreground">{isLoading ? "Loading" : points.length ? "1m" : "Waiting"}</span>
+          <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+        </div>
       </div>
       {path ? (
-        <svg viewBox="0 0 100 80" preserveAspectRatio="none" className="mt-3 h-[78px] w-full" role="img" aria-label="Recent market candle close context">
-          <path d="M 0 74 H 100" stroke="hsl(var(--border))" strokeWidth=".6" vectorEffect="non-scaling-stroke" />
-          <path d={path} fill="none" stroke={stroke} strokeWidth="2" vectorEffect="non-scaling-stroke" />
+        <svg viewBox="0 0 100 84" preserveAspectRatio="none" className="h-[290px] w-full" role="img" aria-label="Recent market candle close context">
+          <defs>
+            <linearGradient id="quote-area-fill" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor={stroke} stopOpacity=".18" />
+              <stop offset="100%" stopColor={stroke} stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <g stroke="hsl(var(--border))" strokeWidth=".45" opacity=".65" vectorEffect="non-scaling-stroke">
+            {[10, 26, 42, 58, 74].map(y => <path key={`h-${y}`} d={`M 0 ${y} H 100`} />)}
+            {[12.5, 25, 37.5, 50, 62.5, 75, 87.5].map(x => <path key={`v-${x}`} d={`M ${x} 0 V 84`} />)}
+          </g>
+          <path d={`${path} L 100 84 L 0 84 Z`} fill="url(#quote-area-fill)" />
+          <path d={path} fill="none" stroke={stroke} strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
+          <path d={`M 0 ${lastY.toFixed(2)} H 100`} stroke={stroke} strokeWidth=".8" strokeDasharray="2 2" opacity=".7" vectorEffect="non-scaling-stroke" />
+          <circle cx="100" cy={lastY} r="1.5" fill={stroke} vectorEffect="non-scaling-stroke" />
         </svg>
       ) : (
-        <div className="mt-5 flex h-[78px] items-center justify-center text-xs text-muted-foreground">Candle context will populate from Deriv.</div>
+        <div className="flex h-[290px] items-center justify-center text-xs text-muted-foreground">Candle context will populate from Deriv.</div>
       )}
     </div>
   )
