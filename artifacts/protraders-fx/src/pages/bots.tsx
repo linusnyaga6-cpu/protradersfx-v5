@@ -54,10 +54,13 @@ export default function Bots() {
   const list = Array.isArray((bots.data as any)?.bots) ? (bots.data as any).bots : Array.isArray(bots.data) ? bots.data : [];
   const builtIns = Array.isArray((templates.data as any)?.builtIn) ? (templates.data as any).builtIn : [];
   const custom = Array.isArray((templates.data as any)?.templates) ? (templates.data as any).templates : [];
+  const sourceBots = builtIns.filter((template: any) => template.botNumber === 1 || template.botNumber === 2);
 
-  const allTemplates = [...builtIns, ...custom].filter(t =>
+  const allTemplates = [...builtIns.filter((template: any) => !template.botNumber), ...custom].filter(t =>
     !templateSearch ||
-    (t.name?.toLowerCase().includes(templateSearch.toLowerCase()) || t.description?.toLowerCase().includes(templateSearch.toLowerCase()))
+    (t.name?.toLowerCase().includes(templateSearch.toLowerCase())
+      || t.description?.toLowerCase().includes(templateSearch.toLowerCase())
+      || t.source?.toLowerCase().includes(templateSearch.toLowerCase()))
   );
 
   const add = (template: any) => {
@@ -180,7 +183,39 @@ export default function Bots() {
               <CardTitle className="text-lg">Your bots</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 pt-4">
-              {bots.isLoading ? <SkeletonList /> : list.length ? list.map((bot: any, i: number) => (
+               {templates.isLoading ? <SkeletonList /> : sourceBots.map((template: any) => (
+                 <div key={template.id} className="rounded-lg border border-primary/25 bg-primary/[.045] p-4" data-testid={`source-bot-${template.botNumber}`}>
+                   <div className="flex items-start gap-3">
+                     <div className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-primary/10">
+                       <BotIcon className="h-5 w-5 text-primary" />
+                     </div>
+                     <div className="min-w-0 flex-1">
+                       <div className="flex flex-wrap items-center gap-2">
+                         <Badge variant="outline" className="text-[10px] border-primary/30 text-primary">BOT {template.botNumber}</Badge>
+                         <div className="font-semibold">{template.name}</div>
+                       </div>
+                       <div className="mt-1 text-xs text-muted-foreground">{template.description}</div>
+                       {template.source && (
+                         <div className="mt-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+                           Source:{" "}
+                           {template.sourceUrl ? (
+                             <a href={template.sourceUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                               {template.source}
+                             </a>
+                           ) : template.source}
+                         </div>
+                       )}
+                     </div>
+                   </div>
+                   <Button size="sm" variant="outline" className="mt-3 w-full bg-background" onClick={() => add(template)} disabled={create.isPending} data-testid={`button-use-source-bot-${template.botNumber}`}>
+                     <Copy className="mr-2 h-3 w-3" />{create.isPending ? "Creating..." : `Use Bot ${template.botNumber}`}
+                   </Button>
+                 </div>
+               ))}
+               {!bots.isLoading && sourceBots.length > 0 && list.length > 0 && (
+                 <div className="border-t pt-3 text-[10px] font-semibold uppercase tracking-[.18em] text-muted-foreground">Saved bots</div>
+               )}
+               {bots.isLoading ? <SkeletonList /> : list.length ? list.map((bot: any, i: number) => (
                 <div
                   key={bot.id ?? i}
                   className={`flex flex-col gap-3 rounded-lg border p-4 cursor-pointer transition-colors ${selectedBotId === String(bot.id) ? 'border-primary ring-1 ring-primary/20 bg-primary/5' : 'hover:bg-secondary/40'}`}
@@ -248,7 +283,7 @@ export default function Bots() {
                     </div>
                   )}
                 </div>
-              )) : <Empty title="No bots configured" text="Choose a template, review its limits, then start it when ready." />}
+               )) : !templates.isLoading && sourceBots.length === 0 ? <Empty title="No bots configured" text="Choose a template, review its limits, then start it when ready." /> : null}
             </CardContent>
           </Card>
 
