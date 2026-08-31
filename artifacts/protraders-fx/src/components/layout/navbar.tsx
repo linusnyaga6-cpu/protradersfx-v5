@@ -17,7 +17,7 @@ export function Navbar() {
      { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard, show: session?.authenticated },
      { path: "/create-bot", label: "Manual Trader", icon: Activity, show: session?.authenticated },
     { path: "/bulk-trade", label: "Bulk Trader", icon: Layers3, show: session?.authenticated },
-     { path: "/bots", label: "Bots", icon: Bot, show: session?.authenticated },
+     { path: "/bots", label: "Bots", icon: Bot, show: true },
      { path: "/markets", label: "Markets", icon: BarChart3, show: session?.authenticated },
      { path: "/activity", label: "Activity", icon: Activity, show: !!session?.authenticated },
      { path: "/recovery", label: "Recovery", icon: CircleAlert, show: session?.authenticated },
