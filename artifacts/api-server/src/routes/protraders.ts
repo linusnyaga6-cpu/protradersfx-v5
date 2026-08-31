@@ -499,15 +499,24 @@ router.get("/diagnostics/database-identity", async (req, res) => {
       }
       : {};
     const causeRecord = errorRecord.cause && typeof errorRecord.cause === "object"
-      ? errorRecord.cause as { code?: unknown }
+      ? errorRecord.cause as {
+        name?: unknown;
+        code?: unknown;
+        message?: unknown;
+        severity?: unknown;
+      }
       : {};
     const sanitizeText = (value: unknown, fallback: string) => {
       const text = typeof value === "string" ? value.split(/\r?\n/, 1)[0] : fallback;
       return text
         .replace(/postgres(?:ql)?:\/\/\S+/gi, "[redacted]")
-        .replace(/(?:password|passwd|pwd|access[_-]?token|refresh[_-]?token|authorization|cookie)\s*[=:]?\s*[^\s,;]+/gi, "$1=[redacted]")
+        .replace(/(?:database_url|postgres_url|db_host|db_ssl|session_secret|password|passwd|pwd|token|api[_-]?key|secret|authorization|cookie)\s*[=:]?\s*[^\s,;]+/gi, "$1=[redacted]")
         .replace(/[0-9a-f]{32,}/gi, "[redacted]")
         .slice(0, 240);
+    };
+    const sanitizeNullableText = (value: unknown) => {
+      const text = sanitizeText(value, "");
+      return text || null;
     };
     const sanitizeCode = (value: unknown) => (
       typeof value === "string" && /^[0-9A-Z]{5}$/i.test(value) ? value : undefined
@@ -531,7 +540,15 @@ router.get("/diagnostics/database-identity", async (req, res) => {
       },
       "database identity diagnostic failed",
     );
-    return errorResponse(res, 503, "Database identity unavailable");
+    return res.status(503).json({
+      error: "Database identity unavailable",
+      diagnostic: {
+        name: sanitizeNullableText(errorRecord.name) ?? sanitizeNullableText(causeRecord.name),
+        code: sanitizeCode(errorRecord.code) ?? sanitizeCode(causeRecord.code) ?? null,
+        message: sanitizeNullableText(causeRecord.message) ?? sanitizeNullableText(errorRecord.message),
+        severity: sanitizeSeverity(errorRecord.severity) ?? sanitizeSeverity(causeRecord.severity) ?? null,
+      },
+    });
   }
 });
 
