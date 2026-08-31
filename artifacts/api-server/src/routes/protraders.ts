@@ -422,7 +422,17 @@ export async function listDerivAccounts(accessToken: string) {
     "/trading/v1/options/accounts",
   );
   return Array.isArray(body.data)
-    ? body.data.filter((account) => account.account_id && account.account_type && Number.isFinite(Number(account.balance)))
+    ? body.data
+      .map((account) => ({
+        ...account,
+        account_type: typeof account.account_type === "string"
+          ? account.account_type.toLowerCase() as DerivOptionsAccount["account_type"]
+          : account.account_type,
+        balance: account.balance == null
+          ? undefined
+          : Number(account.balance),
+      }))
+      .filter((account) => account.account_id && (account.account_type === "demo" || account.account_type === "real"))
     : [];
 }
 
@@ -543,6 +553,58 @@ router.get("/preflight", (_req, res) => {
     readyForControlledLiveTest: deploymentReady && databaseConfigured,
     readyForRealTrading: realTradingReady,
   });
+});
+
+router.get("/risk-acknowledgements/status", async (req, res) => {
+  const session = await getSession(req, res);
+  if (!session) return errorResponse(res, 401, "Not authenticated");
+  if (!session.accountId) {
+    return errorResponse(res, 409, "Account selection required", "Select the Real account before accepting the live-trading disclosure.");
+  }
+
+  try {
+    const [acknowledgement] = await db.select({
+      acceptedAt: riskAcknowledgements.acceptedAt,
+    }).from(riskAcknowledgements).where(and(
+      eq(riskAcknowledgements.ownerKey, ownerKeyFor(session.accountId)),
+      eq(riskAcknowledgements.version, riskAcknowledgementVersion),
+    )).orderBy(desc(riskAcknowledgements.acceptedAt)).limit(1);
+    return res.json({
+      accepted: Boolean(acknowledgement),
+      version: riskAcknowledgementVersion,
+      acceptedAt: acknowledgement?.acceptedAt?.toISOString() || null,
+    });
+  } catch (error) {
+    req.log?.warn({ err: error }, "Risk acknowledgement status unavailable");
+    return errorResponse(res, 503, "Risk acknowledgement unavailable", "Live trading readiness could not be verified.");
+  }
+});
+
+router.post("/risk-acknowledgements/accept", async (req, res) => {
+  const session = await getSession(req, res);
+  if (!session) return errorResponse(res, 401, "Not authenticated");
+  if (!session.accountId) {
+    return errorResponse(res, 409, "Account selection required", "Select the Real account before accepting the live-trading disclosure.");
+  }
+  const requestedVersion = typeof req.body?.version === "string" ? req.body.version : "";
+  if (requestedVersion !== riskAcknowledgementVersion) {
+    return errorResponse(res, 400, "Risk acknowledgement version required", "Accept the current live-trading disclosure.");
+  }
+
+  try {
+    const [acknowledgement] = await db.insert(riskAcknowledgements).values({
+      ownerKey: ownerKeyFor(session.accountId),
+      version: riskAcknowledgementVersion,
+    }).returning({ acceptedAt: riskAcknowledgements.acceptedAt });
+    return res.status(201).json({
+      accepted: true,
+      version: riskAcknowledgementVersion,
+      acceptedAt: acknowledgement?.acceptedAt?.toISOString() || new Date().toISOString(),
+    });
+  } catch (error) {
+    req.log?.warn({ err: error }, "Risk acknowledgement could not be recorded");
+    return errorResponse(res, 503, "Risk acknowledgement unavailable", "Live trading readiness could not be recorded.");
+  }
 });
 
 router.get("/diagnostics/database-identity", async (req, res) => {
@@ -1001,6 +1063,7 @@ async function derivProposalAndBuy(
 router.get("/account", async (req, res) => {
   const session = await getSession(req, res);
   if (!session) return errorResponse(res, 401, "Not authenticated");
+  res.setHeader("Cache-Control", "no-store");
 
   try {
     const accounts = await listDerivAccounts(session.accessToken);

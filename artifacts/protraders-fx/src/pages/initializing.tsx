@@ -1,12 +1,17 @@
 import { useEffect, useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { AlertCircle, CheckCircle2, Loader2, RefreshCw, ShieldCheck } from "lucide-react"
 import { useLocation } from "wouter"
-import { getGetAccountQueryKey, getGetSessionStatusQueryKey, useGetAccount, useGetSessionStatus } from "@workspace/api-client-react"
+import { getAccount, getGetAccountQueryKey, getGetSessionStatusQueryKey, useGetAccount, useGetSessionStatus } from "@workspace/api-client-react"
 import { Button } from "@/components/ui/button"
 
 export default function Initializing() {
   const [, setLocation] = useLocation()
+  const queryClient = useQueryClient()
   const [timedOut, setTimedOut] = useState(false)
+  const [switchingTo, setSwitchingTo] = useState<"demo" | "real" | null>(null)
+  const [selectionError, setSelectionError] = useState("")
+  const accountRequired = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("account_required") === "1"
   const session = useGetSessionStatus({ query: { queryKey: getGetSessionStatusQueryKey(), retry: 2, refetchInterval: 1500 } })
   const account = useGetAccount(undefined, { query: { queryKey: getGetAccountQueryKey(), enabled: !!session.data?.authenticated, retry: 2, refetchInterval: session.data?.authenticated ? 1800 : false } })
 
@@ -16,14 +21,36 @@ export default function Initializing() {
   }, [])
 
   useEffect(() => {
-    if (session.data?.authenticated && account.data?.loginid && account.data?.balance != null) {
+    if (!accountRequired && session.data?.authenticated && account.data?.loginid && account.data?.balance != null) {
       const timer = window.setTimeout(() => setLocation("/dashboard"), 700)
       return () => window.clearTimeout(timer)
     }
     return undefined
   }, [session.data, account.data, setLocation])
 
-  const failed = timedOut || session.isError || account.isError
+  const chooseAccount = async (accountType: "demo" | "real") => {
+    setSwitchingTo(accountType)
+    setSelectionError("")
+    try {
+      await queryClient.cancelQueries({ queryKey: getGetAccountQueryKey() })
+      const selected = await getAccount(
+        { account_type: accountType },
+        { credentials: "include", cache: "no-store" },
+      )
+      if (selected.accountType !== accountType) {
+        throw new Error(`Deriv returned the ${selected.accountType} account instead of ${accountType}.`)
+      }
+      queryClient.setQueryData(getGetAccountQueryKey(), selected)
+      setLocation("/dashboard")
+    } catch (error) {
+      const failure = error as { data?: { error?: string; message?: string }; message?: string }
+      setSelectionError(failure.data?.message || failure.data?.error || failure.message || "Account selection failed.")
+    } finally {
+      setSwitchingTo(null)
+    }
+  }
+  const selecting = accountRequired && !!session.data?.authenticated
+  const failed = !selecting && (timedOut || session.isError || account.isError)
   return (
     <section className="relative grid min-h-[70vh] place-items-center overflow-hidden px-5 py-16">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,hsl(var(--primary)/.12),transparent_55%)]" />
@@ -32,15 +59,26 @@ export default function Initializing() {
           {failed ? <AlertCircle className="h-7 w-7" /> : account.data?.loginid ? <CheckCircle2 className="h-7 w-7" /> : <Loader2 className="h-7 w-7 animate-spin" />}
         </div>
         <div className="mt-5 text-xs font-semibold uppercase tracking-[.24em] text-primary">Secure initialization</div>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight">{failed ? "Account sync needs attention" : account.data?.loginid ? "Workspace ready" : "Connecting your trading workspace"}</h1>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight">{selecting ? "Choose Demo or Real" : failed ? "Account sync needs attention" : account.data?.loginid ? "Workspace ready" : "Connecting your trading workspace"}</h1>
         <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-muted-foreground">
-          {failed ? "Account data was not verified. Reconnect and try again." : "Checking your account, currency, and balance."}
+            {selecting ? "Pick an account. Trades use only that account." : failed ? "Account data was not verified. Reconnect and try again." : "Checking account, currency, and balance."}
         </p>
         <div className="mt-7 space-y-3 text-left text-sm">
           <Status label="Encrypted session" ready={!!session.data?.authenticated} />
           <Status label="Active Deriv account" ready={!!account.data?.loginid} />
           <Status label="Currency and balance" ready={account.data?.balance != null} />
         </div>
+        {selecting && (
+          <div className="mt-7 grid grid-cols-2 gap-3">
+            <Button onClick={() => void chooseAccount("demo")} disabled={Boolean(switchingTo)}>
+              {switchingTo === "demo" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Demo
+            </Button>
+             <Button variant="outline" className="border-amber-500/60 bg-amber-500/10 text-amber-800 hover:bg-amber-500/20 dark:text-amber-200" onClick={() => void chooseAccount("real")} disabled={Boolean(switchingTo)}>
+              {switchingTo === "real" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Real
+            </Button>
+          </div>
+        )}
+        {selectionError && <p className="mt-3 text-sm text-destructive">{selectionError}</p>}
         {failed && (
           <div className="mt-7 flex flex-col gap-3 sm:flex-row">
             <Button className="flex-1" asChild><a href="/api/deriv/login"><RefreshCw className="mr-2 h-4 w-4" />Reconnect Deriv</a></Button>

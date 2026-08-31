@@ -58,7 +58,13 @@ export function AccountStrip({ account, isLoading, error, switchingDisabled = fa
     setSwitchError("")
     try {
       await queryClient.cancelQueries({ queryKey: getGetAccountQueryKey() })
-      const nextAccount = await getAccount({ account_type: accountType })
+      const nextAccount = await getAccount(
+        { account_type: accountType },
+        { credentials: "include", cache: "no-store" },
+      )
+      if (nextAccount.accountType !== accountType) {
+        throw new Error(`Deriv returned the ${nextAccount.accountType} account instead of ${accountType}.`)
+      }
       queryClient.setQueryData(getGetAccountQueryKey(), nextAccount)
     } catch (accountError) {
       const failure = accountError as { data?: { error?: string; message?: string }; message?: string }
@@ -81,13 +87,13 @@ export function AccountStrip({ account, isLoading, error, switchingDisabled = fa
               type="button"
               size="sm"
                variant="outline"
-                className={`h-9 justify-start ${account?.accountType === type
+               className={`h-9 justify-start ${account?.accountType === type || switchingTo === type
                   ? type === "real"
                     ? "border-amber-500/70 bg-amber-500/15 text-amber-800 hover:bg-amber-500/25 dark:text-amber-200"
                     : "border-primary/50 bg-primary/15 text-primary hover:bg-primary/25"
                   : "bg-background/40 text-muted-foreground hover:border-border hover:bg-secondary"}`}
               role="tab"
-              aria-selected={account?.accountType === type}
+              aria-selected={account?.accountType === type || switchingTo === type}
               onClick={() => void switchAccount(type)}
               disabled={isLoading || switchingDisabled || Boolean(switchingTo)}
               data-testid={`tab-account-${type}`}
