@@ -1,17 +1,33 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { useQueryClient } from "@tanstack/react-query"
-import { Layers3 } from "lucide-react"
+import {
+  Activity,
+  ArrowDownRight,
+  ArrowUpRight,
+  BarChart3,
+  CheckCircle2,
+  CircleAlert,
+  Clock3,
+  Crosshair,
+  Radio,
+  RotateCcw,
+  Send,
+  ShieldCheck,
+  Square,
+  TrendingUp,
+  WalletCards,
+} from "lucide-react"
 import {
   getGetAccountQueryKey,
   getGetMarketCandlesQueryKey,
-  getGetMarketTickerQueryKey,
   getGetMarketContractsQueryKey,
+  getGetMarketTickerQueryKey,
   getGetProtradersPreflightQueryKey,
   getGetSessionStatusQueryKey,
   useGetAccount,
   useGetMarketCandles,
-  useGetMarketTicker,
   useGetMarketContracts,
+  useGetMarketTicker,
   useGetProtradersPreflight,
   useGetSessionStatus,
 } from "@workspace/api-client-react"
@@ -23,11 +39,10 @@ import { Label } from "@/components/ui/label"
 import { AccountStrip } from "@/components/trading/account-strip"
 import { DigitRail } from "@/components/trading/digit-rail"
 import { TradingTabs } from "@/components/trading/trading-tabs"
-import { formatMoney, formatSignedMoney, formatVolatility } from "@/lib/format"
-import { CONTRACT_LABELS, DEFAULT_MARKET_SYMBOL, SUPPORTED_VOLATILITY_SYMBOLS, marketLabel } from "@/lib/markets"
 import { useDerivMarkets } from "@/hooks/use-deriv-markets"
 import { useTradingRunSession } from "@/hooks/use-trading-run-session"
-import { RunSessionSummary } from "@/components/trading/run-session-summary"
+import { formatMoney, formatSignedMoney, formatVolatility } from "@/lib/format"
+import { CONTRACT_LABELS, DEFAULT_MARKET_SYMBOL, SUPPORTED_VOLATILITY_SYMBOLS, marketLabel } from "@/lib/markets"
 
 export default function BulkTrade() {
   const requested = typeof window === "undefined" ? null : new URLSearchParams(window.location.search)
@@ -35,16 +50,15 @@ export default function BulkTrade() {
   const [selectedMarket, setSelectedMarket] = useState(
     SUPPORTED_VOLATILITY_SYMBOLS.has(requestedSymbol) ? requestedSymbol : DEFAULT_MARKET_SYMBOL,
   )
-  const [contractType, setContractType] = useState(requested?.get("contract") || "DIGITOVER")
+  const [contractType, setContractType] = useState(requested?.get("contract") || "CALL")
   const [barrier, setBarrier] = useState("5")
   const [stopLoss, setStopLoss] = useState("1")
   const [stake, setStake] = useState("1")
-  const [runCount, setRunCount] = useState("1")
-  const [takeProfit, setTakeProfit] = useState("1")
-  const [availabilityNotice, setAvailabilityNotice] = useState("")
   const [duration, setDuration] = useState("1")
+  const [availabilityNotice, setAvailabilityNotice] = useState("")
   const queryClient = useQueryClient()
   const marketQuery = useDerivMarkets()
+
   const marketGroups = useMemo(() => {
     const groups = new Map<string, typeof marketQuery.markets>()
     for (const market of marketQuery.markets) {
@@ -53,13 +67,19 @@ export default function BulkTrade() {
     }
     return [...groups.entries()]
   }, [marketQuery.markets])
+
   useEffect(() => {
     if (marketQuery.markets.length && !marketQuery.markets.some(item => item.symbol === selectedMarket)) {
       setSelectedMarket(marketQuery.defaultSymbol)
     }
   }, [marketQuery.markets, marketQuery.defaultSymbol, selectedMarket])
-  const { data: session } = useGetSessionStatus({ query: { queryKey: getGetSessionStatusQueryKey() } })
-  const preflight = useGetProtradersPreflight({ query: { queryKey: getGetProtradersPreflightQueryKey() } })
+
+  const { data: session } = useGetSessionStatus({
+    query: { queryKey: getGetSessionStatusQueryKey() },
+  })
+  const preflight = useGetProtradersPreflight({
+    query: { queryKey: getGetProtradersPreflightQueryKey() },
+  })
   const account = useGetAccount(undefined, {
     query: {
       queryKey: getGetAccountQueryKey(),
@@ -69,10 +89,10 @@ export default function BulkTrade() {
   })
   const accountCurrency = account.data?.currency || "USD"
   const accountSessionLabel = account.data?.accountType === "real"
-    ? "real-account"
+    ? "real account"
     : account.data?.accountType === "demo"
-      ? "demo-account"
-      : "selected-account"
+      ? "demo account"
+      : "selected account"
   const availableBalance = Number(account.data?.balance)
   const accountCanTrade = account.data?.accountType === "real"
     ? preflight.data?.readyForRealTrading
@@ -85,13 +105,29 @@ export default function BulkTrade() {
     `protraders-run-session:${tradeSource}`,
     () => { queryClient.invalidateQueries({ queryKey: getGetAccountQueryKey() }) },
   )
-  const ticker = useGetMarketTicker(selectedMarket, { query: { queryKey: getGetMarketTickerQueryKey(selectedMarket), refetchInterval: 15000 } })
-  const candles = useGetMarketCandles(selectedMarket, { count: 60, granularity: 60 }, { query: { queryKey: getGetMarketCandlesQueryKey(selectedMarket, { count: 60, granularity: 60 }), refetchInterval: 30000 } })
+
+  const ticker = useGetMarketTicker(selectedMarket, {
+    query: {
+      queryKey: getGetMarketTickerQueryKey(selectedMarket),
+      refetchInterval: 15000,
+    },
+  })
+  const candles = useGetMarketCandles(selectedMarket, { count: 60, granularity: 60 }, {
+    query: {
+      queryKey: getGetMarketCandlesQueryKey(selectedMarket, { count: 60, granularity: 60 }),
+      refetchInterval: 30000,
+    },
+  })
   const marketData = candles.data as any
   const marketQuote = (ticker.data as any)?.quote ?? (ticker.data as any)?.price
   const quoteDigits = String(marketQuote ?? "").replace(/\D/g, "")
   const liveLastDigit = quoteDigits ? Number(quoteDigits.at(-1)) : null
   const marketOffline = ticker.isError || (ticker.data as any)?.available === false
+  const candleCloses = useMemo(() => readCandleCloses(marketData), [marketData])
+  const quoteTrend = candleCloses.length > 1
+    ? candleCloses.at(-1)! >= candleCloses.at(-2)! ? "up" : "down"
+    : "flat"
+
   const contracts = useGetMarketContracts(selectedMarket, {
     query: {
       queryKey: getGetMarketContractsQueryKey(selectedMarket),
@@ -102,6 +138,7 @@ export default function BulkTrade() {
   const availableTypes = Array.isArray((contracts.data as any)?.availableContractTypes)
     ? (contracts.data as any).availableContractTypes.filter((item: string) => CONTRACT_LABELS[item])
     : []
+
   useEffect(() => {
     if (
       !contracts.isLoading
@@ -113,16 +150,17 @@ export default function BulkTrade() {
       setSelectedMarket(DEFAULT_MARKET_SYMBOL)
     }
   }, [contracts.data, contracts.isLoading, contracts.isError, availableTypes.length, selectedMarket, marketQuery.markets])
-  useEffect(() => {
-    if (availableTypes.length && !availableTypes.includes(contractType)) setContractType(availableTypes[0])
-  }, [availableTypes.join("|"), contractType])
-  const needsBarrier = Boolean(CONTRACT_LABELS[contractType]?.needsBarrier)
 
-  const totalRuns = Number(runCount)
-  const targetProfit = Number(takeProfit)
+  useEffect(() => {
+    if (availableTypes.length && !availableTypes.includes(contractType)) {
+      setContractType(availableTypes.includes("CALL") ? "CALL" : availableTypes[0])
+    }
+  }, [availableTypes.join("|"), contractType])
+
+  const needsBarrier = Boolean(CONTRACT_LABELS[contractType]?.needsBarrier)
+  const totalRuns = 1
+  const targetProfit = Number(stake)
   const validInputs = Number.isInteger(totalRuns)
-    && totalRuns >= 1
-    && totalRuns <= 100
     && Number.isFinite(targetProfit)
     && targetProfit > 0
     && Number.isFinite(availableBalance)
@@ -138,157 +176,457 @@ export default function BulkTrade() {
   const orderData = {
     account_id: String(account.data?.loginid || ""),
     account_type: account.data?.accountType,
-    symbol: selectedMarket, contract_type: contractType,
-    ...(needsBarrier ? { barrier } : {}), stop_loss: Number(stopLoss),
-    stake: Number(stake), duration: Number(duration), source: tradeSource,
+    symbol: selectedMarket,
+    contract_type: contractType,
+    ...(needsBarrier ? { barrier } : {}),
+    stake: Number(stake),
+    duration: Number(duration),
+    stop_loss: Number(stopLoss),
+    source: tradeSource,
     request_label: `${selectedMarket} ${tradeSource === "ai_assisted" ? "scanner-assisted" : "manual"} order`,
   }
+  const directionIsCall = contractType === "CALL"
+  const directionIsPut = contractType === "PUT"
+
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-5 p-4 md:p-8">
+    <div className="mx-auto min-h-[100dvh] w-full max-w-7xl space-y-5 p-4 md:p-7">
       <TradingTabs active="manual" />
       <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} switchingDisabled={runSession.isBusy} />
 
-       <div className="flex items-end justify-between gap-3">
+      <header className="flex flex-col gap-4 border-b border-border/70 pb-5 md:flex-row md:items-end md:justify-between">
         <div>
-           <div className="text-xs font-semibold uppercase tracking-[.22em] text-primary">Manual execution</div>
-           <h1 className="mt-1 text-3xl font-semibold tracking-tight">Manual Trader</h1>
-             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Review market, order, and run limits for this {accountSessionLabel}.</p>
+          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.22em] text-primary">
+            <Crosshair className="h-3.5 w-3.5" />
+            Manual derivatives desk
+          </div>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight md:text-4xl">Trade from the tape</h1>
+          <p className={`mt-2 max-w-2xl text-sm leading-6 ${account.data?.accountType === "real" ? "text-amber-700 dark:text-amber-300" : "text-muted-foreground"}`}>
+            Read the latest quote, choose a direction, and watch the authoritative settlement arrive.
+          </p>
         </div>
-      </div>
+        <div className="flex items-center gap-2 self-start rounded-md border border-border/80 bg-card/70 px-3 py-2 text-xs text-muted-foreground md:self-auto">
+          <ShieldCheck className="h-4 w-4 text-success" />
+          <span>{accountSessionLabel} · Demo-first safeguards active</span>
+        </div>
+      </header>
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
-        <Card>
-           <CardHeader className="border-b bg-secondary/10">
-             <CardTitle className="flex items-center gap-2 text-lg"><Layers3 className="h-5 w-5 text-primary" />Market selection</CardTitle>
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_350px]">
+        <Card className="overflow-hidden">
+          <CardHeader className="border-b bg-secondary/10 p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.2em] text-muted-foreground">
+                  <Radio className="h-3.5 w-3.5 text-primary" />
+                  Live market
+                </div>
+                <CardTitle className="mt-1 text-xl">{marketLabel(marketQuery.markets.find(item => item.symbol === selectedMarket), selectedMarket)}</CardTitle>
+              </div>
+              <Badge variant={marketOffline ? "destructive" : "success"} data-testid="status-market-connection">
+                {marketOffline ? "OFFLINE" : ticker.isLoading ? "CONNECTING" : "LIVE"}
+              </Badge>
+            </div>
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+              <Label htmlFor="bulk-market" className="sr-only">Market</Label>
+              <select
+                id="bulk-market"
+                value={selectedMarket}
+                onChange={event => setSelectedMarket(event.target.value)}
+                className="h-10 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-sm"
+                data-testid="select-bulk-market"
+              >
+                {marketGroups.map(([group, markets]) => (
+                  <optgroup key={group} label={group}>
+                    {markets.map(market => <option key={market.symbol} value={market.symbol}>{marketLabel(market, market.symbol)}</option>)}
+                  </optgroup>
+                ))}
+              </select>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Clock3 className="h-3.5 w-3.5" />
+                Quote refreshes every 15s
+              </div>
+            </div>
+            {marketQuery.isLoading && <p className="mt-2 text-xs text-muted-foreground">Loading active markets from Deriv.</p>}
+            {marketQuery.isError && <p className="mt-2 text-xs text-destructive">Deriv market discovery is unavailable.</p>}
+            {availabilityNotice && <p className="mt-2 text-xs text-amber-600">{availabilityNotice}</p>}
           </CardHeader>
-           <CardContent className="space-y-4 p-5">
-               <div className="space-y-2">
-                 <Label htmlFor="bulk-market">Market</Label>
-                  <select id="bulk-market" value={selectedMarket} onChange={event => setSelectedMarket(event.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" data-testid="select-bulk-market">
-                    {marketGroups.map(([group, markets]) => (
-                      <optgroup key={group} label={group}>
-                        {markets.map(market => <option key={market.symbol} value={market.symbol}>{marketLabel(market, market.symbol)}</option>)}
-                      </optgroup>
-                    ))}
-                 </select>
-                  {marketQuery.isLoading && <p className="text-xs text-muted-foreground">Loading active markets from Deriv…</p>}
-                  {marketQuery.isError && <p className="text-xs text-destructive">Deriv market discovery is unavailable.</p>}
-                   {availabilityNotice && <p className="text-xs text-amber-600">{availabilityNotice}</p>}
-               </div>
-               <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4">
-                 <div><div className="text-[10px] uppercase tracking-[.2em] text-muted-foreground">Live market to review</div><div className="mt-1 text-xl font-semibold">{marketLabel(marketQuery.markets.find(item => item.symbol === selectedMarket), selectedMarket)}</div></div>
-               <Badge variant={marketOffline ? "destructive" : "success"}>{marketOffline ? "OFFLINE" : "LIVE"}</Badge>
-             </div>
-             <div className="grid grid-cols-2 gap-2">
-               <MarketMetric label="Quote" value={marketQuote == null ? "Unavailable" : String(marketQuote)} />
-               <MarketMetric label="Volatility" value={marketData?.indicators ? formatVolatility(marketData.indicators.volatilityLevel, marketData.indicators.volatilityPct) : "Unavailable"} />
-             </div>
-              <DigitRail activeDigit={liveLastDigit} selectedDigit={needsBarrier ? Number(barrier) : null} />
-                   <p className="text-xs leading-5 text-muted-foreground">Quotes, candles, contracts, and orders are validated live by Deriv.</p>
+          <CardContent className="space-y-5 p-5">
+            <DigitRail activeDigit={liveLastDigit} selectedDigit={needsBarrier ? Number(barrier) : null} />
+
+            <div className="grid gap-3 sm:grid-cols-[minmax(150px,.65fr)_minmax(0,1.35fr)]">
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-4" data-testid="panel-market-quote">
+                <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.18em] text-muted-foreground">
+                  <Activity className="h-3.5 w-3.5 text-primary" />
+                  Live market
+                </div>
+                <div className="mt-3 font-mono text-3xl font-bold tracking-tight" data-testid="text-market-quote">
+                  {marketQuote == null ? "—" : String(marketQuote)}
+                </div>
+                <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className={`h-1.5 w-1.5 rounded-full ${marketOffline ? "bg-destructive" : "bg-success"}`} />
+                  {marketOffline ? "Awaiting provider" : "Provider quote"}
+                </div>
+              </div>
+              <QuoteChart values={candleCloses} trend={quoteTrend} isLoading={candles.isLoading} />
+            </div>
+
+            <div className="grid gap-3 rounded-lg border border-border/80 bg-secondary/25 p-4 sm:grid-cols-[1fr_auto_1fr] sm:items-center" data-testid="panel-live-price-context">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-[.18em] text-muted-foreground">Latest tick context</div>
+                <p className="mt-1 text-sm text-foreground">The last digit is moving with the live quote.</p>
+              </div>
+              <div className="hidden h-8 w-px bg-border sm:block" />
+              <div className="flex items-center justify-between gap-4 sm:justify-end">
+                <div className="text-right">
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Last digit</div>
+                  <div className="font-mono text-lg font-semibold text-primary" data-testid="text-live-last-digit">{liveLastDigit == null ? "—" : liveLastDigit}</div>
+                </div>
+                <div className={`flex items-center gap-1 text-xs font-semibold uppercase tracking-wider ${quoteTrend === "down" ? "text-destructive" : quoteTrend === "up" ? "text-success" : "text-muted-foreground"}`}>
+                  {quoteTrend === "down" ? <ArrowDownRight className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
+                  {quoteTrend === "flat" ? "Waiting" : quoteTrend === "up" ? "Rising" : "Falling"}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <MarketMetric label="Volatility" value={marketData?.indicators ? formatVolatility(marketData.indicators.volatilityLevel, marketData.indicators.volatilityPct) : "Unavailable"} />
+              <MarketMetric label="Candle window" value={candleCloses.length ? `${candleCloses.length} closes` : "Waiting"} />
+              <MarketMetric label="Duration cap" value={`${Number(preflight.data?.maxDuration || 3600)} ticks`} />
+              <MarketMetric label="Account balance" value={Number.isFinite(availableBalance) ? formatMoney(availableBalance, accountCurrency) : "Unavailable"} />
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="border-b bg-secondary/10"><CardTitle className="text-lg">Order</CardTitle></CardHeader>
+        <Card className="h-fit">
+          <CardHeader className="border-b bg-secondary/10 p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-[.2em] text-primary">Order ticket</div>
+                <CardTitle className="mt-1 text-xl">Choose your direction</CardTitle>
+              </div>
+              <WalletCards className="h-5 w-5 text-muted-foreground" />
+            </div>
+          </CardHeader>
           <CardContent className="space-y-4 p-5">
             <div className="space-y-2">
-              <Label>Trading type</Label>
-              <div className="grid grid-cols-2 gap-2" data-testid="contract-type-grid">
-                {availableTypes.map((type: string) => (
-                  <Button key={type} type="button" variant={contractType === type ? "default" : "outline"} onClick={() => setContractType(type)} data-testid={`button-contract-${type}`}>
-                    {CONTRACT_LABELS[type]?.action || type}
-                  </Button>
-                ))}
+              <Label>Direction</Label>
+              <div className="grid grid-cols-2 gap-2" data-testid="direction-selector">
+                <Button
+                  type="button"
+                  variant={directionIsCall ? "default" : "outline"}
+                  className={`h-14 justify-between px-4 ${directionIsCall ? "bg-success text-success-foreground hover:bg-success/90" : "border-success/40 text-success hover:bg-success/10"}`}
+                  onClick={() => setContractType("CALL")}
+                  disabled={!availableTypes.includes("CALL") || runSession.isBusy}
+                  aria-pressed={directionIsCall}
+                  data-testid="button-direction-call"
+                >
+                  <span className="flex flex-col items-start">
+                    <span className="text-sm font-bold tracking-wide">CALL</span>
+                    <span className="text-[10px] font-normal opacity-80">Higher</span>
+                  </span>
+                  <ArrowUpRight className="h-5 w-5" />
+                </Button>
+                <Button
+                  type="button"
+                  variant={directionIsPut ? "default" : "outline"}
+                  className={`h-14 justify-between px-4 ${directionIsPut ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : "border-destructive/40 text-destructive hover:bg-destructive/10"}`}
+                  onClick={() => setContractType("PUT")}
+                  disabled={!availableTypes.includes("PUT") || runSession.isBusy}
+                  aria-pressed={directionIsPut}
+                  data-testid="button-direction-put"
+                >
+                  <span className="flex flex-col items-start">
+                    <span className="text-sm font-bold tracking-wide">PUT</span>
+                    <span className="text-[10px] font-normal opacity-80">Lower</span>
+                  </span>
+                  <ArrowDownRight className="h-5 w-5" />
+                </Button>
               </div>
-              {contracts.isLoading && <p className="text-xs text-muted-foreground">Checking contracts offered by Deriv…</p>}
-              {contracts.isError && <p className="text-xs text-amber-600">Deriv contract availability is temporarily unavailable for this symbol. Choose another live market.</p>}
-              {!contracts.isLoading && !contracts.isError && !availableTypes.length && <p className="text-xs text-amber-600">Deriv has not returned a supported contract for this symbol yet. Choose another live market.</p>}
+              {contracts.isLoading && <p className="text-xs text-muted-foreground">Checking contracts offered by Deriv.</p>}
+              {contracts.isError && <p className="text-xs text-amber-600">Contract availability is temporarily unavailable for this symbol.</p>}
+              {!contracts.isLoading && !contracts.isError && !availableTypes.length && <p className="text-xs text-amber-600">No supported contracts are available for this symbol yet.</p>}
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="contract-choice">Other contract types</Label>
+              <select
+                id="contract-choice"
+                value={contractType}
+                onChange={event => setContractType(event.target.value)}
+                disabled={!availableTypes.length || runSession.isBusy}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                data-testid="select-contract-type"
+              >
+                {availableTypes.map((type: string) => (
+                  <option key={type} value={type}>{CONTRACT_LABELS[type]?.action || type} · {CONTRACT_LABELS[type]?.family || "Contract"}</option>
+                ))}
+              </select>
+            </div>
+
             {needsBarrier && (
               <div className="space-y-2">
-                <Label>Digit barrier</Label>
-                <div className="grid grid-cols-5 gap-2">
+                <div className="flex items-center justify-between">
+                  <Label>Digit barrier</Label>
+                  <span className="font-mono text-xs text-amber-600">selected: {barrier}</span>
+                </div>
+                <div className="grid grid-cols-5 gap-1.5">
                   {Array.from({ length: 10 }, (_, digit) => String(digit)).map(digit => (
-                    <Button key={digit} type="button" size="sm" variant={barrier === digit ? "default" : "outline"} onClick={() => setBarrier(digit)} data-testid={`button-barrier-${digit}`}>{digit}</Button>
+                    <Button
+                      key={digit}
+                      type="button"
+                      size="sm"
+                      variant={barrier === digit ? "default" : "outline"}
+                      onClick={() => setBarrier(digit)}
+                      disabled={runSession.isBusy}
+                      data-testid={`button-barrier-${digit}`}
+                    >
+                      {digit}
+                    </Button>
                   ))}
                 </div>
               </div>
             )}
-            <div className="space-y-2">
-              <Label htmlFor="bulk-stake">Stake ({accountCurrency})</Label>
-              <Input id="bulk-stake" type="number" min="0.01" step="0.01" value={stake} onChange={event => setStake(event.target.value)} />
-              <p className="text-xs text-muted-foreground">Trader-entered amount, independent of the selected market and contract type. It must remain below the available account balance.</p>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label={`Stake (${accountCurrency})`} id="bulk-stake" value={stake} onChange={setStake} min="0.01" step="0.01" />
+              <Field label={`Stop loss (${accountCurrency})`} id="bulk-stop-loss" value={stopLoss} onChange={setStopLoss} min="0.01" step="0.01" />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="bulk-stop-loss">Stop loss ({accountCurrency})</Label>
-              <Input id="bulk-stop-loss" type="number" min="0.01" step="0.01" value={stopLoss} onChange={event => setStopLoss(event.target.value)} />
-               <p className="text-xs leading-5 text-muted-foreground">Applied to each accepted contract. Provider status appears in results.</p>
-            </div>
+
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="bulk-run-count">Number of runs</Label>
-                <Input id="bulk-run-count" type="number" min="1" max="100" step="1" value={runCount} onChange={event => setRunCount(event.target.value)} />
-                    <p className="text-xs text-muted-foreground">Fresh proposal per run.</p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="bulk-take-profit">Take-profit target ({accountCurrency})</Label>
-                <Input id="bulk-take-profit" type="number" min="0.01" step="0.01" value={takeProfit} onChange={event => setTakeProfit(event.target.value)} />
-                 <p className="text-xs text-muted-foreground">Stops when settled profit reaches target.</p>
+                <Label>Duration</Label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {["1", "2", "3", "5"].map(ticks => (
+                    <Button key={ticks} type="button" size="sm" variant={duration === ticks ? "default" : "outline"} onClick={() => setDuration(ticks)} disabled={runSession.isBusy} data-testid={`button-duration-${ticks}`}>
+                      {ticks}
+                    </Button>
+                  ))}
+                </div>
+                <Input id="bulk-duration" type="number" min="1" max={Number(preflight.data?.maxDuration || 3600)} step="1" value={duration} onChange={event => setDuration(event.target.value)} disabled={runSession.isBusy} data-testid="input-duration" />
               </div>
             </div>
-             <div className="space-y-2">
-              <Label htmlFor="bulk-duration">Ticks before expiry</Label>
-              <div className="grid grid-cols-4 gap-2">
-                {["1", "2", "3", "5"].map(ticks => <Button key={ticks} type="button" size="sm" variant={duration === ticks ? "default" : "outline"} onClick={() => setDuration(ticks)}>{ticks}</Button>)}
-              </div>
-              <Input id="bulk-duration" type="number" min="1" max={Number(preflight.data?.maxDuration || 3600)} step="1" value={duration} onChange={event => setDuration(event.target.value)} />
-               <p className="text-xs leading-5 text-muted-foreground">Deriv validates duration for this contract.</p>
+
+            <div className="rounded-lg border border-border/80 bg-secondary/35 p-3 text-xs">
+              <div className="flex items-center justify-between gap-2"><span className="text-muted-foreground">Market</span><span className="font-mono">{selectedMarket}</span></div>
+              <div className="mt-1 flex items-center justify-between gap-2"><span className="text-muted-foreground">Contract</span><span className="font-semibold">{CONTRACT_LABELS[contractType]?.action || contractType}{needsBarrier ? ` · ${barrier}` : ""}</span></div>
+              <div className="mt-1 flex items-center justify-between gap-2"><span className="text-muted-foreground">At risk</span><span className="font-mono">{formatMoney(Number(stake || 0), accountCurrency)}</span></div>
+              <div className="mt-1 flex items-center justify-between gap-2"><span className="text-muted-foreground">Stop loss</span><span className="font-mono">{formatMoney(Number(stopLoss || 0), accountCurrency)}</span></div>
             </div>
-            <div className="rounded-lg bg-secondary/40 p-3 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground">Market</span><span className="font-mono">{selectedMarket}</span></div>
-                <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Type</span><span>{CONTRACT_LABELS[contractType]?.action || contractType}{needsBarrier ? ` ${barrier}` : ""}</span></div>
-                 <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Stop loss</span><span>{formatMoney(Number(stopLoss || 0), accountCurrency)}</span></div>
-                <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Stake</span><span>{formatMoney(Number(stake || 0), accountCurrency)}</span></div>
-                 <div className="mt-1 flex justify-between"><span className="text-muted-foreground">Run plan</span><span>{Number.isInteger(totalRuns) ? `${runSession.state.completedRuns}/${totalRuns}` : "Invalid"} · TP {formatMoney(Number(takeProfit || 0), accountCurrency)}</span></div>
-            </div>
-                <RunSessionSummary
-                  state={runSession.state}
-                  currency={accountCurrency}
-                  onStart={() => runSession.start(orderData, totalRuns, targetProfit)}
-                  onStop={runSession.stop}
-                  onReset={runSession.reset}
-                  disabled={!canRun || !validOrder || marketOffline || runSession.isBusy}
-                 label="Run Manual Trader"
-                 runNoun="Manual Trader"
-                />
-                 <p className="text-[11px] leading-5 text-muted-foreground">Runs are sequential. Stop blocks future entries.</p>
+
+            {!session?.authenticated && <GateNotice icon={<CircleAlert className="h-4 w-4" />} text="Sign in and select an account before submitting an order." />}
+            {session?.authenticated && !accountCanTrade && <GateNotice icon={<ShieldCheck className="h-4 w-4" />} text="Trading is gated until the selected account passes the current preflight checks." />}
+
+            <SessionActions
+              state={runSession.state}
+              currency={accountCurrency}
+              contractType={contractType}
+              disabled={!canRun || !validOrder || marketOffline || runSession.isBusy}
+              onStart={() => runSession.start(orderData, totalRuns, targetProfit)}
+              onStop={runSession.stop}
+              onReset={runSession.reset}
+            />
           </CardContent>
         </Card>
       </div>
 
-       {runSession.state.results.length > 0 && (
-        <Card data-testid="card-bulk-results">
-          <CardHeader className="border-b bg-secondary/10"><CardTitle className="text-base">Results</CardTitle></CardHeader>
-          <CardContent className="divide-y p-0">
-              {runSession.state.results.map((result: any) => (
-               <div key={result.id} className="flex items-center justify-between gap-3 p-4 text-sm">
-                 <div>
-                      <div className="font-mono">{result.symbol || selectedMarket} · run {result.run}</div>
-                   <div className="mt-1 text-xs text-muted-foreground">{result.message}</div>
-                 </div>
-                   <div className="text-right">
-                   <span className={["won", "settled"].includes(result.status) ? "text-success" : ["lost", "rejected"].includes(result.status) ? "text-destructive" : "text-muted-foreground"}>{result.status || "queued"}</span>
-                     {result.netProfit != null && <div className="font-mono text-xs">{formatSignedMoney(result.netProfit, accountCurrency)}</div>}
-                   </div>
-              </div>
+      <SettlementStream state={runSession.state} currency={accountCurrency} selectedMarket={selectedMarket} />
+    </div>
+  )
+}
+
+function Field({ label, id, value, onChange, min, max, step }: { label: string; id: string; value: string; onChange: (value: string) => void; min?: string; max?: string; step?: string }) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <Input id={id} type="number" min={min} max={max} step={step} value={value} onChange={event => onChange(event.target.value)} data-testid={`input-${id.replace("bulk-", "")}`} />
+    </div>
+  )
+}
+
+function GateNotice({ icon, text }: { icon: ReactNode; text: string }) {
+  return <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs leading-5 text-amber-700 dark:text-amber-300" data-testid="status-trading-gate">{icon}<span>{text}</span></div>
+}
+
+function SessionActions({ state, currency, contractType, disabled, onStart, onStop, onReset }: {
+  state: ReturnType<typeof useTradingRunSession>["state"]
+  currency: string
+  contractType: string
+  disabled: boolean
+  onStart: () => void
+  onStop: () => void
+  onReset: () => void
+}) {
+  const active = state.status === "running" || state.status === "stopping"
+  const statusVariant = active ? "success" : state.status === "failed" ? "destructive" : "outline"
+  return (
+    <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4" data-testid="card-session-actions">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-[.2em] text-muted-foreground">Execution</span>
+          <Badge variant={statusVariant} className="uppercase">{state.status}</Badge>
+        </div>
+        <span className="font-mono text-xs text-muted-foreground">{state.completedRuns}/{state.totalRuns || "—"} settled</span>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <SessionStat label="Net P/L" value={state.completedRuns ? formatSignedMoney(state.netProfit, currency) : "Not settled"} tone={state.netProfit >= 0 ? "text-success" : "text-destructive"} />
+        <SessionStat label="Next action" value={active ? `Waiting · ${contractType}` : "Ready"} />
+      </div>
+      {active ? (
+        <Button type="button" variant="destructive" className="w-full" onClick={onStop} disabled={state.status === "stopping"} data-testid="button-stop-session">
+          <Square className="mr-2 h-3.5 w-3.5" />{state.status === "stopping" ? "Stopping after settlement" : "Stop after current contract"}
+        </Button>
+      ) : (
+        <div className="flex gap-2">
+          {(state.results.length > 0 || state.status !== "idle") && (
+            <Button type="button" variant="outline" className="shrink-0" onClick={onReset} data-testid="button-reset-session">
+              <RotateCcw className="mr-2 h-3.5 w-3.5" />Reset
+            </Button>
+          )}
+          <Button type="button" className="min-w-0 flex-1" onClick={onStart} disabled={disabled} data-testid="button-submit-order">
+            <Send className="mr-2 h-3.5 w-3.5" />Submit {contractType} order
+          </Button>
+        </div>
+      )}
+      {state.message && <p className="text-xs leading-5 text-muted-foreground" aria-live="polite" data-testid="status-session-message">{state.message}</p>}
+      <p className="text-[11px] leading-5 text-muted-foreground">Each submission requests a fresh provider proposal. The current contract settles before a stop takes effect.</p>
+    </div>
+  )
+}
+
+function SessionStat({ label, value, tone = "text-foreground" }: { label: string; value: string; tone?: string }) {
+  return <div className="rounded-lg border border-border/80 bg-background/65 p-2.5"><div className="text-[9px] uppercase tracking-wider text-muted-foreground">{label}</div><div className={`mt-1 truncate font-mono text-xs font-semibold ${tone}`}>{value}</div></div>
+}
+
+function SettlementStream({ state, currency, selectedMarket }: {
+  state: ReturnType<typeof useTradingRunSession>["state"]
+  currency: string
+  selectedMarket: string
+}) {
+  return (
+    <Card data-testid="card-bulk-results">
+      <CardHeader className="border-b bg-secondary/10 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-primary" />
+            <CardTitle className="text-base">Live settlement stream</CardTitle>
+          </div>
+          <span className="text-[10px] uppercase tracking-[.18em] text-muted-foreground">{state.results.length} transaction{state.results.length === 1 ? "" : "s"}</span>
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        {state.results.length === 0 ? (
+          <div className="flex items-center gap-3 p-5 text-sm text-muted-foreground" data-testid="empty-settlement-stream">
+            <BarChart3 className="h-5 w-5 text-primary/70" />
+            <div><p className="font-medium text-foreground">No contracts submitted yet.</p><p className="mt-0.5 text-xs">Accepted contracts, provider status, and authoritative P/L will appear here.</p></div>
+          </div>
+        ) : (
+          <div className="divide-y">
+            {state.results.map(result => (
+              <SettlementRow key={result.id} result={result} currency={currency} fallbackSymbol={selectedMarket} />
             ))}
-          </CardContent>
-        </Card>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function SettlementRow({ result, currency, fallbackSymbol }: {
+  result: ReturnType<typeof useTradingRunSession>["state"]["results"][number]
+  currency: string
+  fallbackSymbol: string
+}) {
+  const pending = result.status === "pending"
+  const won = result.status === "won" || result.status === "settled"
+  const rejected = result.status === "lost" || result.status === "rejected"
+  const statusIcon = pending
+    ? <Clock3 className="h-4 w-4 text-amber-600" />
+    : won
+      ? <CheckCircle2 className="h-4 w-4 text-success" />
+      : rejected
+        ? <CircleAlert className="h-4 w-4 text-destructive" />
+        : <Clock3 className="h-4 w-4 text-muted-foreground" />
+  return (
+    <div className="grid gap-3 p-4 text-sm sm:grid-cols-[minmax(150px,1fr)_minmax(180px,1.2fr)_auto] sm:items-center" data-testid={`row-settlement-${result.id}`}>
+      <div className="flex min-w-0 items-center gap-3">
+        <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-md ${result.contractType === "PUT" ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success"}`}>
+          {result.contractType === "PUT" ? <ArrowDownRight className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
+        </span>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 font-mono text-xs font-semibold">
+            <span>{result.contractType || "ORDER"}</span>
+            {statusIcon}
+          </div>
+          <div className="mt-1 truncate text-[11px] text-muted-foreground">Run {String(result.run).padStart(2, "0")} · {result.symbol || fallbackSymbol}</div>
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-3 text-[11px]">
+        <ResultValue label="Entry" value={formatSpot(result.entrySpot)} />
+        <ResultValue label="Exit" value={formatSpot(result.exitSpot)} />
+        <ResultValue label="Buy price" value={result.buyPrice == null ? "—" : formatMoney(result.buyPrice, currency)} />
+      </div>
+      <div className="text-left sm:text-right">
+        <div className={`font-mono text-sm font-semibold ${result.netProfit == null ? "text-muted-foreground" : result.netProfit >= 0 ? "text-success" : "text-destructive"}`}>
+          {result.netProfit == null ? "Pending" : formatSignedMoney(result.netProfit, currency)}
+        </div>
+        <div className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">{result.status || "queued"}</div>
+        <div className="sr-only" data-testid={`text-settlement-message-${result.id}`}>{result.message}</div>
+      </div>
+    </div>
+  )
+}
+
+function ResultValue({ label, value }: { label: string; value: string }) {
+  return <div><div className="text-[9px] uppercase tracking-wider text-muted-foreground">{label}</div><div className="mt-1 truncate font-mono text-xs font-semibold">{value}</div></div>
+}
+
+function QuoteChart({ values, trend, isLoading }: { values: number[]; trend: "up" | "down" | "flat"; isLoading: boolean }) {
+  const points = values.length > 1 ? values : []
+  const min = points.length ? Math.min(...points) : 0
+  const max = points.length ? Math.max(...points) : 1
+  const range = max - min || 1
+  const path = points.map((value, index) => {
+    const x = (index / Math.max(points.length - 1, 1)) * 100
+    const y = 72 - ((value - min) / range) * 58
+    return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`
+  }).join(" ")
+  const stroke = trend === "down" ? "hsl(var(--destructive))" : "hsl(var(--primary))"
+  return (
+    <div className="min-h-[130px] rounded-lg border border-border/80 bg-background/65 p-3" data-testid="chart-market-context">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.18em] text-muted-foreground"><BarChart3 className="h-3.5 w-3.5" />60-candle context</div>
+        <span className="font-mono text-[10px] text-muted-foreground">{isLoading ? "Loading" : points.length ? "1m" : "Waiting"}</span>
+      </div>
+      {path ? (
+        <svg viewBox="0 0 100 80" preserveAspectRatio="none" className="mt-3 h-[78px] w-full" role="img" aria-label="Recent market candle close context">
+          <path d="M 0 74 H 100" stroke="hsl(var(--border))" strokeWidth=".6" vectorEffect="non-scaling-stroke" />
+          <path d={path} fill="none" stroke={stroke} strokeWidth="2" vectorEffect="non-scaling-stroke" />
+        </svg>
+      ) : (
+        <div className="mt-5 flex h-[78px] items-center justify-center text-xs text-muted-foreground">Candle context will populate from Deriv.</div>
       )}
     </div>
   )
 }
 
 function MarketMetric({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-lg border bg-secondary/35 p-3"><div className="text-[10px] uppercase tracking-[.15em] text-muted-foreground">{label}</div><div className="mt-1 font-mono text-sm">{value}</div></div>
+  return <div className="rounded-lg border bg-secondary/35 p-3"><div className="text-[10px] uppercase tracking-[.15em] text-muted-foreground">{label}</div><div className="mt-1 truncate font-mono text-xs font-semibold">{value}</div></div>
+}
+
+function readCandleCloses(data: unknown) {
+  const payload = data as any
+  const rows = Array.isArray(payload?.candles)
+    ? payload.candles
+    : Array.isArray(payload?.data)
+      ? payload.data
+      : Array.isArray(payload)
+        ? payload
+        : []
+  return rows
+    .map((row: any) => Number(row?.close ?? row?.closePrice ?? row?.quote ?? row?.price))
+    .filter((value: number) => Number.isFinite(value))
+    .slice(-60)
+}
+
+function formatSpot(value: number | null | undefined) {
+  return value == null || !Number.isFinite(Number(value)) ? "—" : Number(value).toFixed(5).replace(/0+$/, "").replace(/\.$/, "")
 }
