@@ -35,94 +35,71 @@ export default function Home() {
       
       <main className="flex-1 w-full">
         {/* HERO SECTION */}
-         <section className="relative border-b border-border px-5 py-16 md:px-10 md:py-24 lg:py-32">
-            <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/.12),transparent_42%),radial-gradient(circle_at_bottom_left,hsl(var(--accent)/.07),transparent_38%)]" />
-          <div className="mx-auto max-w-7xl relative z-10 grid gap-16 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-            
-            <div className="max-w-2xl animate-in fade-in slide-in-from-bottom-4 duration-700">
-              <div className="mb-6 inline-flex items-center gap-2 rounded-sm border border-primary/20 bg-primary/5 px-2.5 py-1 font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-primary">
-                <Radio className="h-3 w-3" /> Deriv Workspace
+        <section className="relative overflow-hidden border-b border-border bg-[#fcfaf8] px-5 py-14 md:px-10 md:py-20 lg:py-24">
+          <div className="absolute -right-24 top-8 h-72 w-72 rounded-full bg-[#f6b2a1]/20 blur-3xl" aria-hidden="true" />
+          <div className="absolute bottom-0 left-0 h-48 w-48 rounded-full bg-[#d9f0ed]/45 blur-3xl" aria-hidden="true" />
+          <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[.9fr_1.1fr] lg:gap-20">
+            <div className="max-w-xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#efaa98] bg-[#fff3ef] px-3 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-[.2em] text-[#c84c3d]">
+                <Radio className="h-3 w-3" /> Deriv trading workspace
               </div>
-               <h1 className="font-display text-5xl font-semibold leading-[1.02] tracking-tight text-foreground sm:text-6xl lg:text-7xl">
-                 TRADE LIKE A <br /><span className="text-primary/90">PRO.</span>
+              <h1 className="font-display text-5xl font-semibold leading-[.98] tracking-[-.04em] text-[#14243a] sm:text-6xl lg:text-[5.2rem]">
+                TRADE LIKE A <br /><span className="text-[#e96751]">PRO.</span>
               </h1>
-              <p className="mt-6 max-w-lg text-base leading-relaxed text-muted-foreground sm:text-lg">
-                 A technical workspace for Deriv traders. Review live markets and trade from your selected Demo or Real account—without the noise.
+              <p className="mt-7 max-w-lg text-base leading-7 text-[#637184] sm:text-lg">
+                A clearer way to read the market, review a setup, and trade from your selected Demo or Real account.
               </p>
-              
-              <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center">
-                <a href={tradeHref} className="group flex h-12 items-center justify-between gap-4 rounded-sm bg-primary px-6 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90">
+
+              <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <a href={tradeHref} className="group flex h-12 items-center justify-between gap-5 rounded-full bg-[#e96751] px-6 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(233,103,81,.2)] transition-all hover:bg-[#d95743]">
                   {session?.authenticated ? "Open workspace" : "Log In and Trade"}
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </a>
-                <a href="/api/deriv/signup" className="flex h-12 items-center justify-center rounded-sm border border-border bg-transparent px-6 text-sm font-medium text-foreground transition-colors hover:bg-secondary/50">
+                <a href="/api/deriv/signup" className="flex h-12 items-center justify-center rounded-full border border-[#d5dbe2] bg-white/70 px-6 text-sm font-medium text-[#25364b] transition-colors hover:bg-white">
                   Create Free Account
                 </a>
               </div>
-              
-              <div className="mt-10 flex items-center gap-6 border-t border-border pt-6 font-mono text-[10px] uppercase tracking-widest text-muted-foreground/80">
-                 <span className="flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5 text-primary/70" /> Demo + Real</span>
-                <span className="flex items-center gap-2"><LockKeyhole className="h-3.5 w-3.5 text-primary/70" /> User-Controlled</span>
+
+              <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-[#e4deda] pt-5 font-mono text-[10px] uppercase tracking-[.16em] text-[#748092]">
+                <span className="flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5 text-[#159884]" /> Demo first</span>
+                <span className="flex items-center gap-2"><LockKeyhole className="h-3.5 w-3.5 text-[#159884]" /> User-controlled</span>
+                <Link href="/analysis" className="text-[#c84c3d] transition-colors hover:text-[#a73c31]">See the workflow <span aria-hidden="true">↗</span></Link>
               </div>
             </div>
 
-            <div className="relative animate-in fade-in slide-in-from-right-4 duration-1000">
-               {/* Technical Market Pulse Card */}
-                <div className="instrument-panel relative overflow-hidden rounded-sm border-primary/25 bg-card/75 backdrop-blur-xl">
-                  <div className="flex items-center justify-between border-b border-border bg-secondary/35 px-5 py-3">
-                   <div className="flex items-center gap-2">
-                     <span className="relative flex h-2 w-2">
-                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
-                       <span className="relative inline-flex h-2 w-2 rounded-full bg-primary"></span>
-                     </span>
-                     <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Market Pulse / {DEFAULT_MARKET_SYMBOL}</span>
-                   </div>
-                    <div className="rounded-sm border border-primary/25 bg-primary/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-primary">Live</div>
-                 </div>
-                 
-                 <div className="p-6">
-                   <div className="flex items-end justify-between">
-                     <div>
-                       <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Active Price</div>
-                       <div className="mt-1 font-mono text-4xl text-foreground tabular-nums tracking-tight">
-                         {pulsePrice ?? "—"}
-                       </div>
-                     </div>
-                     <div className="text-right">
-                       <div className={`font-mono text-sm ${pulseChange == null ? "text-muted-foreground" : pulseChange >= 0 ? "text-primary" : "text-destructive"}`}>
-                         {pulseChange == null ? "LIVE" : `${pulseChange >= 0 ? "+" : ""}${pulseChange.toFixed(2)}%`}
-                       </div>
-                       <div className="mt-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">Last 36m</div>
-                     </div>
-                   </div>
-
-                    <div className="relative mt-8 h-40 w-full overflow-hidden rounded-sm border border-border bg-background/65">
-                     <div className="absolute inset-x-0 top-1/4 border-t border-dashed border-border" />
-                     <div className="absolute inset-x-0 top-1/2 border-t border-dashed border-border" />
-                     <div className="absolute inset-x-0 top-3/4 border-t border-dashed border-border" />
-                     <PulseChart candles={pulseData?.candles} />
-                     <div className="absolute bottom-2 left-2 font-mono text-[9px] text-muted-foreground">T-36m</div>
-                     <div className="absolute bottom-2 right-2 font-mono text-[9px] text-primary/70">NOW</div>
-                   </div>
-
-                   <div className="mt-6 grid grid-cols-3 gap-3">
-                     <div className="rounded-sm border border-border bg-secondary/10 p-3">
-                       <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">Bias</div>
-                       <div className={`mt-1 font-mono text-xs ${pulseChange == null ? "text-muted-foreground" : pulseChange > 0 ? "text-primary" : pulseChange < 0 ? "text-destructive" : "text-muted-foreground"}`}>
-                         {pulseChange == null ? "OBSERVE" : pulseChange > 0 ? "UPTREND" : pulseChange < 0 ? "DOWNTREND" : "FLAT"}
-                       </div>
-                     </div>
-                     <div className="rounded-sm border border-border bg-secondary/10 p-3">
-                       <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">Mode</div>
-                       <div className="mt-1 font-mono text-xs text-foreground">MANUAL</div>
-                     </div>
-                     <div className="rounded-sm border border-primary/20 bg-primary/5 p-3">
-                       <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">Status</div>
-                       <div className="mt-1 font-mono text-xs text-primary">READY</div>
-                     </div>
-                   </div>
-                 </div>
-               </div>
+            <div className="relative mx-auto w-full max-w-[600px] animate-in fade-in slide-in-from-right-4 duration-1000 lg:justify-self-end">
+              <div className="absolute -inset-4 rounded-[2.25rem] bg-[#f8d7ce]/65 blur-[1px]" aria-hidden="true" />
+              <div className="relative aspect-square overflow-hidden rounded-[1.8rem] border-[9px] border-white bg-[#102945] shadow-[0_25px_70px_rgba(20,36,58,.22)]">
+                <img src="/images/protraders-trader-hero.jpg" alt="Trader reviewing live market charts at a workstation" className="h-full w-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#08182a]/80 via-transparent to-[#102945]/10" />
+                <div className="absolute left-5 right-5 top-5 flex items-center justify-between text-white">
+                  <div className="flex items-center gap-2 rounded-full bg-[#0b2844]/75 px-3 py-1.5 backdrop-blur">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#56dec4]" />
+                    <span className="font-mono text-[9px] uppercase tracking-[.16em]">Live market context</span>
+                  </div>
+                  <span className="rounded-full border border-white/25 bg-white/10 px-2.5 py-1 font-mono text-[9px] uppercase tracking-wider backdrop-blur">R_100</span>
+                </div>
+                <div className="absolute bottom-5 left-5 right-5 flex items-end justify-between gap-4 text-white">
+                  <div>
+                    <div className="font-mono text-[9px] uppercase tracking-[.18em] text-white/65">Decision before action</div>
+                    <div className="mt-1 font-display text-xl tracking-tight">Read the setup clearly.</div>
+                  </div>
+                  <div className="hidden rounded-xl border border-white/15 bg-[#0b2844]/80 p-2.5 backdrop-blur sm:block">
+                    <div className="font-mono text-[8px] uppercase tracking-wider text-white/55">Status</div>
+                    <div className="mt-1 flex items-center gap-1.5 font-mono text-xs text-[#6ee2cb]"><span className="h-1.5 w-1.5 rounded-full bg-[#6ee2cb]" /> Ready</div>
+                  </div>
+                </div>
+              </div>
+              <div className="absolute -bottom-5 -left-4 hidden w-52 rounded-2xl border border-[#d8e5e5] bg-white p-3 shadow-[0_14px_35px_rgba(20,36,58,.14)] sm:block">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[9px] uppercase tracking-wider text-[#7a8796]">Market pulse</span>
+                  <span className={`font-mono text-[10px] font-semibold ${pulseChange == null || pulseChange >= 0 ? "text-[#159884]" : "text-[#c84c3d]"}`}>
+                    {pulseChange == null ? "LIVE" : `${pulseChange >= 0 ? "+" : ""}${pulseChange.toFixed(2)}%`}
+                  </span>
+                </div>
+                <div className="mt-1 font-mono text-xl font-bold tracking-tight text-[#162a44]">{pulsePrice ?? "—"}</div>
+                <div className="mt-2 h-8 overflow-hidden rounded-md bg-[#f2f8f8]"><PulseChart candles={pulseData?.candles} /></div>
+              </div>
             </div>
           </div>
         </section>
