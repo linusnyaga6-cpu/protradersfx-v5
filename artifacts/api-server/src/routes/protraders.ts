@@ -5,6 +5,7 @@ import WebSocket, { type RawData } from "ws";
 import { and, desc, eq, lt, sql } from "drizzle-orm";
 import { botRuns, bots, consumedTradeProposals, databaseConfigured, db, riskAcknowledgements, transactions } from "@workspace/db";
 import { activitySummary, clientActivityTypes, recordActivity } from "../lib/activity-tracking";
+import { logger } from "../lib/logger";
 
 type SessionValue = {
   accessToken: string;
@@ -177,17 +178,27 @@ function safeDiagnosticCode(value: unknown) {
     : null;
 }
 
+function usefulErrorMessage(value: unknown) {
+  if (typeof value !== "string") return null;
+  const message = value.split(/\r?\n/, 1)[0]?.trim() || "";
+  if (!message || /failed query|parameters?:/i.test(message)) return null;
+  return message;
+}
+
 function tradeErrorDiagnostic(error: unknown) {
   const records = tradeErrorChain(error);
-  const rawMessage = records
-    .map((record) => typeof record.message === "string" ? record.message : "")
-    .find(Boolean) || "Unknown error";
+  const deepestRecords = [...records].reverse();
+  const rawMessage = deepestRecords
+    .map((record) => usefulErrorMessage(record.message))
+    .find(Boolean)
+    || records.map((record) => typeof record.message === "string" ? record.message : "").find(Boolean)
+    || "Unknown error";
 
   let postgresCode: string | null = null;
   let postgresConstraint: string | null = null;
   let derivErrorCode: string | null = null;
 
-  for (const record of records) {
+  for (const record of deepestRecords) {
     if (!postgresCode && typeof record.code === "string" && /^[0-9A-Z]{5}$/i.test(record.code)) {
       postgresCode = record.code;
     }
@@ -229,8 +240,7 @@ function logTradeStageError(
     ? String(requestIdValue)
     : "unknown";
   const diagnostic = tradeErrorDiagnostic(error);
-
-  req.log?.warn({
+  const payload = {
     requestId,
     stage,
     accountType: accountType || null,
@@ -239,7 +249,22 @@ function logTradeStageError(
     postgresConstraint: diagnostic.postgresConstraint,
     sanitizedErrorMessage: diagnostic.sanitizedErrorMessage,
     derivErrorCode: diagnostic.derivErrorCode,
-  });
+  };
+
+  try {
+    if (req.log && typeof req.log.warn === "function") {
+      req.log.warn(payload);
+      return;
+    }
+  } catch {
+    // Fall through to the application logger without exposing the raw error.
+  }
+
+  try {
+    logger.warn(payload);
+  } catch {
+    // Diagnostics must never interrupt the original trade error handling.
+  }
 }
 
 function isConsumedProposalConflict(error: unknown) {
