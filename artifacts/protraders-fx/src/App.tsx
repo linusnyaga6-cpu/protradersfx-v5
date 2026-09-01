@@ -15,6 +15,7 @@ import Bots from '@/pages/bots';
 import Recovery from '@/pages/recovery';
 import BulkTrade from '@/pages/bulk-trade';
 import BulkTrader from '@/pages/bulk-trader';
+import AiScanner from '@/pages/ai-scanner';
 import Initializing from '@/pages/initializing';
 import { FloatingScanner } from '@/components/trading/floating-scanner';
 import NotFound from '@/pages/not-found';
@@ -45,6 +46,7 @@ function Router() {
             <Route path="/course" component={Course} />
             <Route path="/analysis" component={Analysis} />
             <Route path="/dashboard" component={DashboardRoute} />
+            <Route path="/ai-scanner" component={AiScannerRoute} />
             <Route path="/activity" component={Activity} />
             <Route path="/markets" component={MarketsRoute} />
             <Route path="/bots" component={BotsRoute} />
@@ -112,6 +114,7 @@ function OAuthCallbackBridge() {
 }
 
 const DashboardRoute = () => <ProtectedPage page={Dashboard} />;
+const AiScannerRoute = () => <ProtectedPage page={AiScanner} />;
 const MarketsRoute = () => <ProtectedPage page={Markets} />;
 const BotsRoute = () => <ProtectedPage page={Bots} publicPreview={<PublicBotPreview />} />;
 const RecoveryRoute = () => <ProtectedPage page={Recovery} />;
@@ -123,27 +126,23 @@ function PublicBotPreview() {
     {
       number: 1,
       name: "Vertex Bot",
-      source: "traderscheme.com",
-      sourceUrl: "https://traderscheme.com",
-      description: "A free market-observer bot from traderscheme.com that helps you review EMA direction before starting.",
+      description: "The free market-observer bot for reviewing EMA direction before starting.",
       badgeClass: "border-primary/30 text-primary",
     },
     {
       number: 2,
       name: "Recovery Bot",
-      source: "exwager.com",
-      sourceUrl: "https://exwager.com",
-      description: "A monitor-only recovery assistant. It never increases stake, retries an order, or places a trade.",
+      description: "A separate monitor-only assistant. It never increases stake, retries an order, or places a trade.",
       badgeClass: "border-amber-500/30 text-amber-600",
     },
   ];
 
   return (
     <div className="w-full rounded-xl border bg-card p-5 shadow-sm md:p-6">
-      <div className="text-xs font-semibold uppercase tracking-[.24em] text-primary">Bots available</div>
-      <h2 className="mt-2 text-xl font-semibold tracking-tight">Start with a controlled strategy</h2>
+       <div className="text-xs font-semibold uppercase tracking-[.24em] text-primary">Free Bot experience</div>
+       <h2 className="mt-2 text-xl font-semibold tracking-tight">Start with a controlled strategy</h2>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">
-        These source bots are available after you connect Deriv. They remain dry-run and review-first until you choose what to do.
+         Vertex Bot and Recovery Bot are available after you connect Deriv. Both remain dry-run and review-first until you choose what to do.
       </p>
       <div className="mt-5 space-y-3">
         {sourceBots.map((bot) => (
@@ -161,9 +160,9 @@ function PublicBotPreview() {
                   <h3 className="font-semibold">{bot.name}</h3>
                 </div>
                 <p className="mt-1.5 text-xs leading-5 text-muted-foreground">{bot.description}</p>
-                <a className="mt-2 inline-block text-[10px] uppercase tracking-wider text-primary hover:underline" href={bot.sourceUrl} target="_blank" rel="noreferrer">
-                  Source: {bot.source}
-                </a>
+                 <div className="mt-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+                   {bot.number === 2 ? "Monitor only · no trade controls" : "Free market observer · user started"}
+                 </div>
               </div>
             </div>
           </article>

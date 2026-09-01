@@ -43,7 +43,7 @@ import { TradingTabs } from "@/components/trading/trading-tabs"
 import { useDerivMarkets } from "@/hooks/use-deriv-markets"
 import { useTradingRunSession } from "@/hooks/use-trading-run-session"
 import { formatMoney, formatSignedMoney, formatVolatility } from "@/lib/format"
-import { CONTRACT_LABELS, DEFAULT_MARKET_SYMBOL, SUPPORTED_VOLATILITY_SYMBOLS, marketLabel } from "@/lib/markets"
+import { CONTRACT_FAMILIES, CONTRACT_LABELS, DEFAULT_MARKET_SYMBOL, SUPPORTED_VOLATILITY_SYMBOLS, marketLabel } from "@/lib/markets"
 
 export default function BulkTrade() {
   const requested = typeof window === "undefined" ? null : new URLSearchParams(window.location.search)
@@ -116,6 +116,7 @@ export default function BulkTrade() {
   const liveLastDigit = quoteDigits ? Number(quoteDigits.at(-1)) : null
   const marketOffline = ticker.isError || (ticker.data as any)?.available === false
   const candleCloses = useMemo(() => readCandleCloses(marketData), [marketData])
+  const digitPercentages = useMemo(() => readDigitPercentages(candleCloses), [candleCloses])
   const selectedMarketIndex = Math.max(0, marketQuery.markets.findIndex(item => item.symbol === selectedMarket))
   const quoteTrend = candleCloses.length > 1
     ? candleCloses.at(-1)! >= candleCloses.at(-2)! ? "up" : "down"
@@ -197,7 +198,8 @@ export default function BulkTrade() {
                 <Radio className="h-3 w-3" />
                 Manual trading
               </div>
-               <h1 className="truncate text-lg font-semibold tracking-tight md:text-xl">One reviewed decision</h1>
+                <h1 className="truncate text-lg font-semibold tracking-tight md:text-xl">Manual Trader</h1>
+                <p className="mt-0.5 text-xs text-muted-foreground">Read the quote, choose the contract, then submit once.</p>
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground md:ml-2">
@@ -215,7 +217,7 @@ export default function BulkTrade() {
           </div>
         )}
         <div className="border-b border-border/80 bg-background/40 p-3 md:p-4">
-          <DigitRail activeDigit={liveLastDigit} selectedDigit={needsBarrier ? Number(barrier) : null} />
+           <DigitRail activeDigit={liveLastDigit} selectedDigit={needsBarrier ? Number(barrier) : null} digitPercentages={digitPercentages} />
            <MarketCursor
              markets={marketQuery.markets}
              selectedMarket={selectedMarket}
@@ -231,10 +233,10 @@ export default function BulkTrade() {
               <div>
                 <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.2em] text-muted-foreground">
                   <Activity className="h-3.5 w-3.5 text-primary" />
-                  Live market
+                   Live quote
                 </div>
                 <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                  <span className="font-mono text-2xl font-bold tracking-tight" data-testid="text-market-quote">{marketQuote == null ? "—" : String(marketQuote)}</span>
+                   <span className="font-mono text-2xl font-bold tracking-tight md:text-3xl" data-testid="text-market-quote">{marketQuote == null ? "—" : String(marketQuote)}</span>
                   <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <span className={`h-1.5 w-1.5 rounded-full ${marketOffline ? "bg-destructive" : "bg-success"}`} />
                     {marketOffline ? "Awaiting provider" : "Provider quote"}
@@ -246,7 +248,7 @@ export default function BulkTrade() {
                 {quoteTrend === "flat" ? "Waiting" : quoteTrend === "up" ? "Rising" : "Falling"}
               </div>
             </div>
-            <div className="bg-card/70 p-3 md:p-5">
+           <div className="bg-card/70 p-3 md:p-4">
               <QuoteChart values={candleCloses} trend={quoteTrend} isLoading={candles.isLoading} />
             </div>
             <div className="grid gap-3 border-t border-border/70 bg-background/30 p-3 md:grid-cols-[1fr_auto_1fr] md:items-center md:p-4" data-testid="panel-live-price-context">
@@ -283,10 +285,10 @@ export default function BulkTrade() {
               <WalletCards className="h-5 w-5 text-muted-foreground" />
             </div>
             <div className="space-y-4 p-4 md:p-5">
-              <div className="space-y-2">
+               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label>Direction</Label>
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Higher / Lower</span>
+                   <Label>Direction</Label>
+                   <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Rise / Fall</span>
                 </div>
                 <div className="grid gap-2" data-testid="direction-selector">
                 <Button
@@ -358,8 +360,11 @@ export default function BulkTrade() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="contract-choice">Contract type</Label>
+               <div className="space-y-2">
+                 <div className="flex items-center justify-between gap-3">
+                   <Label htmlFor="contract-choice">Contract type</Label>
+                   <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Provider availability</span>
+                 </div>
                 <select
                   id="contract-choice"
                   value={contractType}
@@ -372,28 +377,48 @@ export default function BulkTrade() {
                     <option key={type} value={type}>{CONTRACT_LABELS[type]?.action || type} · {CONTRACT_LABELS[type]?.family || "Contract"}</option>
                   ))}
                 </select>
-               <div className="grid grid-cols-2 gap-2" data-testid="quick-contract-selector">
-                 {availableTypes.slice(0, 4).map((type: string) => (
-                   <Button
-                     key={type}
-                     type="button"
-                     size="sm"
-                     variant={contractType === type ? "default" : "outline"}
-                     className={contractType === type ? "bg-primary text-primary-foreground" : "bg-background"}
-                     onClick={() => setContractType(type)}
-                     disabled={runSession.isBusy}
-                   >
-                     {CONTRACT_LABELS[type]?.action || type}
-                   </Button>
-                 ))}
+                <div className="space-y-2" data-testid="quick-contract-selector">
+                   {CONTRACT_FAMILIES.map(group => (
+                    <div key={group.label} className="space-y-1.5">
+                       <div className="flex items-center justify-between gap-2">
+                         <div className="text-[9px] font-semibold uppercase tracking-[.16em] text-muted-foreground">{group.label}</div>
+                         {group.label === "Over / Under" && <span className="font-mono text-[9px] text-amber-700 dark:text-amber-300">uses barrier</span>}
+                       </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {group.types.map(type => {
+                          const available = availableTypes.includes(type)
+                          return (
+                            <Button
+                              key={type}
+                              type="button"
+                              size="sm"
+                              variant={contractType === type ? "default" : "outline"}
+                              className={contractType === type ? "bg-primary text-primary-foreground" : "bg-background"}
+                              onClick={() => setContractType(type)}
+                              disabled={!available || runSession.isBusy}
+                              aria-pressed={contractType === type}
+                              data-testid={`button-contract-${type.toLowerCase()}`}
+                            >
+                               <span>{CONTRACT_LABELS[type]?.action || type}</span>
+                               {CONTRACT_LABELS[type]?.hint && <span className="hidden text-[9px] opacity-60 sm:inline">{CONTRACT_LABELS[type].hint}</span>}
+                              {!available && <span className="ml-1 text-[9px] opacity-60">n/a</span>}
+                            </Button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
                </div>
               </div>
 
-              {needsBarrier && (
+               {needsBarrier && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label>Digit barrier</Label>
-                    <span className="font-mono text-xs text-amber-600">selected: {barrier}</span>
+                     <div>
+                       <Label>Digit barrier</Label>
+                       <p className="mt-0.5 text-[10px] text-muted-foreground">Compare the live last digit against this value.</p>
+                     </div>
+                     <span className="rounded-md bg-amber-500/10 px-2 py-1 font-mono text-xs font-semibold text-amber-700 dark:text-amber-300">selected {barrier}</span>
                   </div>
                   <div className="grid grid-cols-5 gap-1.5">
                     {Array.from({ length: 10 }, (_, digit) => String(digit)).map(digit => (
@@ -523,7 +548,7 @@ function MarketCursor({
           data-testid="cursor-market-selector"
         />
       </div>
-      <div className="mt-1 flex items-center justify-between gap-3 font-mono text-[9px] uppercase tracking-[.12em] text-muted-foreground">
+           <div className="mt-1 flex items-center justify-between gap-3 font-mono text-[9px] uppercase tracking-[.12em] text-muted-foreground">
         <span>{markets.length ? `${selectedIndex + 1} of ${markets.length}` : "—"}</span>
         <span>Live quote refreshes every 15s</span>
       </div>
@@ -704,7 +729,7 @@ function QuoteChart({ values, trend, isLoading }: { values: number[]; trend: "up
         </div>
       </div>
       {path ? (
-        <svg viewBox="0 0 100 84" preserveAspectRatio="none" className="h-[290px] w-full" role="img" aria-label="Recent market candle close context">
+           <svg viewBox="0 0 100 84" preserveAspectRatio="none" className="h-[230px] w-full sm:h-[260px]" role="img" aria-label="Recent market candle close context">
           <defs>
             <linearGradient id="quote-area-fill" x1="0" x2="0" y1="0" y2="1">
               <stop offset="0%" stopColor={stroke} stopOpacity=".18" />
@@ -721,7 +746,7 @@ function QuoteChart({ values, trend, isLoading }: { values: number[]; trend: "up
           <circle cx="100" cy={lastY} r="1.5" fill={stroke} vectorEffect="non-scaling-stroke" />
         </svg>
       ) : (
-        <div className="flex h-[290px] items-center justify-center text-xs text-muted-foreground">Candle context will populate from Deriv.</div>
+         <div className="flex h-[230px] items-center justify-center text-xs text-muted-foreground sm:h-[260px]">Candle context will populate from Deriv.</div>
       )}
     </div>
   )
@@ -744,6 +769,17 @@ function readCandleCloses(data: unknown) {
     .map((row: any) => Number(row?.close ?? row?.closePrice ?? row?.quote ?? row?.price))
     .filter((value: number) => Number.isFinite(value))
     .slice(-60)
+}
+
+function readDigitPercentages(values: number[]) {
+  const counts = Array.from({ length: 10 }, () => 0)
+  values.forEach(value => {
+    const digits = String(value).replace(/\D/g, "")
+    const digit = Number(digits.at(-1))
+    if (Number.isInteger(digit) && digit >= 0 && digit <= 9) counts[digit] += 1
+  })
+  const total = counts.reduce((sum, count) => sum + count, 0)
+  return total ? counts.map(count => Math.round((count / total) * 100)) : counts
 }
 
 function formatSpot(value: number | null | undefined) {

@@ -163,12 +163,12 @@ export default function Home() {
              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                <ToolCard href="/create-bot" icon={<Activity className="h-5 w-5" />} title="Manual Trader" text="One market, one reviewed plan, one controlled decision." accent />
                <ToolCard href="/bulk-trader" icon={<Layers3 className="h-5 w-5" />} title="Bulk Trader" text="Scan fresh markets and run a bounded sequence." />
-               <button type="button" onClick={() => window.dispatchEvent(new Event("protraders:open-scanner"))} className="group flex min-h-[190px] flex-col rounded-2xl border border-[#dce3e7] bg-white p-5 text-left transition-all hover:-translate-y-1 hover:border-[#159884]/45 hover:shadow-[0_14px_30px_rgba(20,36,58,.1)]" data-testid="button-home-ai-scanner">
+                <Link href="/ai-scanner" className="group flex min-h-[190px] flex-col rounded-2xl border border-[#159884]/35 bg-[#f0fbf8] p-5 text-left transition-all hover:-translate-y-1 hover:border-[#159884]/60 hover:shadow-[0_14px_30px_rgba(20,36,58,.1)]" data-testid="link-home-ai-scanner">
                  <span className="grid h-11 w-11 place-items-center rounded-xl bg-[#e9f8f4] text-[#159884]"><Activity className="h-5 w-5" /></span>
-                 <span className="mt-6 flex items-center justify-between gap-2 font-semibold text-[#14243a]">AI Scanner <ArrowRight className="h-4 w-4 text-[#9aa5b0] transition-transform group-hover:translate-x-1" /></span>
-                 <span className="mt-2 text-xs leading-5 text-[#748092]">Advisory market context with no automatic execution.</span>
-                 <span className="mt-auto pt-4 font-mono text-[9px] uppercase tracking-[.16em] text-[#159884]">Open floating scanner</span>
-               </button>
+                  <span className="mt-6 flex items-center justify-between gap-2 font-semibold text-[#14243a]">AI Scanner <ArrowRight className="h-4 w-4 text-[#159884] transition-transform group-hover:translate-x-1" /></span>
+                  <span className="mt-2 text-xs leading-5 text-[#748092]">Advisory market context with explicit, bounded execution.</span>
+                  <span className="mt-auto pt-4 font-mono text-[9px] uppercase tracking-[.16em] text-[#159884]">Open scanner workspace</span>
+                </Link>
                <ToolCard href="/bots" icon={<Bot className="h-5 w-5" />} title="Trading Robots" text="Transparent bot templates with visible boundaries." />
              </div>
            </div>

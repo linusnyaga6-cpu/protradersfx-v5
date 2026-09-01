@@ -95,6 +95,15 @@ export interface DryRunStrategy {
      * @exclusiveMinimum 0
      */
   riskCap: number;
+  martingale?: {
+     enabled: boolean;
+     /** @minimum 1 @maximum 5 */
+     multiplier: number;
+     /** @exclusiveMinimum 0 @maximum 100000 */
+     maxStake: number;
+  };
+  /** @minimum 1 @maximum 10 */
+  consecutiveLossLimit?: number;
   /** @maxLength 1000 */
   notes?: string;
   execution: DryRunStrategyExecution;

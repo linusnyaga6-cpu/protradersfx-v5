@@ -15,3 +15,4 @@
 - [Vercel runtime-log access](vercel-log-access.md) — a connected Vercel API key may return 403 for deployment/runtime logs; use the dashboard or repair read access.
 - [External Aiven verification](external-aiven-verification.md) — Replit Production SQL targets its own replica and cannot verify an external Aiven database; use Aiven's read-only SQL tools.
 - [Vercel static asset imports](vercel-static-assets.md) — in legacy monorepo routing, import critical images through Vite so they emit under the hashed assets path instead of relying on root public rewrites.
+- [Bot session plan integrity](bot-session-plan-integrity.md) — any bot control that affects exposure or stopping must be part of the signed reviewed execution plan.

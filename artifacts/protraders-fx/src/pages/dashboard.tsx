@@ -189,15 +189,14 @@ function ActionCard({ href, icon, title, description, featured }: { href: string
 
 function ScannerCard() {
   return (
-    <button
-      type="button"
-      onClick={() => window.dispatchEvent(new Event("protraders:open-scanner"))}
-      className="group flex min-h-[150px] flex-col rounded-2xl border border-[#dce3e7] bg-white p-4 text-left transition-all duration-200 hover:-translate-y-1 hover:border-[#159884]/40 hover:shadow-[0_14px_30px_rgba(20,36,58,.1)]"
-      data-testid="button-dashboard-ai-scanner"
+    <Link
+      href="/ai-scanner"
+      className="group flex min-h-[150px] flex-col rounded-2xl border border-[#159884]/35 bg-[#f0fbf8] p-4 text-left transition-all duration-200 hover:-translate-y-1 hover:border-[#159884]/60 hover:shadow-[0_14px_30px_rgba(20,36,58,.1)]"
+      data-testid="link-dashboard-ai-scanner"
     >
       <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#eaf8f6] text-[#159884]"><Activity className="h-4 w-4" /></span>
-      <span className="mt-5 flex items-center justify-between gap-2 font-semibold text-[#14243a]">AI Scanner <ArrowRight className="h-4 w-4 text-[#9aa5b0] transition-transform group-hover:translate-x-1" /></span>
-      <span className="mt-2 text-xs leading-5 text-[#748092]">Get advisory market context—never automatic execution.</span>
-    </button>
+      <span className="mt-5 flex items-center justify-between gap-2 font-semibold text-[#14243a]">AI Scanner <ArrowRight className="h-4 w-4 text-[#159884] transition-transform group-hover:translate-x-1" /></span>
+      <span className="mt-2 text-xs leading-5 text-[#748092]">Scan, review risk, and explicitly start a bounded session.</span>
+    </Link>
   )
 }

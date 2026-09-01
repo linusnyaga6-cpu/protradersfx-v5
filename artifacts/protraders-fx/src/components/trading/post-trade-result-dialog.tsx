@@ -62,7 +62,7 @@ export function PostTradeResultDialog({
             {profit == null ? "Unavailable" : display.formatSignedMoney(profit)}
           </div>
           <p className="mt-4 text-sm leading-6 text-muted-foreground">
-            {isTerminal ? "The bot has stopped trading." : "This trade has settled. The session is continuing."}
+             {isTerminal ? "All runs in this session are complete." : "This trade has settled. The session is continuing."}
           </p>
           <div className="mt-3 font-mono text-[10px] uppercase tracking-[.16em] text-muted-foreground/70">
             {result.symbol || "Market unavailable"} · Run {String(result.run).padStart(2, "0")}

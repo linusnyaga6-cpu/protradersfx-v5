@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { Link } from "wouter"
 import { BarChart3, Radio, Search, WifiOff } from "lucide-react"
-import { useGetMarketCandles, getGetMarketCandlesQueryKey, useGetMarketTicker, getGetMarketTickerQueryKey, useGetAccount, getGetAccountQueryKey, useListBots, getListBotsQueryKey, useListBotRuns, getListBotRunsQueryKey } from "@workspace/api-client-react"
+import { useGetMarketCandles, getGetMarketCandlesQueryKey, useGetMarketTicker, getGetMarketTickerQueryKey, useGetMarketContracts, getGetMarketContractsQueryKey, useGetAccount, getGetAccountQueryKey, useListBots, getListBotsQueryKey, useListBotRuns, getListBotRunsQueryKey } from "@workspace/api-client-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AccountStrip } from "@/components/trading/account-strip"
 import { BotRunSummary } from "@/components/trading/bot-run-summary"
 import { formatVolatility } from "@/lib/format"
-import { DEFAULT_MARKET_SYMBOL } from "@/lib/markets"
+import { CONTRACT_LABELS, DEFAULT_MARKET_SYMBOL } from "@/lib/markets"
 import { useDerivMarkets } from "@/hooks/use-deriv-markets"
 
 export default function Markets() {
@@ -19,6 +19,7 @@ export default function Markets() {
   const marketQuery = useDerivMarkets()
   const ticker = useGetMarketTicker(symbol,{query:{queryKey:getGetMarketTickerQueryKey(symbol),refetchInterval:15000}})
   const candles = useGetMarketCandles(symbol,{count:60,granularity:60},{query:{queryKey:getGetMarketCandlesQueryKey(symbol,{count:60,granularity:60}),staleTime:30000}})
+  const contracts = useGetMarketContracts(symbol, { query: { queryKey: getGetMarketContractsQueryKey(symbol), staleTime: 60000 } })
   const account = useGetAccount(undefined, {query:{queryKey:getGetAccountQueryKey(),refetchInterval:5000}})
   const bots = useListBots({query:{queryKey:getListBotsQueryKey(),refetchInterval:10000}})
   const botList = Array.isArray((bots.data as any)?.bots) ? (bots.data as any).bots : []
@@ -39,6 +40,9 @@ export default function Markets() {
   
   const tick = ticker.data as any; const candle = candles.data as any
   const tickerOffline = ticker.isError || tick?.available === false
+  const availableContractTypes = Array.isArray((contracts.data as any)?.availableContractTypes)
+    ? (contracts.data as any).availableContractTypes.filter((type: string) => CONTRACT_LABELS[type])
+    : []
   
   return (
     <Workspace title="Markets" eyebrow="TradeView · Market observatory" description="Transparent Deriv data with freshness visible at every layer.">
@@ -112,6 +116,32 @@ export default function Markets() {
             <DataCard label="Volatility" value={candle?.indicators ? formatVolatility(candle.indicators.volatilityLevel, candle.indicators.volatilityPct) : "Not available"} />
             <DataCard label="Analysis" value={candle?.indicators ? "Deterministic indicators" : "Not available"} />
           </div>
+          <Card className="rounded-sm border-border bg-card/50" data-testid="card-market-contracts">
+            <CardHeader className="border-b border-border/50 bg-secondary/10">
+              <CardTitle className="font-display text-lg">Market contracts</CardTitle>
+              <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Verified by Deriv for {symbol}</p>
+            </CardHeader>
+            <CardContent className="p-5">
+              {contracts.isLoading ? (
+                <div className="font-mono text-xs text-muted-foreground">Checking contract types…</div>
+              ) : contracts.isError ? (
+                <div className="font-mono text-xs text-amber-600">Contract availability is temporarily unavailable.</div>
+              ) : (
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {["CALL", "PUT", "DIGITOVER", "DIGITUNDER", "DIGITEVEN", "DIGITODD"].map(type => {
+                    const available = availableContractTypes.includes(type)
+                    return (
+                      <div key={type} className={`flex items-center justify-between rounded-sm border px-3 py-2 text-xs ${available ? "border-success/25 bg-success/5" : "border-border/60 bg-secondary/10 opacity-60"}`} data-testid={`market-contract-${type.toLowerCase()}`}>
+                        <span className="font-medium">{CONTRACT_LABELS[type].action}</span>
+                        <span className={`font-mono text-[9px] uppercase tracking-wider ${available ? "text-success" : "text-muted-foreground"}`}>{available ? "Available" : "Unavailable"}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+              <p className="mt-3 text-[10px] leading-4 text-muted-foreground">Over and Under use the selected digit barrier in Manual Trader. Availability follows the active Deriv market.</p>
+            </CardContent>
+          </Card>
         </div>
       </div>
       {botList.length ? (

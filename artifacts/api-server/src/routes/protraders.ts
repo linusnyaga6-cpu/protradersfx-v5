@@ -1142,6 +1142,10 @@ router.post("/trades/preview", async (req, res) => {
   const stopLoss = req.body?.stop_loss === undefined ? null : Number(req.body.stop_loss);
   const runCount = req.body?.run_count === undefined ? null : Number(req.body.run_count);
   const riskCap = req.body?.risk_cap === undefined ? null : Number(req.body.risk_cap);
+  const martingaleEnabled = req.body?.martingale_enabled === true;
+  const martingaleMultiplier = req.body?.martingale_multiplier === undefined ? null : Number(req.body.martingale_multiplier);
+  const martingaleMaxStake = req.body?.martingale_max_stake === undefined ? null : Number(req.body.martingale_max_stake);
+  const consecutiveLossLimit = req.body?.consecutive_loss_limit === undefined ? null : Number(req.body.consecutive_loss_limit);
   const source = String(req.body?.source || "manual");
   const barrier = req.body?.barrier === undefined ? undefined : String(req.body.barrier);
   const sessionId = typeof req.body?.session_id === "string" && /^[a-zA-Z0-9-]{1,80}$/.test(req.body.session_id)
@@ -1160,9 +1164,13 @@ router.post("/trades/preview", async (req, res) => {
     duration > maxDuration ? `Duration cannot exceed ${maxDuration} ticks.` : "",
     stopLoss !== null && (!Number.isFinite(stopLoss) || stopLoss <= 0) ? "Stop loss must be greater than 0." : "",
     req.body?.source === "bot_assisted" && (!Number.isInteger(runCount) || Number(runCount) < 1 || Number(runCount) > 10) ? "Bot run count must be from 1 to 10." : "",
-    req.body?.source === "bot_assisted" && (!Number.isFinite(riskCap) || Number(riskCap) <= 0 || stake * Number(runCount) > Number(riskCap)) ? "Bot plan exceeds its risk cap." : "",
+    req.body?.source === "bot_assisted" && (!Number.isFinite(riskCap) || Number(riskCap) <= 0 || (martingaleEnabled ? Number(martingaleMaxStake) : stake) * Number(runCount) > Number(riskCap)) ? "Bot plan exceeds its risk cap." : "",
+    req.body?.source === "bot_assisted" && (!Number.isFinite(martingaleMultiplier) || Number(martingaleMultiplier) < 1 || Number(martingaleMultiplier) > 5) ? "Martingale multiplier must be between 1 and 5." : "",
+    req.body?.source === "bot_assisted" && (!Number.isFinite(martingaleMaxStake) || Number(martingaleMaxStake) < stake) ? "Martingale max stake must be at least the starting stake." : "",
+    req.body?.source === "bot_assisted" && (!Number.isInteger(consecutiveLossLimit) || Number(consecutiveLossLimit) < 1 || Number(consecutiveLossLimit) > 10) ? "Consecutive-loss guard must be from 1 to 10." : "",
+    req.body?.source === "bot_assisted" && (!Number.isInteger(consecutiveLossLimit) || Number(consecutiveLossLimit) < 1 || Number(consecutiveLossLimit) > 10) ? "Consecutive-loss guard must be from 1 to 10." : "",
     req.body?.source === "bot_assisted" && (!botId || !sessionId) ? "A saved bot and run session are required." : "",
-    source !== "bot_assisted" && (req.body?.bot_id !== undefined || req.body?.run_count !== undefined || req.body?.risk_cap !== undefined)
+    source !== "bot_assisted" && (req.body?.bot_id !== undefined || req.body?.run_count !== undefined || req.body?.risk_cap !== undefined || req.body?.martingale_enabled !== undefined || req.body?.martingale_multiplier !== undefined || req.body?.martingale_max_stake !== undefined || req.body?.consecutive_loss_limit !== undefined)
       ? "Bot plan fields require bot-assisted execution." : "",
     contractType && barrierContractTypes.has(contractType) && !/^[0-9]$/.test(barrier || "") ? "Choose a digit barrier from 0 to 9." : "",
   ].filter(Boolean);
@@ -1193,6 +1201,11 @@ router.post("/trades/preview", async (req, res) => {
       const configuredStake = Number(config?.stake);
       const configuredRunCount = Number(config?.runCount || 1);
       const configuredRiskCap = Number(config?.riskCap);
+      const configuredMartingale = config?.martingale as { enabled?: boolean; multiplier?: number; maxStake?: number } | undefined;
+      const configuredMartingaleEnabled = configuredMartingale?.enabled === true;
+      const configuredMartingaleMultiplier = Number(configuredMartingale?.multiplier || 2);
+      const configuredMartingaleMaxStake = Number(configuredMartingale?.maxStake || configuredStake);
+      const configuredConsecutiveLossLimit = Number(config?.consecutiveLossLimit || 3);
       if (!bot) {
         return errorResponse(res, 409, "Bot not found", "Review the saved bot before starting a new session.");
       }
@@ -1208,6 +1221,10 @@ router.post("/trades/preview", async (req, res) => {
         || configuredStake !== stake
         || configuredRunCount !== runCount
         || configuredRiskCap !== riskCap
+        || configuredMartingaleEnabled !== martingaleEnabled
+        || configuredMartingaleMultiplier !== martingaleMultiplier
+        || configuredMartingaleMaxStake !== martingaleMaxStake
+        || configuredConsecutiveLossLimit !== consecutiveLossLimit
       ) {
         return errorResponse(res, 409, "Bot plan changed", "Review the saved bot settings before starting a new session.");
       }
@@ -1280,7 +1297,7 @@ router.post("/trades/preview", async (req, res) => {
       },
     });
     return res.json({
-      proposalToken: seal({ id: proposal.id, nonce: crypto.randomUUID(), accountId: account.account_id, source, botId, symbol, contractType: requestedContractType, stake, duration, barrier: barrier || null, stopLoss, runCount, riskCap, sessionId, askPrice, expiresAt: Date.now() + 30_000 }),
+      proposalToken: seal({ id: proposal.id, nonce: crypto.randomUUID(), accountId: account.account_id, source, botId, symbol, contractType: requestedContractType, stake, duration, barrier: barrier || null, stopLoss, runCount, riskCap, martingaleEnabled, martingaleMultiplier, martingaleMaxStake, consecutiveLossLimit, sessionId, askPrice, expiresAt: Date.now() + 30_000 }),
       symbol, contractType: requestedContractType, stake, duration, barrier: barrier || null,
       askPrice,
       payout: Number.isFinite(Number(proposal.payout)) ? Number(proposal.payout) : null,
@@ -1318,6 +1335,10 @@ router.post("/trades", async (req, res) => {
   const stopLoss = req.body?.stop_loss === undefined ? undefined : Number(req.body.stop_loss);
   const runCount = req.body?.run_count === undefined ? null : Number(req.body.run_count);
   const riskCap = req.body?.risk_cap === undefined ? null : Number(req.body.risk_cap);
+  const martingaleEnabled = req.body?.martingale_enabled === true;
+  const martingaleMultiplier = req.body?.martingale_multiplier === undefined ? null : Number(req.body.martingale_multiplier);
+  const martingaleMaxStake = req.body?.martingale_max_stake === undefined ? null : Number(req.body.martingale_max_stake);
+  const consecutiveLossLimit = req.body?.consecutive_loss_limit === undefined ? null : Number(req.body.consecutive_loss_limit);
   const source = String(req.body?.source || "manual");
   const sessionId = typeof req.body?.session_id === "string" && /^[a-zA-Z0-9-]{1,80}$/.test(req.body.session_id)
     ? req.body.session_id
@@ -1336,9 +1357,12 @@ router.post("/trades", async (req, res) => {
     contractType && barrierContractTypes.has(contractType) && !/^[0-9]$/.test(barrier || "") ? "Choose a digit barrier from 0 to 9." : "",
     stopLoss !== undefined && (!Number.isFinite(stopLoss) || stopLoss <= 0) ? "Stop loss must be greater than 0." : "",
     req.body?.source === "bot_assisted" && (!Number.isInteger(runCount) || Number(runCount) < 1 || Number(runCount) > 10) ? "Bot run count must be from 1 to 10." : "",
-    req.body?.source === "bot_assisted" && (!Number.isFinite(riskCap) || Number(riskCap) <= 0 || stake * Number(runCount) > Number(riskCap)) ? "Bot plan exceeds its risk cap." : "",
+    req.body?.source === "bot_assisted" && (!Number.isFinite(riskCap) || Number(riskCap) <= 0 || (martingaleEnabled ? Number(martingaleMaxStake) : stake) * Number(runCount) > Number(riskCap)) ? "Bot plan exceeds its risk cap." : "",
+    req.body?.source === "bot_assisted" && (!Number.isFinite(martingaleMultiplier) || Number(martingaleMultiplier) < 1 || Number(martingaleMultiplier) > 5) ? "Martingale multiplier must be between 1 and 5." : "",
+    req.body?.source === "bot_assisted" && (!Number.isFinite(martingaleMaxStake) || Number(martingaleMaxStake) < stake) ? "Martingale max stake must be at least the starting stake." : "",
+    req.body?.source === "bot_assisted" && (!Number.isInteger(consecutiveLossLimit) || Number(consecutiveLossLimit) < 1 || Number(consecutiveLossLimit) > 10) ? "Consecutive-loss guard must be from 1 to 10." : "",
     req.body?.source === "bot_assisted" && (!botId || !sessionId) ? "A saved bot and run session are required." : "",
-    source !== "bot_assisted" && (req.body?.bot_id !== undefined || req.body?.run_count !== undefined || req.body?.risk_cap !== undefined)
+    source !== "bot_assisted" && (req.body?.bot_id !== undefined || req.body?.run_count !== undefined || req.body?.risk_cap !== undefined || req.body?.martingale_enabled !== undefined || req.body?.martingale_multiplier !== undefined || req.body?.martingale_max_stake !== undefined || req.body?.consecutive_loss_limit !== undefined)
       ? "Bot plan fields require bot-assisted execution." : "",
   ].filter(Boolean);
   if (validationErrors.length) {
@@ -1422,6 +1446,8 @@ router.post("/trades", async (req, res) => {
     const matches = reviewed?.accountId === loginId && reviewed?.source === source && reviewed?.symbol === symbol && reviewed?.contractType === validatedContractType
       && reviewed?.stake === stake && reviewed?.duration === duration && reviewed?.barrier === (barrier || null)
       && reviewed?.stopLoss === (stopLoss ?? null) && reviewed?.botId === botId && reviewed?.runCount === runCount && reviewed?.riskCap === riskCap
+      && reviewed?.martingaleEnabled === martingaleEnabled && reviewed?.martingaleMultiplier === martingaleMultiplier && reviewed?.martingaleMaxStake === martingaleMaxStake
+      && reviewed?.consecutiveLossLimit === consecutiveLossLimit
       && reviewed?.sessionId === sessionId && reviewed?.expiresAt > Date.now();
     if (!matches || !reviewed?.id || !reviewed?.nonce || !Number.isFinite(reviewed?.askPrice) || reviewed.askPrice <= 0) return errorResponse(res, 409, "Proposal expired or changed", "Review the current order again before execution.");
     executionStage = "consumed_trade_proposals_insert";

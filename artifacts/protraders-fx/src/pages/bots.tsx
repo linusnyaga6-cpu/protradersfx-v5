@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { DEFAULT_MARKET_SYMBOL, CONTRACT_LABELS, SUPPORTED_VOLATILITY_SYMBOLS } from "@/lib/markets"
@@ -70,7 +71,11 @@ export default function Bots() {
     const isCustom = custom.some((c: any) => c.id === template.id);
     const templateStake = Number(template.strategy?.stake) || 10;
     const templateRunCount = Number(template.strategy?.runCount) || 1;
+    const templateMartingale = template.strategy?.martingale;
     const templateRiskCap = Number(template.strategy?.riskCap) || Math.max(100, templateStake * templateRunCount);
+    const templateMaxStake = Number(templateMartingale?.maxStake) || templateStake;
+    const templateExposure = templateMartingale?.enabled ? templateMaxStake * templateRunCount : templateStake * templateRunCount;
+    const templateLossLimit = Number(template.strategy?.consecutiveLossLimit) || 3;
     create.mutate({
       data: {
         name: template.botNumber
@@ -88,7 +93,13 @@ export default function Bots() {
           takeProfit: Number(template.strategy?.takeProfit) || 1,
           stake: templateStake,
           duration: Number(template.strategy?.duration) || 1,
-          riskCap: Math.max(templateRiskCap, templateStake * templateRunCount),
+           riskCap: Math.max(templateRiskCap, templateExposure),
+           martingale: {
+             enabled: templateMartingale?.enabled === true,
+             multiplier: Number(templateMartingale?.multiplier) || 2,
+             maxStake: templateMaxStake,
+           },
+           consecutiveLossLimit: templateLossLimit,
           ...(template.strategy?.notes ? { notes: String(template.strategy.notes).substring(0, 1000) } : {}),
           execution: "dry_run"
         },
@@ -130,6 +141,10 @@ export default function Bots() {
     setExecutingBotId(String(bot.id));
     try {
       const contractType = String(bot.config?.contractType || "CALL");
+      const runCount = Number(bot.config?.runCount || 1);
+      const stake = Number(bot.config?.stake || 1);
+      const riskCap = Number(bot.config?.riskCap || 0);
+      const consecutiveLossLimit = Number(bot.config?.consecutiveLossLimit || 3);
       const orderData = {
           bot_id: String(bot.id),
           account_id: String(account.data?.loginid || ""),
@@ -142,17 +157,29 @@ export default function Bots() {
           stop_loss: Number(bot.config?.stopLoss || 1),
           run_count: Number(bot.config?.runCount || 1),
           risk_cap: Number(bot.config?.riskCap || 0),
+           martingale_enabled: bot.config?.martingale?.enabled === true,
+           martingale_multiplier: Number(bot.config?.martingale?.multiplier || 2),
+           martingale_max_stake: Number(bot.config?.martingale?.maxStake || stake),
           source: "bot_assisted",
+           consecutive_loss_limit: consecutiveLossLimit,
           request_label: `${bot.name} user-started bot session`,
       };
-      const runCount = Number(bot.config?.runCount || 1);
-      const stake = Number(bot.config?.stake || 1);
-      const riskCap = Number(bot.config?.riskCap || 0);
-      if (!Number.isFinite(riskCap) || riskCap <= 0 || stake * runCount > riskCap) {
+      const martingale = bot.config?.martingale;
+      const martingaleEnabled = martingale?.enabled === true;
+      const martingaleMultiplier = Number(martingale?.multiplier || 2);
+      const martingaleMaxStake = Number(martingale?.maxStake || stake);
+      const plannedExposure = (martingaleEnabled ? martingaleMaxStake : stake) * runCount;
+      if (!Number.isFinite(riskCap) || riskCap <= 0 || plannedExposure > riskCap) {
         setNotice("Reduce the stake or run count to stay within this bot’s risk cap.");
         return;
       }
-      await runSession.start(orderData, runCount, Number(bot.config?.takeProfit || 1), riskCap);
+      await runSession.start(
+        orderData,
+        runCount,
+        Number(bot.config?.takeProfit || 1),
+        riskCap,
+        { enabled: martingaleEnabled, multiplier: martingaleMultiplier, maxStake: martingaleMaxStake, consecutiveLossLimit },
+      );
     } catch (error) {
       setNotice(`Bot execution stopped: ${error instanceof Error ? error.message : "Deriv rejected the request"}`);
     } finally {
@@ -164,16 +191,18 @@ export default function Bots() {
   return (
        <Workspace title="Bot Workspace" eyebrow={account.data?.accountType === "real" ? "Real account" : "Bots"} description="Build, review, run.">
       <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} switchingDisabled={runSession.isBusy} />
-        <section className="overflow-hidden rounded-2xl border border-[#234159] bg-[#091a2d] text-white shadow-[0_18px_60px_rgba(7,19,33,.18)]">
+        <section className="overflow-hidden rounded-2xl border border-[#234159] bg-[#091a2d] text-white shadow-[0_18px_60px_rgba(7,19,33,.18)]" data-testid="bots-identity-panel">
          <div className="flex flex-col gap-3 border-b border-white/10 px-5 py-5 md:flex-row md:items-end md:justify-between md:px-7">
            <div>
-              <div className="font-mono text-[10px] uppercase tracking-[.2em] text-[#20c7c2]">Free bot library</div>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Start with one of two review-first bots.</h2>
+               <div className="font-mono text-[10px] uppercase tracking-[.2em] text-[#20c7c2]">Free bot experiences</div>
+               <h2 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Observe first. Decide yourself.</h2>
            </div>
-            <p className="max-w-sm text-sm text-white/55">Vertex Bot observes market direction. Recovery Bot watches for interruptions. Both stay under your control.</p>
+             <p className="max-w-sm text-sm text-white/55">Vertex Bot reads market direction. Recovery Bot watches the session. The Free Bot experience stays dry-run until you start a review.</p>
          </div>
           <div className="grid gap-px bg-white/10 sm:grid-cols-3">
-            <LauncherTile href="#free-bots" icon={<BotIcon className="h-5 w-5" />} title="Free Bots" detail="Vertex + Recovery" />
+             <LauncherTile href="#vertex-bot" icon={<BotIcon className="h-5 w-5" />} title="Vertex Bot" detail="Free market observer" />
+             <LauncherTile href="#recovery-bot" icon={<ShieldAlert className="h-5 w-5" />} title="Recovery Bot" detail="Monitor only" tone="coral" />
+             <LauncherTile href="#free-bot-experience" icon={<Eye className="h-5 w-5" />} title="Free Bot experience" detail="Dry-run by default" />
             <LauncherTile href="#saved-bots" icon={<Settings className="h-5 w-5" />} title="My Bots" detail="Your saved setups" />
             <LauncherTile href="#premium-ai-bots" icon={<Sparkles className="h-5 w-5" />} title="Premium Templates" detail="Browse the strategy library" tone="gold" />
          </div>
@@ -195,21 +224,26 @@ export default function Bots() {
 
        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] items-start">
         <div className="space-y-5">
-           <Card id="free-bots" className="scroll-mt-28 shadow-sm">
+           <Card id="free-bot-experience" className="scroll-mt-28 shadow-sm">
             <CardHeader className="pb-4 border-b bg-secondary/10">
                <div className="flex items-start justify-between gap-3">
                  <div>
-                   <CardTitle className="text-lg">Free bots</CardTitle>
-                   <p className="mt-1 text-xs text-muted-foreground">Two source bots, clearly separated by purpose.</p>
+                    <CardTitle className="text-lg">Free Bot experience</CardTitle>
+                    <p className="mt-1 text-xs text-muted-foreground">Two controlled experiences, clearly separated by purpose.</p>
                  </div>
-                 <Badge variant="outline" className="shrink-0 text-[10px] uppercase tracking-wider">2 available</Badge>
+                  <Badge variant="outline" className="shrink-0 text-[10px] uppercase tracking-wider">Free · review-first</Badge>
                </div>
             </CardHeader>
-             <CardContent className="pt-4">
-               {templates.isLoading ? <SkeletonList /> : sourceBots.length ? (
+              <CardContent className="pt-4">
+                <div className="mb-4 grid gap-2 rounded-lg border border-primary/20 bg-primary/[.04] p-3 text-xs sm:grid-cols-[auto_1fr_auto] sm:items-center">
+                  <div className="flex items-center gap-2 font-semibold text-primary"><Eye className="h-4 w-4" /> What free means here</div>
+                  <p className="leading-5 text-muted-foreground">No background activity, no automatic order, and no hidden retry. You add a bot, review its limits, then start a user-controlled session.</p>
+                  <Badge variant="secondary" className="w-fit text-[10px] uppercase tracking-wider">dry-run default</Badge>
+                </div>
+                {templates.isError ? <LibraryError onRetry={() => templates.refetch()} /> : templates.isLoading ? <SkeletonList /> : sourceBots.length ? (
                  <div className="grid gap-4 md:grid-cols-2">
                    {sourceBots.map((template: any) => (
-                     <div key={template.id} className={`flex flex-col rounded-xl border p-4 ${template.botNumber === 2 ? "border-amber-500/30 bg-amber-500/[.045]" : "border-primary/25 bg-primary/[.045]"}`} data-testid={`source-bot-${template.botNumber}`}>
+                      <div id={template.botNumber === 1 ? "vertex-bot" : "recovery-bot"} key={template.id} className={`flex flex-col rounded-xl border p-4 ${template.botNumber === 2 ? "border-amber-500/30 bg-amber-500/[.045]" : "border-primary/25 bg-primary/[.045]"}`} data-testid={`source-bot-${template.botNumber}`}>
                        {template.botNumber === 1 ? <FreeVertexPreview compact /> : (
                          <div className="rounded-lg border border-amber-500/20 bg-amber-500/[.06] p-3">
                            <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.16em] text-amber-600">
@@ -231,19 +265,10 @@ export default function Bots() {
                            <span className="text-[10px] font-mono text-muted-foreground">BOT {template.botNumber}</span>
                          </div>
                          <div className="mt-2 text-sm font-medium text-foreground">{template.botNumber === 2 ? "Protect the review process after an interruption." : "Review EMA direction before making a decision."}</div>
-                         <div className="mt-2 text-xs leading-5 text-muted-foreground">{template.botNumber === 2 ? "Checks account and market freshness plus recent failures. It never increases stake, retries an order, or places a trade." : "A market-observer starting point from traderscheme.com. It stays dry-run and leaves the final decision with you."}</div>
+                          <div className="mt-2 text-xs leading-5 text-muted-foreground">{template.botNumber === 2 ? "Checks account and market freshness plus recent failures. It never increases stake, retries an order, or places a trade." : "A free market-observer starting point. It stays dry-run and leaves the final decision with you."}</div>
                          <div className="mt-4 flex flex-wrap items-center gap-2">
                            <Badge variant="secondary" className="text-[10px] uppercase tracking-wider">{template.botNumber === 2 ? "Observation only" : "Demo-first"}</Badge>
-                           {template.source && (
-                             <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                               Source:{" "}
-                               {template.sourceUrl ? (
-                                 <a href={template.sourceUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">
-                                   {template.source}
-                                 </a>
-                               ) : template.source}
-                             </span>
-                           )}
+                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">User-started · no automatic order</span>
                          </div>
                          <Button size="sm" variant="outline" className="mt-4 w-full bg-background" onClick={() => add(template)} disabled={create.isPending} data-testid={`button-use-source-bot-${template.botNumber}`}>
                            <Copy className="mr-2 h-3 w-3" />{create.isPending ? "Creating..." : `Add ${sourceBotName(template)}`}
@@ -296,6 +321,13 @@ export default function Bots() {
                      <BotDetail label="Take profit" value={String(bot.config?.takeProfit || "—")} />
                      <BotDetail label="Runs" value={String(bot.config?.runCount || 1)} />
                      <BotDetail label="Risk cap" value={String(bot.config?.riskCap || "—")} />
+                     <BotDetail label="Loss guard" value={`${Number(bot.config?.consecutiveLossLimit || 3)} consecutive`} />
+                     <BotDetail
+                       label="Martingale"
+                       value={bot.config?.martingale?.enabled
+                         ? `${Number(bot.config.martingale.multiplier || 2).toFixed(2)}× · max ${Number(bot.config.martingale.maxStake || bot.config?.stake || 0)}`
+                         : "off"}
+                     />
                    </div>
                   <div className="flex w-full gap-2 mt-1">
                       <Button size="sm" variant="outline" className="flex-1" onClick={(event) => { event.stopPropagation(); setSelectedBotId(String(bot.id)); }}>
@@ -340,7 +372,7 @@ export default function Bots() {
               </div>
 
               <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
-                {templates.isLoading ? <SkeletonList /> : allTemplates.length ? allTemplates.map((t: any, i: number) => (
+                 {templates.isError ? <LibraryError onRetry={() => templates.refetch()} /> : templates.isLoading ? <SkeletonList /> : allTemplates.length ? allTemplates.map((t: any, i: number) => (
                   <div key={t.id ?? i} className="rounded-lg bg-secondary/30 border border-secondary/60 p-4 transition-colors hover:bg-secondary/50">
                     <div className="flex justify-between items-start">
                        <div className="flex flex-wrap items-center gap-2 font-semibold text-sm">
@@ -354,16 +386,6 @@ export default function Bots() {
                       )}
                     </div>
                      <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">{t.description ?? "Server-defined strategy template"}</p>
-                     {t.source && (
-                       <div className="mt-2 text-[10px] uppercase tracking-wider text-muted-foreground">
-                         Source:{" "}
-                         {t.sourceUrl ? (
-                           <a href={t.sourceUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">
-                             {t.source}
-                           </a>
-                         ) : t.source}
-                       </div>
-                     )}
                     <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] font-mono text-muted-foreground">
                       {t.strategy?.indicator && <div className="bg-background px-2 py-1 rounded border">Ind: {t.strategy.indicator}</div>}
                     </div>
@@ -437,12 +459,17 @@ function BotBuilder({
   const [indicator, setIndicator] = useState(bot.config?.indicator || "ema");
   const direction = "BOTH";
   const [mode, setMode] = useState(bot.config?.mode || "market_observer");
+  const isRecovery = mode === "recovery_guard";
   const [stake, setStake] = useState(bot.config?.stake?.toString() || "10");
   const [duration, setDuration] = useState(bot.config?.duration?.toString() || "1");
   const [runCount, setRunCount] = useState(bot.config?.runCount?.toString() || "1");
   const [takeProfit, setTakeProfit] = useState(bot.config?.takeProfit?.toString() || "1");
   const [notes, setNotes] = useState(bot.config?.notes || "");
   const [riskCap, setRiskCap] = useState(bot.config?.riskCap?.toString() || "100");
+  const [martingaleEnabled, setMartingaleEnabled] = useState(bot.config?.martingale?.enabled === true);
+  const [martingaleMultiplier, setMartingaleMultiplier] = useState(String(bot.config?.martingale?.multiplier || 2));
+  const [martingaleMaxStake, setMartingaleMaxStake] = useState(String(bot.config?.martingale?.maxStake || bot.config?.stake || 10));
+  const [consecutiveLossLimit, setConsecutiveLossLimit] = useState(String(bot.config?.consecutiveLossLimit || 3));
   const contracts = useGetMarketContracts(symbol, {
     query: {
       queryKey: getGetMarketContractsQueryKey(symbol),
@@ -487,6 +514,10 @@ function BotBuilder({
     setTakeProfit(bot.config?.takeProfit?.toString() || "1");
     setNotes(bot.config?.notes || "");
     setRiskCap(bot.config?.riskCap?.toString() || "100");
+     setMartingaleEnabled(bot.config?.martingale?.enabled === true);
+     setMartingaleMultiplier(String(bot.config?.martingale?.multiplier || 2));
+     setMartingaleMaxStake(String(bot.config?.martingale?.maxStake || bot.config?.stake || 10));
+     setConsecutiveLossLimit(String(bot.config?.consecutiveLossLimit || 3));
     setErrors({});
     setNotice("");
   }, [bot.id]);
@@ -511,6 +542,24 @@ function BotBuilder({
     const capNum = Number(riskCap);
      if (isNaN(capNum) || capNum <= 0) errs.riskCap = "Risk cap must be a valid amount";
      if (!Number.isFinite(Number(stopLoss)) || Number(stopLoss) <= 0) errs.stopLoss = "Stop loss must be a valid amount";
+     const martingaleMultiplierNum = Number(martingaleMultiplier);
+     const martingaleMaxStakeNum = Number(martingaleMaxStake);
+     const consecutiveLossLimitNum = Number(consecutiveLossLimit);
+     if (martingaleEnabled && (!Number.isFinite(martingaleMultiplierNum) || martingaleMultiplierNum < 1 || martingaleMultiplierNum > 5)) {
+       errs.martingaleMultiplier = "Use a multiplier from 1.00 to 5.00";
+     }
+     if (martingaleEnabled && (!Number.isFinite(martingaleMaxStakeNum) || martingaleMaxStakeNum < stakeNum)) {
+       errs.martingaleMaxStake = "Maximum stake must be at least the starting stake";
+     }
+     if (martingaleEnabled && Number.isFinite(martingaleMaxStakeNum) && Number.isFinite(runCountNum) && martingaleMaxStakeNum * runCountNum > capNum) {
+       errs.riskCap = "Risk cap must cover the maximum Martingale exposure";
+     }
+     if (!Number.isInteger(consecutiveLossLimitNum) || consecutiveLossLimitNum < 1 || consecutiveLossLimitNum > 10) {
+       errs.consecutiveLossLimit = "Use a whole number from 1 to 10";
+     }
+     if (martingaleEnabled && Number.isFinite(Number(accountBalance)) && martingaleMaxStakeNum >= Number(accountBalance)) {
+       errs.martingaleMaxStake = "Maximum stake must stay below the available account balance";
+     }
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -537,6 +586,12 @@ function BotBuilder({
           takeProfit: takeProfitNum,
           ...(notes.trim() ? { notes: notes.trim().substring(0, 1000) } : {}),
           riskCap: capNum,
+           martingale: {
+             enabled: martingaleEnabled,
+             multiplier: martingaleEnabled ? martingaleMultiplierNum : 2,
+             maxStake: martingaleEnabled ? martingaleMaxStakeNum : stakeNum,
+           },
+           consecutiveLossLimit: consecutiveLossLimitNum,
           execution: "dry_run" // Hard-coded protective measure
         }
       }
@@ -561,7 +616,13 @@ function BotBuilder({
         name: `${name} Template`,
         description: notes || `Template derived from ${name}`,
         strategy: {
-           indicator, direction, mode, stake: Number(stake) || 10, duration: Number(duration) || 1, runCount: Number(runCount) || 1, takeProfit: Number(takeProfit) || 1, riskCap: Number(riskCap) || 100,
+            indicator, direction, mode, stake: Number(stake) || 10, duration: Number(duration) || 1, runCount: Number(runCount) || 1, takeProfit: Number(takeProfit) || 1, riskCap: Number(riskCap) || 100,
+           martingale: {
+             enabled: martingaleEnabled,
+             multiplier: martingaleEnabled ? Number(martingaleMultiplier) || 2 : 2,
+             maxStake: martingaleEnabled ? Number(martingaleMaxStake) || Number(stake) || 10 : Number(stake) || 10,
+           },
+           consecutiveLossLimit: Number(consecutiveLossLimit) || 3,
           ...(notes.trim() ? { notes: notes.trim().substring(0, 1000) } : {}),
           execution: "dry_run"
         }
@@ -603,6 +664,13 @@ function BotBuilder({
         </CardHeader>
         <CardContent className="space-y-6 p-4 md:p-6">
            {String(bot.name || "").startsWith("Bot 1") && <FreeVertexPreview compact />}
+           {isRecovery && (
+             <Alert variant="default" className="border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+               <ShieldAlert className="h-4 w-4 !text-amber-600" />
+               <AlertTitle>Recovery Bot is monitor-only</AlertTitle>
+               <AlertDescription>It can watch freshness and interruptions, but it cannot place, retry, or increase a trade.</AlertDescription>
+             </Alert>
+           )}
           {notice && (
              <Alert variant="default" className="border-[#18b8ad]/30 bg-[#18b8ad]/10 text-[#8df0e8]">
               <CheckCircle2 className="h-4 w-4 !text-success" />
@@ -653,7 +721,7 @@ function BotBuilder({
                 return <div key={family} className="space-y-2">
                    <div className="text-xs font-medium text-white/55">{family}</div>
                   <div className="grid grid-cols-2 gap-2">
-                     {options.map(([value, item]) => <Button key={value} type="button" size="sm" variant={contractType === value ? "default" : "outline"} className={contractType === value ? "bg-[#159e98] text-white hover:bg-[#12847f]" : "border-[#1a6662] bg-[#06110f] text-white/70 hover:bg-[#0b211f] hover:text-white"} onClick={() => setContractType(value)} disabled={!availableTypes.includes(value)}>{item.action}</Button>)}
+                      {options.map(([value, item]) => <Button key={value} type="button" size="sm" variant={contractType === value ? "default" : "outline"} className={contractType === value ? "bg-[#159e98] text-white hover:bg-[#12847f]" : "border-[#1a6662] bg-[#06110f] text-white/70 hover:bg-[#0b211f] hover:text-white"} onClick={() => setContractType(value)} disabled={isRecovery || !availableTypes.includes(value)}>{item.action}</Button>)}
                   </div>
                 </div>
               })}
@@ -661,45 +729,86 @@ function BotBuilder({
               {contracts.isError && <p className="text-xs text-amber-600">Deriv contract availability is temporarily unavailable for this symbol. The builder will use the current default market when available.</p>}
               {!contracts.isLoading && !contracts.isError && !availableTypes.length && <p className="text-xs text-amber-600">Deriv has not returned a supported trading type for this symbol yet. Choose another live market.</p>}
               {errors.contractType && <p className="text-xs text-destructive">{errors.contractType}</p>}
-              {CONTRACT_LABELS[contractType]?.needsBarrier && <div className="grid grid-cols-5 gap-1">{Array.from({ length: 10 }, (_, i) => String(i)).map(digit => <Button key={digit} type="button" size="sm" variant={barrier === digit ? "default" : "outline"} onClick={() => setBarrier(digit)}>{digit}</Button>)}</div>}
+               {CONTRACT_LABELS[contractType]?.needsBarrier && <div className="grid grid-cols-5 gap-1">{Array.from({ length: 10 }, (_, i) => String(i)).map(digit => <Button key={digit} type="button" size="sm" variant={barrier === digit ? "default" : "outline"} onClick={() => setBarrier(digit)} disabled={isRecovery}>{digit}</Button>)}</div>}
             </div>
 
             <div className="space-y-2">
                <Label className="text-xs font-medium text-[#a5f3ec]">Stake · {accountCurrency || "account"}</Label>
-               <Input type="number" step="1" value={stake} onChange={e => setStake(e.target.value)} className="border-[#159e98] bg-[#06110f] font-numeric text-white shadow-[0_0_0_1px_rgba(21,158,152,.12)]" />
-               <p className="text-xs text-white/40">Below available balance.</p>
+                <Input type="number" step="1" value={stake} onChange={e => setStake(e.target.value)} disabled={isRecovery} className="border-[#159e98] bg-[#06110f] font-numeric text-white shadow-[0_0_0_1px_rgba(21,158,152,.12)]" />
+                <p className="text-xs text-white/40">{isRecovery ? "Not used: monitoring does not place a trade." : "Below available balance."}</p>
               {errors.stake && <p className="text-xs text-destructive">{errors.stake}</p>}
             </div>
+             <div className="rounded-lg border border-amber-500/25 bg-amber-500/[.06] p-3 md:col-span-2">
+               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                 <div>
+                   <div className="flex items-center gap-2">
+                     <Label htmlFor="bot-martingale" className="text-xs font-semibold text-amber-200">Martingale progression</Label>
+                     <Badge variant="outline" className="border-amber-500/30 text-[9px] uppercase tracking-wider text-amber-200">adjustable</Badge>
+                   </div>
+                   <p className="mt-1 max-w-xl text-[11px] leading-5 text-white/55">
+                     After a losing settlement, the next user-started run can increase its stake. The max stake and risk cap always bound the plan.
+                   </p>
+                 </div>
+                 <Switch
+                   id="bot-martingale"
+                   checked={martingaleEnabled}
+                   onCheckedChange={setMartingaleEnabled}
+                   disabled={isRecovery}
+                   aria-label="Enable Martingale progression"
+                 />
+               </div>
+               <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                 <div className="space-y-1.5">
+                   <Label htmlFor="bot-martingale-multiplier" className="text-[11px] text-white/65">Loss multiplier</Label>
+                   <Input id="bot-martingale-multiplier" type="number" min="1" max="5" step="0.1" value={martingaleMultiplier} onChange={e => setMartingaleMultiplier(e.target.value)} disabled={isRecovery || !martingaleEnabled} className="border-amber-500/35 bg-[#06110f] font-mono text-white" />
+                   {errors.martingaleMultiplier && <p className="text-[10px] text-destructive">{errors.martingaleMultiplier}</p>}
+                 </div>
+                 <div className="space-y-1.5">
+                   <Label htmlFor="bot-martingale-max" className="text-[11px] text-white/65">Maximum stake</Label>
+                   <Input id="bot-martingale-max" type="number" min="0.01" step="0.01" value={martingaleMaxStake} onChange={e => setMartingaleMaxStake(e.target.value)} disabled={isRecovery || !martingaleEnabled} className="border-amber-500/35 bg-[#06110f] font-mono text-white" />
+                   {errors.martingaleMaxStake && <p className="text-[10px] text-destructive">{errors.martingaleMaxStake}</p>}
+                 </div>
+                 <div className="space-y-1.5">
+                   <Label htmlFor="bot-loss-limit" className="text-[11px] text-white/65">Stop after losses</Label>
+                   <Input id="bot-loss-limit" type="number" min="1" max="10" step="1" value={consecutiveLossLimit} onChange={e => setConsecutiveLossLimit(e.target.value)} disabled={isRecovery} className="border-amber-500/35 bg-[#06110f] font-mono text-white" />
+                   {errors.consecutiveLossLimit && <p className="text-[10px] text-destructive">{errors.consecutiveLossLimit}</p>}
+                 </div>
+               </div>
+               <p className="mt-2 text-[10px] uppercase tracking-[.12em] text-amber-200/65">
+                 {isRecovery ? "Recovery Bot: progression and execution controls are disabled" : martingaleEnabled ? `Enabled · up to ${martingaleMaxStake || "—"} per run · stops at ${consecutiveLossLimit || "—"} consecutive losses` : `Off · session still stops at ${consecutiveLossLimit || "—"} consecutive losses`}
+               </p>
+             </div>
             <div className="space-y-2">
                <Label className="text-xs font-medium text-[#a5f3ec]">Stop loss · {accountCurrency || "account"}</Label>
-               <Input type="number" min="0.01" step="0.01" value={stopLoss} onChange={e => setStopLoss(e.target.value)} className="border-[#159e98] bg-[#06110f] font-numeric text-white shadow-[0_0_0_1px_rgba(21,158,152,.12)]" />
+                <Input type="number" min="0.01" step="0.01" value={stopLoss} onChange={e => setStopLoss(e.target.value)} disabled={isRecovery} className="border-[#159e98] bg-[#06110f] font-numeric text-white shadow-[0_0_0_1px_rgba(21,158,152,.12)]" />
               {errors.stopLoss && <p className="text-xs text-destructive">{errors.stopLoss}</p>}
             </div>
 
             <div className="space-y-2">
                <Label className="text-xs font-medium text-[#a5f3ec]">Ticks before expiry</Label>
               <div className="grid grid-cols-4 gap-2">
-                 {["1", "2", "3", "5"].map(ticks => <Button key={ticks} type="button" size="sm" variant={duration === ticks ? "default" : "outline"} className={duration === ticks ? "bg-[#159e98] text-white hover:bg-[#12847f]" : "border-[#1a6662] bg-[#06110f] text-white/70 hover:bg-[#0b211f] hover:text-white"} onClick={() => setDuration(ticks)}>{ticks}</Button>)}
+                  {["1", "2", "3", "5"].map(ticks => <Button key={ticks} type="button" size="sm" variant={duration === ticks ? "default" : "outline"} className={duration === ticks ? "bg-[#159e98] text-white hover:bg-[#12847f]" : "border-[#1a6662] bg-[#06110f] text-white/70 hover:bg-[#0b211f] hover:text-white"} onClick={() => setDuration(ticks)} disabled={isRecovery}>{ticks}</Button>)}
               </div>
-               <Input type="number" min="1" max="10" step="1" value={duration} onChange={e => setDuration(e.target.value)} className="border-[#159e98] bg-[#06110f] font-numeric text-white shadow-[0_0_0_1px_rgba(21,158,152,.12)]" />
+                <Input type="number" min="1" max="10" step="1" value={duration} onChange={e => setDuration(e.target.value)} disabled={isRecovery} className="border-[#159e98] bg-[#06110f] font-numeric text-white shadow-[0_0_0_1px_rgba(21,158,152,.12)]" />
               {errors.duration && <p className="text-xs text-destructive">{errors.duration}</p>}
             </div>
 
             <div className="space-y-2">
                <Label className="text-xs font-medium text-[#a5f3ec]">Runs before stop</Label>
-               <Input type="number" min="1" max="10" step="1" value={runCount} onChange={e => setRunCount(e.target.value)} className="border-[#159e98] bg-[#06110f] font-numeric text-white shadow-[0_0_0_1px_rgba(21,158,152,.12)]" />
+                <Input type="number" min="1" max="10" step="1" value={runCount} onChange={e => setRunCount(e.target.value)} disabled={isRecovery} className="border-[#159e98] bg-[#06110f] font-numeric text-white shadow-[0_0_0_1px_rgba(21,158,152,.12)]" />
               {errors.runCount && <p className="text-xs text-destructive">{errors.runCount}</p>}
             </div>
 
             <div className="space-y-2">
-               <Label className="text-xs font-medium text-[#a5f3ec]">Take profit · {accountCurrency || "account"}</Label>
-               <Input type="number" min="0.01" step="0.01" value={takeProfit} onChange={e => setTakeProfit(e.target.value)} className="border-[#159e98] bg-[#06110f] font-numeric text-white shadow-[0_0_0_1px_rgba(21,158,152,.12)]" />
+                <Label className="text-xs font-medium text-[#a5f3ec]">Take profit · stop session · {accountCurrency || "account"}</Label>
+                <Input type="number" min="0.01" step="0.01" value={takeProfit} onChange={e => setTakeProfit(e.target.value)} disabled={isRecovery} className="border-[#159e98] bg-[#06110f] font-numeric text-white shadow-[0_0_0_1px_rgba(21,158,152,.12)]" />
+                 <p className="text-xs text-white/40">{isRecovery ? "Not used: Recovery Bot only monitors." : "Stops the bounded session after cumulative net profit reaches this target."}</p>
               {errors.takeProfit && <p className="text-xs text-destructive">{errors.takeProfit}</p>}
             </div>
 
             <div className="space-y-2 md:col-span-2">
                <Label className="text-xs font-medium text-[#a5f3ec]">Risk cap · max loss</Label>
-               <Input type="number" step="1" value={riskCap} onChange={e => setRiskCap(e.target.value)} className="max-w-[50%] border-[#159e98] bg-[#06110f] font-numeric text-white shadow-[0_0_0_1px_rgba(21,158,152,.12)]" />
+                <Input type="number" step="1" value={riskCap} onChange={e => setRiskCap(e.target.value)} disabled={isRecovery} className="max-w-[50%] border-[#159e98] bg-[#06110f] font-numeric text-white shadow-[0_0_0_1px_rgba(21,158,152,.12)]" />
               {errors.riskCap && <p className="text-xs text-destructive">{errors.riskCap}</p>}
             </div>
            </div>
@@ -718,8 +827,8 @@ function BotBuilder({
              <Button type="button" variant="outline" onClick={onCancel} className="border-white/15 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white">
                Cancel
              </Button>
-             <Button type="button" onClick={onRun} disabled={saving || mode === "recovery_guard"} className="bg-[#16a34a] text-white shadow-[0_0_18px_rgba(22,163,74,.2)] hover:bg-[#12843c]">
-               <Play className="mr-2 h-4 w-4" /> Launch Bot
+              <Button type="button" onClick={onRun} disabled={saving || isRecovery} className="bg-[#16a34a] text-white shadow-[0_0_18px_rgba(22,163,74,.2)] hover:bg-[#12843c]">
+                <Play className="mr-2 h-4 w-4" /> {isRecovery ? "Monitor-only · no launch" : "Launch Bot"}
              </Button>
            </div>
         </CardContent>
@@ -733,6 +842,7 @@ function BotBuilder({
 function BotRunHistory({ botId, accountCurrency }: { botId: string; accountCurrency?: string }) {
   const runs = useListBotRuns(botId, { query: { queryKey: getListBotRunsQueryKey(botId), refetchInterval: 5000 } });
   const runRows = Array.isArray((runs.data as any)?.runs) ? (runs.data as any).runs : [];
+  const [showDetails, setShowDetails] = useState(false);
   const downloadResults = () => {
     const blob = new Blob([JSON.stringify(runRows, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -760,12 +870,15 @@ function BotRunHistory({ botId, accountCurrency }: { botId: string; accountCurre
             <Button type="button" size="sm" onClick={downloadResults} disabled={!runRows.length} className="h-8 bg-[#102d78] text-xs text-white hover:bg-[#0c245e]">
               <Download className="mr-2 h-3.5 w-3.5" />Download
             </Button>
-            <Button type="button" size="sm" variant="outline" disabled={!runRows.length} className="h-8 text-xs">
-              <FileText className="mr-2 h-3.5 w-3.5" />View detail
+             <Button type="button" size="sm" variant="outline" disabled={!runRows.length} className="h-8 text-xs" onClick={() => setShowDetails(value => !value)}>
+               <FileText className="mr-2 h-3.5 w-3.5" />{showDetails ? "Hide detail" : "View detail"}
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="p-0">
+         <CardContent className="p-0">
+           {showDetails && runRows.length > 0 && (
+             <pre className="max-h-56 overflow-auto border-b bg-[#071511] p-4 font-mono text-[10px] leading-5 text-[#a5f3ec]">{JSON.stringify(runRows, null, 2)}</pre>
+           )}
           {runs.isLoading ? (
             <div className="flex flex-col items-center justify-center p-10 text-sm text-muted-foreground">
               <Loader2 className="mb-3 h-6 w-6 animate-spin text-primary" /> Loading results...
@@ -853,6 +966,16 @@ function formatBotSignedMoney(value: unknown, currency?: string) {
 }
 
 function SkeletonList(){return <div className="space-y-3"><div className="h-20 animate-pulse rounded-lg bg-muted/50"/><div className="h-20 animate-pulse rounded-lg bg-muted/50"/></div>}
+function LibraryError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="rounded-lg border border-destructive/25 bg-destructive/5 p-5 text-center">
+      <AlertCircle className="mx-auto h-6 w-6 text-destructive" />
+      <div className="mt-2 text-sm font-semibold">Bot library unavailable</div>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">The saved experiences could not be loaded. Nothing was started.</p>
+      <Button type="button" size="sm" variant="outline" className="mt-3" onClick={onRetry}>Retry library</Button>
+    </div>
+  )
+}
 function Empty({title,text}:{title:string,text:string}){return <div className="rounded-lg border border-dashed border-muted-foreground/30 p-8 text-center bg-secondary/5"><CheckCircle2 className="mx-auto h-8 w-8 text-muted-foreground/50"/><div className="mt-3 font-semibold text-foreground">{title}</div><p className="mt-1 text-sm text-muted-foreground max-w-[200px] mx-auto leading-relaxed">{text}</p></div>}
 function BotDetail({ label, value }: { label: string; value: string }) {
   return <div className="min-w-0 bg-background/90 p-2"><div className="uppercase tracking-wider text-muted-foreground">{label}</div><div className="mt-1 truncate font-mono text-foreground">{value}</div></div>

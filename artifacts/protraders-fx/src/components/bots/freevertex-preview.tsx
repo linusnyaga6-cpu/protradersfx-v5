@@ -1,4 +1,4 @@
-import { Activity, CheckCircle2, LayoutDashboard, LineChart, SlidersHorizontal, Sparkles } from "lucide-react"
+import { Activity, CheckCircle2, Eye, LayoutDashboard, LineChart, LockKeyhole, SlidersHorizontal } from "lucide-react"
 
 export function FreeVertexPreview({ compact = false }: { compact?: boolean }) {
   return (
@@ -15,7 +15,7 @@ export function FreeVertexPreview({ compact = false }: { compact?: boolean }) {
           </div>
         </div>
         <span className="shrink-0 rounded-full border border-[#68d8df]/50 bg-[#0e5a83] px-2 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-[#bff9f4]">
-          Observe only
+           Free · dry run
         </span>
       </div>
 
@@ -30,8 +30,8 @@ export function FreeVertexPreview({ compact = false }: { compact?: boolean }) {
         <div className={`min-w-0 bg-[#f7fcfe] ${compact ? "p-2.5" : "p-3"}`}>
           <div className="mb-2 flex items-start justify-between gap-2">
             <div>
-               <div className="text-[9px] font-bold uppercase tracking-[.16em] text-[#17648d]">Vertex Bot signal board</div>
-              <div className="mt-0.5 text-[9px] text-[#58768b]">EMA direction · review before action</div>
+               <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[.16em] text-[#17648d]"><Eye className="h-3 w-3" /> Vertex Bot signal board</div>
+               <div className="mt-0.5 text-[9px] text-[#58768b]">Free market observer · review before action</div>
             </div>
             <div className="flex items-center gap-1 rounded border border-[#9bd7e3] bg-white px-1.5 py-1 text-[8px] font-semibold text-[#17648d]">
               <span className="h-1.5 w-1.5 rounded-full bg-[#22b9a1]" />
@@ -43,7 +43,7 @@ export function FreeVertexPreview({ compact = false }: { compact?: boolean }) {
             <div className="rounded border border-[#d2e8ee] bg-white p-2">
               <div className="flex items-center justify-between text-[8px] font-semibold uppercase tracking-wider text-[#6a8798]">
                 <span>Market direction</span>
-                <span className="font-mono text-[#17648d]">R_100 · 1m</span>
+                 <span className="font-mono text-[#17648d]">R_100 · 1m</span>
               </div>
                <svg viewBox="0 0 180 54" preserveAspectRatio="none" className="mt-2 h-16 w-full" aria-label="Vertex Bot market direction preview">
                 <path d="M0 10H180M0 27H180M0 44H180" stroke="#dbeef2" strokeWidth=".6" />
@@ -63,8 +63,8 @@ export function FreeVertexPreview({ compact = false }: { compact?: boolean }) {
               <SignalRow label="EMA 21" value="Confirming" tone="positive" />
               <SignalRow label="Entry" value="Review" tone="neutral" />
               <div className="mt-1 flex items-center gap-1 border-t border-[#cbe5eb] pt-1.5 text-[8px] text-[#58768b]">
-                <Sparkles className="h-3 w-3 text-[#f2a62b]" />
-                No automatic order
+                 <LockKeyhole className="h-3 w-3 text-[#f2a62b]" />
+                 No automatic order · user starts
               </div>
             </div>
           </div>

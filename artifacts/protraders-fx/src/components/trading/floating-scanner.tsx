@@ -74,10 +74,9 @@ export function FloatingScanner() {
   const candleParams = { count: 60, granularity: 60 }
   const candles = useGetMarketCandles(symbol, candleParams, { query: { queryKey: getGetMarketCandlesQueryKey(symbol, candleParams), enabled: !!session?.authenticated && open, staleTime: 30000 } })
 
-  const openManualTrader = (nextSymbol: string, contract?: string) => {
-    const params = new URLSearchParams({ symbol: nextSymbol, source: "ai_assisted" })
-    if (contract) params.set("contract", contract)
-    setLocation(`/create-bot?${params.toString()}`)
+  const openAiScanner = () => {
+    setOpen(false)
+    setLocation("/ai-scanner")
   }
 
   useEffect(() => {
@@ -143,7 +142,7 @@ export function FloatingScanner() {
   if (!open) {
     return (
       <Button
-         className="fixed bottom-5 right-5 z-[70] touch-none select-none cursor-grab gap-2 rounded-full bg-[#e96751] px-4 text-white shadow-[0_12px_28px_rgba(233,103,81,.28)] active:cursor-grabbing font-mono text-xs uppercase tracking-widest hover:bg-[#d95743]"
+         className="fixed bottom-5 right-5 z-[70] h-14 w-14 touch-none select-none cursor-grab rounded-full border-2 border-white/80 bg-[#20c7c2] p-0 text-[#072d3a] shadow-[0_0_0_6px_rgba(32,199,194,.16),0_14px_34px_rgba(9,72,88,.32)] active:cursor-grabbing hover:bg-[#72e0c8]"
         style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
         onPointerDown={startDrag}
         onPointerMove={moveDrag}
@@ -158,10 +157,12 @@ export function FloatingScanner() {
           }
           setOpen(true)
         }}
-        title="Drag AI Scanner to move it, or click to open"
+         title="Drag AI Scanner to move it, or click to open"
+         aria-label="Open AI Scanner"
         data-testid="button-open-scanner"
       >
-        <Activity className="h-4 w-4" /> AI Scanner
+         <span className="pointer-events-none absolute inset-1 rounded-full border border-[#072d3a]/20" aria-hidden="true" />
+         <Activity className="relative h-6 w-6" />
       </Button>
     )
   }
@@ -281,8 +282,8 @@ export function FloatingScanner() {
                    </div>
                  )}
                 <p className="text-[10px] leading-relaxed text-muted-foreground">This is a recent one-step candle backtest, not a guaranteed Deriv win percentage. Review market and contract before placing an order.</p>
-                <Button className="w-full rounded-sm font-sans text-xs normal-case tracking-normal" variant="outline" onClick={() => openManualTrader(bestMarket.symbol)} data-testid="button-review-best-market">
-                  Place trade <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                 <Button className="w-full rounded-sm font-sans text-xs normal-case tracking-normal" variant="outline" onClick={openAiScanner} data-testid="button-open-ai-workspace">
+                   Open AI Scanner workspace <ArrowRight className="ml-1 h-3.5 w-3.5" />
                 </Button>
               </div>
             )}
@@ -308,8 +309,8 @@ export function FloatingScanner() {
                       <div className="mt-1 font-mono text-xs text-foreground">{formatVolatility(result.indicators.volatilityLevel, result.indicators.volatilityPct)}</div>
                     </div>
                     <div className="flex flex-wrap justify-end gap-2">
-                      <Button size="sm" variant="outline" className="rounded-sm font-sans text-xs normal-case tracking-normal h-8" onClick={() => openManualTrader(symbol)} data-testid="button-review-ai-trade">
-                        Place trade <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                       <Button size="sm" variant="outline" className="rounded-sm font-sans text-xs normal-case tracking-normal h-8" onClick={openAiScanner} data-testid="button-open-ai-workspace">
+                         Open AI workspace <ArrowRight className="ml-1 h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </div>
@@ -327,8 +328,8 @@ export function FloatingScanner() {
                   <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">Fresh-market ranking</div>
                   <span className="font-mono text-[9px] text-muted-foreground">{(scanBestMarket.data as any)?.availableCount || 0} available</span>
                 </div>
-                {(scanBestMarket.data as any).markets.slice(0, 5).map((market: any, index: number) => (
-                  <button key={market.symbol} type="button" className="flex w-full items-center justify-between rounded-sm border border-border/50 bg-background/50 px-3 py-2 text-left transition-colors hover:border-primary/40" onClick={() => openManualTrader(market.symbol)}>
+                 {(scanBestMarket.data as any).markets.slice(0, 5).map((market: any, index: number) => (
+                   <button key={market.symbol} type="button" className="flex w-full items-center justify-between rounded-sm border border-border/50 bg-background/50 px-3 py-2 text-left transition-colors hover:border-primary/40" onClick={openAiScanner}>
                     <span>
                       <span className="mr-2 font-mono text-[10px] text-primary">#{index + 1}</span>
                       <span className="text-xs font-medium text-foreground">{market.displayName}</span>

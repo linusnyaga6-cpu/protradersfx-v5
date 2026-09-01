@@ -2,7 +2,7 @@ import { Activity, BarChart3, ScanSearch } from "lucide-react"
 import { useLocation } from "wouter"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-type TradingTab = "manual" | "bulk" | "analysis"
+type TradingTab = "manual" | "bulk" | "analysis" | "scanner"
 
 export function TradingTabs({ active }: { active: TradingTab }) {
   const [, setLocation] = useLocation()
@@ -11,7 +11,7 @@ export function TradingTabs({ active }: { active: TradingTab }) {
     if (value === "manual") setLocation("/create-bot")
     if (value === "bulk") setLocation("/bulk-trade")
     if (value === "analysis") setLocation("/analysis")
-    if (value === "scanner") window.dispatchEvent(new CustomEvent("protraders:open-scanner"))
+    if (value === "scanner") setLocation("/ai-scanner")
   }
 
   return (

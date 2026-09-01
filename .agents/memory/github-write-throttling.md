@@ -20,3 +20,9 @@ When the configured native Git remote rejects its credential, the connected GitH
 **Why:** The repository remote used an invalid Git credential while the connected GitHub authorization remained healthy.
 
 **How to apply:** Read the current branch head first, make the remote head the commit parent, publish only intended paths, and verify the updated head before relying on Vercel.
+
+The connector's REST proxy may reject dynamically assembled repository paths in the durable sandbox even when literal API paths work; the authenticated GitHub client avoids that validator.
+
+**Why:** A file-scoped source publish hit the proxy pattern validator before making any GitHub change, while the native client completed the same blob/tree/commit flow.
+
+**How to apply:** Prefer the connected GitHub client for multi-step Git Data API commits; keep paths and repository identifiers explicit and verify the resulting deployment commit.

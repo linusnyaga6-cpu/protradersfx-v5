@@ -23,13 +23,25 @@ export type DerivMarket = {
   discovered?: boolean
 }
 
-export const CONTRACT_LABELS: Record<string, { family: string; action: string; needsBarrier?: boolean }> = {
-  CALL: { family: "Rise / Fall", action: "Rise" },
-  PUT: { family: "Rise / Fall", action: "Fall" },
-  DIGITOVER: { family: "Over / Under", action: "Over", needsBarrier: true },
-  DIGITUNDER: { family: "Over / Under", action: "Under", needsBarrier: true },
-  DIGITEVEN: { family: "Odd / Even", action: "Even" },
-  DIGITODD: { family: "Odd / Even", action: "Odd" },
+export type ContractFamily = {
+  label: string
+  shortLabel: string
+  types: string[]
+}
+
+export const CONTRACT_FAMILIES: ContractFamily[] = [
+  { label: "Rise / Fall", shortLabel: "Direction", types: ["CALL", "PUT"] },
+  { label: "Over / Under", shortLabel: "Digit barrier", types: ["DIGITOVER", "DIGITUNDER"] },
+  { label: "Odd / Even", shortLabel: "Parity", types: ["DIGITEVEN", "DIGITODD"] },
+]
+
+export const CONTRACT_LABELS: Record<string, { family: string; action: string; needsBarrier?: boolean; hint?: string }> = {
+  CALL: { family: "Rise / Fall", action: "Rise", hint: "Higher" },
+  PUT: { family: "Rise / Fall", action: "Fall", hint: "Lower" },
+  DIGITOVER: { family: "Over / Under", action: "Over", needsBarrier: true, hint: "Last digit > barrier" },
+  DIGITUNDER: { family: "Over / Under", action: "Under", needsBarrier: true, hint: "Last digit < barrier" },
+  DIGITEVEN: { family: "Odd / Even", action: "Even", hint: "Last digit is even" },
+  DIGITODD: { family: "Odd / Even", action: "Odd", hint: "Last digit is odd" },
 }
 
 export function marketsFromResponse(data: unknown): DerivMarket[] {
@@ -53,5 +65,7 @@ export function isVolatilityMarket(market: DerivMarket) {
 }
 
 export function marketLabel(market: DerivMarket | undefined, symbol: string) {
-  return market?.displayName ? `${market.displayName} · ${symbol}` : symbol
+  if (!market) return symbol
+  const name = market.displayName || market.marketDisplayName || symbol
+  return name === symbol ? symbol : `${name} · ${symbol}`
 }

@@ -42,6 +42,13 @@ export type RunSessionOrder = Record<string, unknown> & {
   stop_loss: number
 }
 
+export type MartingaleSettings = {
+  enabled: boolean
+  multiplier: number
+  maxStake: number
+  consecutiveLossLimit?: number
+}
+
 const initialState: TradingRunSessionState = {
   id: null, status: "idle", currentRun: 0, totalRuns: 0, completedRuns: 0,
   netProfit: 0, message: "", results: [],
@@ -83,6 +90,7 @@ function providerErrorMessage(error: unknown) {
 
 function sessionLabel(source: unknown) {
   if (source === "bulk") return "Bulk Trader"
+  if (source === "ai_assisted") return "AI Scanner"
   if (source === "bot_assisted") return "Bot"
   return "Manual Trader"
 }
@@ -131,7 +139,13 @@ export function useTradingRunSession(storageKey: string, onChange?: () => void) 
     try { window.localStorage.removeItem(storageKey) } catch { /* storage is optional */ }
   }, [storageKey])
 
-  const start = useCallback(async (order: RunSessionOrder, totalRuns: number, takeProfit: number, lossLimit = Number.POSITIVE_INFINITY) => {
+  const start = useCallback(async (
+    order: RunSessionOrder,
+    totalRuns: number,
+    takeProfit: number,
+    lossLimit = Number.POSITIVE_INFINITY,
+    martingale?: MartingaleSettings,
+  ) => {
     if (stateRef.current.status === "running" || stateRef.current.status === "stopping") return
     let executionOrder: RunSessionOrder = order
     if (order.account_type === "real") {
@@ -160,13 +174,24 @@ export function useTradingRunSession(storageKey: string, onChange?: () => void) 
     const sessionId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`
     commit({ ...initialState, id: sessionId, status: "running", totalRuns, message: `${sessionLabel(executionOrder.source)} started. Requesting the first Deriv proposal…` })
     try {
+      const baseStake = Number(executionOrder.stake)
+      const martingaleEnabled = Boolean(martingale?.enabled)
+      const multiplier = Number(martingale?.multiplier)
+      const maxStake = Number(martingale?.maxStake)
+      const consecutiveLossLimit = Number(martingale?.consecutiveLossLimit)
+      let lossStreak = 0
       for (let index = 1; index <= totalRuns; index += 1) {
         if (stopRequested.current || cancelled.current) break
-        commit({ currentRun: index, status: "running", message: `Requesting a fresh Deriv proposal for run ${index} of ${totalRuns}…` })
-        const proposal = await preview.mutateAsync({ data: { ...executionOrder, session_id: sessionId } as any }) as any
+        const runStake = martingaleEnabled && Number.isFinite(baseStake) && Number.isFinite(multiplier) && Number.isFinite(maxStake)
+          ? Math.min(baseStake * Math.pow(multiplier, lossStreak), maxStake)
+          : baseStake
+        const runOrder = { ...executionOrder, stake: runStake }
+        const stakeLabel = martingaleEnabled && lossStreak > 0 ? ` (Martingale step ${lossStreak + 1}, ${runStake.toFixed(2)} stake)` : ""
+        commit({ currentRun: index, status: "running", message: `Requesting a fresh Deriv proposal for run ${index} of ${totalRuns}${stakeLabel}…` })
+        const proposal = await preview.mutateAsync({ data: { ...runOrder, session_id: sessionId } as any }) as any
         if (stopRequested.current || cancelled.current) break
         commit({ message: `Submitting run ${index} of ${totalRuns} to Deriv…` })
-        const receipt = await trade.mutateAsync({ data: { ...executionOrder, session_id: sessionId, proposal_token: proposal.proposalToken } as any }) as any
+        const receipt = await trade.mutateAsync({ data: { ...runOrder, session_id: sessionId, proposal_token: proposal.proposalToken } as any }) as any
         const resultId = `${sessionId}-${index}`
         if (!receipt?.ok || !receipt?.transactionId) {
           commit(current => ({
@@ -176,9 +201,9 @@ export function useTradingRunSession(storageKey: string, onChange?: () => void) 
               id: resultId,
               run: index,
               status: "rejected",
-              symbol: executionOrder.symbol,
-              contractType: String(executionOrder.contract_type || ""),
-              stake: Number(executionOrder.stake),
+              symbol: runOrder.symbol,
+              contractType: String((runOrder as Record<string, unknown>).contract_type || ""),
+              stake: Number(runOrder.stake),
               message: receipt?.message || "Deriv rejected the order.",
             }],
             message: receipt?.message || "Deriv rejected the order. Session stopped.",
@@ -192,9 +217,9 @@ export function useTradingRunSession(storageKey: string, onChange?: () => void) 
             id: resultId,
             run: index,
             status: "pending",
-            symbol: executionOrder.symbol,
-            contractType: String(executionOrder.contract_type || receipt.contractType || ""),
-            stake: Number(executionOrder.stake),
+            symbol: runOrder.symbol,
+            contractType: String((runOrder as Record<string, unknown>).contract_type || receipt.contractType || ""),
+            stake: Number(runOrder.stake),
             buyPrice: Number.isFinite(Number(receipt.buyPrice)) ? Number(receipt.buyPrice) : null,
             entrySpot: Number.isFinite(Number(receipt.entrySpot)) ? Number(receipt.entrySpot) : null,
             exitSpot: null,
@@ -240,6 +265,14 @@ export function useTradingRunSession(storageKey: string, onChange?: () => void) 
           } : item),
         }))
         onChange?.()
+        lossStreak = settled.profit < 0 ? lossStreak + 1 : 0
+        if (Number.isInteger(consecutiveLossLimit) && consecutiveLossLimit > 0 && lossStreak >= consecutiveLossLimit) {
+          commit({
+            status: "completed",
+            message: `Consecutive-loss guard reached at ${lossStreak}. No further run was submitted.`,
+          })
+          return
+        }
         if (stopRequested.current) break
         if (totalProfit >= takeProfit) {
           commit({ status: "completed", message: `Take-profit target reached at ${totalProfit.toFixed(2)}. No further run was submitted.` })

@@ -22,7 +22,10 @@ export function RunSessionSummary({ state, currency, onStart, onStop, onReset, d
   const signedProfit = display.formatSignedMoney(state.netProfit)
   const [resultDialogOpen, setResultDialogOpen] = useState(false)
   const shownResultId = useRef<string | null>(null)
-  const terminalResult = [...state.results].reverse().find(item => ["won", "lost", "settled", "rejected"].includes(item.status))
+  const sessionFinished = ["completed", "stopped", "failed"].includes(state.status)
+  const terminalResult = sessionFinished
+    ? [...state.results].reverse().find(item => ["won", "lost", "settled", "rejected"].includes(item.status))
+    : undefined
 
   useEffect(() => {
     if (!terminalResult || shownResultId.current === terminalResult.id) return

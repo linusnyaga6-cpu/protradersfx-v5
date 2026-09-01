@@ -40,6 +40,12 @@ const dryRunStrategySchema = z.object({
   stake: z.number().gt(0),
   duration: z.number().int().gt(0).max(3_600),
   riskCap: z.number().gt(0).max(100_000),
+  martingale: z.object({
+    enabled: z.boolean(),
+    multiplier: z.number().min(1).max(5),
+    maxStake: z.number().gt(0).max(100_000),
+  }).optional(),
+  consecutiveLossLimit: z.number().int().min(1).max(10).optional(),
   notes: z.string().max(1_000).optional(),
   execution: z.literal("dry_run"),
 }).strict();
@@ -49,6 +55,11 @@ type DryRunStrategy = z.infer<typeof dryRunStrategySchema>;
 function normalizeDryRunStrategy(strategy: DryRunStrategy): DryRunStrategy {
   const contractType = strategy.contractType || "CALL";
   const runCount = strategy.runCount || 1;
+  const martingale = strategy.martingale || {
+    enabled: false,
+    multiplier: 2,
+    maxStake: strategy.stake,
+  };
   return {
     ...strategy,
     mode: strategy.mode || "market_observer",
@@ -59,11 +70,16 @@ function normalizeDryRunStrategy(strategy: DryRunStrategy): DryRunStrategy {
     stopLoss: strategy.stopLoss || 1,
     runCount,
     takeProfit: strategy.takeProfit || 1,
+    martingale,
+    consecutiveLossLimit: strategy.consecutiveLossLimit || 3,
   };
 }
 
 function hasCompatibleRiskCap(strategy: DryRunStrategy) {
-  return strategy.stake * (strategy.runCount || 1) <= strategy.riskCap;
+  const runCount = strategy.runCount || 1;
+  const martingale = strategy.martingale;
+  const maxStake = martingale?.enabled ? martingale.maxStake : strategy.stake;
+  return maxStake >= strategy.stake && maxStake * runCount <= strategy.riskCap;
 }
 const builtIns = [
   { id: "protraders-bot-1-free-observer", botNumber: 1, name: "FreeVertex", source: "traderscheme.com", sourceUrl: "https://traderscheme.com", description: "FreeVertex bot from traderscheme.com.", strategy: { indicator: "ema", direction: "BOTH", mode: "market_observer", stake: 1, duration: 5, riskCap: 10, notes: "Review EMA direction before starting.", execution: "dry_run" } },
