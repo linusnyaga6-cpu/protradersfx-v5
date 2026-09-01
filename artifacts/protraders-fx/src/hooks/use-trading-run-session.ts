@@ -54,7 +54,7 @@ const initialState: TradingRunSessionState = {
   netProfit: 0, message: "", results: [],
 }
 
-export const REAL_TRADING_SYMBOLS = ["R_10", "R_25", "R_50", "R_75", "R_100"] as const
+export const REAL_TRADING_SYMBOLS = ["R_10", "R_25", "R_50", "R_75", "R_100", "1HZ10V", "1HZ25V", "1HZ50V", "1HZ75V", "1HZ100V"] as const
 const realTradingSymbols = new Set<string>(REAL_TRADING_SYMBOLS)
 
 function normalizeSavedState(value: unknown): TradingRunSessionState | null {
@@ -153,7 +153,7 @@ export function useTradingRunSession(storageKey: string, onChange?: () => void) 
   ) => {
     if (stateRef.current.status === "running" || stateRef.current.status === "stopping") return
     if (order.account_type === "real" && !realTradingSymbols.has(order.symbol)) {
-      commit({ ...initialState, status: "failed", message: `${order.symbol} is available in Demo only. Select one of ${REAL_TRADING_SYMBOLS.join(", ")} for Real trading.` })
+      commit({ ...initialState, status: "failed", message: `${order.symbol} is not a supported volatility market. Select one of ${REAL_TRADING_SYMBOLS.join(", ")} for trading.` })
       return
     }
     let executionOrder: RunSessionOrder = order
