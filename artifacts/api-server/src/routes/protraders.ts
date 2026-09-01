@@ -95,7 +95,9 @@ function accountTradingPolicy(account: DerivOptionsAccount | undefined) {
   if (!account?.account_id) {
     return { allowed: false, error: "Account identity unavailable", message: "Reconnect or select a Deriv account before trading." };
   }
-  const accountType = normalizeAccountType(account);
+  const accountType = account.account_type === "demo" || account.account_type === "real"
+    ? account.account_type
+    : normalizeAccountType(account);
   if (accountType === "demo") {
     return tradingEnabled
       ? { allowed: true }
@@ -467,7 +469,10 @@ export async function listDerivAccounts(accessToken: string) {
 }
 
 function normalizeAccountType(account: DerivOptionsAccount | DerivOptionsAccountPayload): "demo" | "real" | undefined {
-  const rawType = String(account.raw_account_type ?? account.account_type ?? "").trim().toLowerCase();
+  const rawType = [account.raw_account_type, account.account_type]
+    .filter((value) => value != null && String(value).trim())
+    .map((value) => String(value).trim().toLowerCase())
+    .join(" ");
   if (account.is_virtual === true || /(^|[_\s-])(demo|virtual|vrtc|practice|paper|test)($|[_\s-])/.test(rawType) || ["demo", "virtual", "vrtc", "practice", "paper", "test"].includes(rawType)) {
     return "demo";
   }
