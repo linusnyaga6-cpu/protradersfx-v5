@@ -56,6 +56,7 @@ export default function BulkTrade() {
   const [contractType, setContractType] = useState(requested?.get("contract") || "CALL")
   const [barrier, setBarrier] = useState("5")
   const [stopLoss, setStopLoss] = useState("1")
+  const [takeProfit, setTakeProfit] = useState("1")
   const [stake, setStake] = useState("1")
   const [duration, setDuration] = useState("1")
   const [availabilityNotice, setAvailabilityNotice] = useState("")
@@ -154,7 +155,7 @@ export default function BulkTrade() {
 
   const needsBarrier = Boolean(CONTRACT_LABELS[contractType]?.needsBarrier)
   const totalRuns = 1
-  const targetProfit = Number(stake)
+  const targetProfit = Number(takeProfit)
   const validInputs = Number.isInteger(totalRuns)
     && Number.isFinite(targetProfit)
     && targetProfit > 0
@@ -462,18 +463,15 @@ export default function BulkTrade() {
 
               <div className="grid grid-cols-2 gap-2">
                 <Field label={`Stop loss (${accountCurrency})`} id="bulk-stop-loss" value={stopLoss} onChange={setStopLoss} min="0.01" step="0.01" />
-                <div className="flex items-end">
-                  <div className="flex h-10 w-full items-center justify-between rounded-md border border-border/80 bg-secondary/25 px-3 text-xs">
-                    <span className="text-muted-foreground">At risk</span>
-                    <span className="font-mono font-semibold">{formatMoney(Number(stake || 0), accountCurrency)}</span>
-                  </div>
-                </div>
+                <Field label={`Take profit (${accountCurrency})`} id="manual-take-profit" value={takeProfit} onChange={setTakeProfit} min="0.01" step="0.01" />
               </div>
 
               <div className="rounded-lg border border-border/80 bg-secondary/25 p-3 text-xs">
                 <div className="flex items-center justify-between gap-2"><span className="text-muted-foreground">Market</span><span className="font-mono">{selectedMarket}</span></div>
                 <div className="mt-1 flex items-center justify-between gap-2"><span className="text-muted-foreground">Contract</span><span className="font-semibold">{CONTRACT_LABELS[contractType]?.action || contractType}{needsBarrier ? ` · ${barrier}` : ""}</span></div>
                 <div className="mt-1 flex items-center justify-between gap-2"><span className="text-muted-foreground">Stop loss</span><span className="font-mono">{formatMoney(Number(stopLoss || 0), accountCurrency)}</span></div>
+                <div className="mt-1 flex items-center justify-between gap-2"><span className="text-muted-foreground">Take profit</span><span className="font-mono text-success">{formatMoney(Number(takeProfit || 0), accountCurrency)}</span></div>
+                <div className="mt-1 flex items-center justify-between gap-2"><span className="text-muted-foreground">At risk</span><span className="font-mono">{formatMoney(Number(stake || 0), accountCurrency)}</span></div>
               </div>
 
               {!session?.authenticated && <GateNotice icon={<CircleAlert className="h-4 w-4" />} text="Sign in and select an account before submitting an order." />}
