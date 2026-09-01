@@ -113,9 +113,7 @@ function accountTradingPolicy(account: DerivOptionsAccount | undefined) {
   if (!account?.account_id) {
     return { allowed: false, error: "Account identity unavailable", message: "Reconnect or select a Deriv account before trading." };
   }
-  const accountType = account.account_type === "demo" || account.account_type === "real"
-    ? account.account_type
-    : normalizeAccountType(account);
+  const accountType = normalizeAccountType(account);
   if (accountType === "demo") {
     return tradingEnabled
       ? { allowed: true }
@@ -487,11 +485,17 @@ export async function listDerivAccounts(accessToken: string) {
 }
 
 function normalizeAccountType(account: DerivOptionsAccount | DerivOptionsAccountPayload): "demo" | "real" | undefined {
+  const directType = [account.account_type, account.raw_account_type]
+    .map((value) => String(value ?? "").trim().toLowerCase())
+    .find((value): value is "demo" | "real" => value === "demo" || value === "real");
+  if (account.is_virtual === true) return "demo";
+  if (directType) return directType;
+
   const rawType = [account.raw_account_type, account.account_type]
     .filter((value) => value != null && String(value).trim())
     .map((value) => String(value).trim().toLowerCase())
     .join(" ");
-  if (account.is_virtual === true || /(^|[_\s-])(demo|virtual|vrtc|practice|paper|test)($|[_\s-])/.test(rawType) || ["demo", "virtual", "vrtc", "practice", "paper", "test"].includes(rawType)) {
+  if (/(^|[_\s-])(demo|virtual|vrtc|practice|paper|test)($|[_\s-])/.test(rawType) || ["demo", "virtual", "vrtc", "practice", "paper", "test"].includes(rawType)) {
     return "demo";
   }
   if (/(^|[_\s-])(real|live|financial|funded|cash)($|[_\s-])/.test(rawType) || ["real", "live", "financial", "funded", "cash"].includes(rawType)) {
