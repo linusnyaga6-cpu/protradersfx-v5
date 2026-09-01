@@ -2,11 +2,8 @@
   "version": 2,
   "builds": [
     {
-      "src": "artifacts/api-server/api/index.js",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": ["artifacts/api-server/dist/**"]
-      }
+      "src": "artifacts/api-server/api/index.ts",
+      "use": "@vercel/node"
     },
     {
       "src": "artifacts/protraders-fx/package.json",
@@ -19,15 +16,15 @@
   "routes": [
     {
       "src": "/health",
-      "dest": "artifacts/api-server/api/index.js"
+      "dest": "artifacts/api-server/api/index.ts"
     },
     {
       "src": "/api/(.*)",
-      "dest": "artifacts/api-server/api/index.js"
+      "dest": "artifacts/api-server/api/index.ts"
     },
     {
       "src": "/oauth/(.*)",
-      "dest": "artifacts/api-server/api/index.js"
+      "dest": "artifacts/api-server/api/index.ts"
     },
     {
       "src": "/assets/(.*)",
