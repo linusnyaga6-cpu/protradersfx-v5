@@ -25,6 +25,7 @@ import { DEFAULT_MARKET_SYMBOL, CONTRACT_LABELS, marketLabel } from "@/lib/marke
 import { formatVolatility } from "@/lib/format"
 import { useDerivMarkets } from "@/hooks/use-deriv-markets"
 import { Workspace } from "./markets"
+import { TradingTabs } from "@/components/trading/trading-tabs"
 
 export default function BulkTrader() {
   const queryClient = useQueryClient()
@@ -180,6 +181,7 @@ export default function BulkTrader() {
   return (
         <Workspace title="Bulk Trader" eyebrow={selectedAccountType === "real" ? "Real-account execution" : "Fast, bounded execution"} description={`Run a bounded ${accountSessionLabel} session.`}>
       <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} switchingDisabled={runSession.isBusy} />
+       <TradingTabs active="bulk" />
 
       <div className="overflow-hidden rounded-2xl border border-primary/20 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/.18),transparent_38%),linear-gradient(135deg,hsl(var(--card)),hsl(var(--secondary)/.45))] shadow-[0_18px_60px_rgba(0,0,0,.16)]">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-3 text-xs">

@@ -19,6 +19,7 @@ import { useDerivMarkets } from "@/hooks/use-deriv-markets"
 import { DigitRail } from "@/components/trading/digit-rail"
 import { TradingTabs } from "@/components/trading/trading-tabs"
 import { AccountStrip } from "@/components/trading/account-strip"
+import { TradingJourney } from "@/components/trading/trading-journey"
 
 export default function Analysis() {
   const [selectedSymbol, setSelectedSymbol] = useState(DEFAULT_MARKET_SYMBOL)
@@ -74,6 +75,7 @@ export default function Analysis() {
       <main className="mx-auto max-w-6xl space-y-6 px-5 py-10 md:px-10 md:py-14">
         <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} />
         <TradingTabs active="analysis" />
+        <TradingJourney current="analysis" symbol={selectedSymbol} />
         <div className="grid gap-3 sm:grid-cols-3">
           <InfoTile label="Source" value="Deriv live endpoint" />
           <InfoTile label="Refresh" value={ticker.isFetching ? "Syncing" : "Every 15 seconds"} />

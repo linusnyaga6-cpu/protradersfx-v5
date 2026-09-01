@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Link } from "wouter"
-import { BarChart3, Radio, Search, WifiOff } from "lucide-react"
+import { BarChart3, Check, Radio, Search, WifiOff } from "lucide-react"
 import { useGetMarketCandles, getGetMarketCandlesQueryKey, useGetMarketTicker, getGetMarketTickerQueryKey, useGetMarketContracts, getGetMarketContractsQueryKey, useGetAccount, getGetAccountQueryKey, useListBots, getListBotsQueryKey, useListBotRuns, getListBotRunsQueryKey } from "@workspace/api-client-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -10,11 +10,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AccountStrip } from "@/components/trading/account-strip"
 import { BotRunSummary } from "@/components/trading/bot-run-summary"
 import { formatVolatility } from "@/lib/format"
-import { CONTRACT_LABELS, DEFAULT_MARKET_SYMBOL } from "@/lib/markets"
+import { CONTRACT_FAMILIES, CONTRACT_LABELS, DEFAULT_MARKET_SYMBOL } from "@/lib/markets"
 import { useDerivMarkets } from "@/hooks/use-deriv-markets"
+import { TradingJourney } from "@/components/trading/trading-journey"
+import { TradingTabs } from "@/components/trading/trading-tabs"
 
 export default function Markets() {
-  const [symbol,setSymbol] = useState(DEFAULT_MARKET_SYMBOL)
+  const requested = typeof window === "undefined" ? null : new URLSearchParams(window.location.search)
+  const [symbol,setSymbol] = useState(requested?.get("symbol") || DEFAULT_MARKET_SYMBOL)
+  const [selectedContract, setSelectedContract] = useState(requested?.get("contract") || "CALL")
   const [marketSearch,setMarketSearch] = useState("")
   const marketQuery = useDerivMarkets()
   const ticker = useGetMarketTicker(symbol,{query:{queryKey:getGetMarketTickerQueryKey(symbol),refetchInterval:15000}})
@@ -43,10 +47,17 @@ export default function Markets() {
   const availableContractTypes = Array.isArray((contracts.data as any)?.availableContractTypes)
     ? (contracts.data as any).availableContractTypes.filter((type: string) => CONTRACT_LABELS[type])
     : []
+  useEffect(() => {
+    if (availableContractTypes.length && !availableContractTypes.includes(selectedContract)) {
+      setSelectedContract(availableContractTypes.includes("CALL") ? "CALL" : availableContractTypes[0])
+    }
+  }, [availableContractTypes.join("|"), selectedContract])
   
   return (
     <Workspace title="Markets" eyebrow="TradeView · Market observatory" description="Transparent Deriv data with freshness visible at every layer.">
       <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} />
+      <TradingTabs active="markets" />
+      <TradingJourney current="markets" symbol={symbol} contractType={availableContractTypes.includes(selectedContract) ? selectedContract : undefined} />
       <div className="grid gap-5 lg:grid-cols-[250px_1fr]">
         <Card className="rounded-sm border-border bg-card/50">
           <CardHeader className="rounded-t-sm border-b border-border/50 bg-secondary/20 pb-4">
@@ -104,8 +115,8 @@ export default function Markets() {
               <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border/50 pt-5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                 <span>Deriv Market Endpoint</span>
                 <span>{candles.isLoading ? "Requesting history…" : candle ? `As of ${candle.asOf??"server time"}` : "History unavailable"}</span>
-                <Button asChild size="sm" variant="outline" className="rounded-sm font-sans text-xs normal-case tracking-normal">
-                  <Link href={`/create-bot?symbol=${encodeURIComponent(symbol)}`}>Open Manual Trader</Link>
+                 <Button asChild size="sm" variant="outline" className="rounded-sm font-sans text-xs normal-case tracking-normal">
+                   <Link href={`/create-bot?symbol=${encodeURIComponent(symbol)}${availableContractTypes.includes(selectedContract) ? `&contract=${encodeURIComponent(selectedContract)}` : ""}`}>Review in Manual Trader</Link>
                 </Button>
               </div>
             </CardContent>
@@ -127,19 +138,29 @@ export default function Markets() {
               ) : contracts.isError ? (
                 <div className="font-mono text-xs text-amber-600">Contract availability is temporarily unavailable.</div>
               ) : (
-                <div className="grid gap-2 sm:grid-cols-3">
-                  {["CALL", "PUT", "DIGITOVER", "DIGITUNDER", "DIGITEVEN", "DIGITODD"].map(type => {
-                    const available = availableContractTypes.includes(type)
-                    return (
-                      <div key={type} className={`flex items-center justify-between rounded-sm border px-3 py-2 text-xs ${available ? "border-success/25 bg-success/5" : "border-border/60 bg-secondary/10 opacity-60"}`} data-testid={`market-contract-${type.toLowerCase()}`}>
-                        <span className="font-medium">{CONTRACT_LABELS[type].action}</span>
-                        <span className={`font-mono text-[9px] uppercase tracking-wider ${available ? "text-success" : "text-muted-foreground"}`}>{available ? "Available" : "Unavailable"}</span>
+                <div className="grid gap-4 md:grid-cols-3">
+                  {CONTRACT_FAMILIES.map(group => (
+                    <div key={group.label} className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono text-[9px] font-semibold uppercase tracking-[.16em] text-muted-foreground">{group.label}</span>
+                        <span className="text-[9px] text-muted-foreground">{group.shortLabel}</span>
                       </div>
-                    )
-                  })}
+                      <div className="space-y-2">
+                        {group.types.map(type => {
+                          const available = availableContractTypes.includes(type)
+                          return (
+                            <Button key={type} type="button" variant="outline" disabled={!available} onClick={() => setSelectedContract(type)} aria-pressed={selectedContract === type} className={`flex h-auto w-full items-center justify-between rounded-sm px-3 py-2 text-xs ${selectedContract === type ? "border-primary bg-primary/10 text-foreground" : available ? "border-success/25 bg-success/5" : "border-border/60 bg-secondary/10 opacity-60"}`} data-testid={`market-contract-${type.toLowerCase()}`}>
+                              <span className="flex items-center gap-2 font-medium"><span className={`grid h-4 w-4 place-items-center rounded-sm border ${selectedContract === type ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>{selectedContract === type && <Check className="h-3 w-3" />}</span>{CONTRACT_LABELS[type].action}</span>
+                              <span className={`font-mono text-[9px] uppercase tracking-wider ${available ? "text-success" : "text-muted-foreground"}`}>{available ? "Choose" : "Unavailable"}</span>
+                            </Button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
-              <p className="mt-3 text-[10px] leading-4 text-muted-foreground">Over and Under use the selected digit barrier in Manual Trader. Availability follows the active Deriv market.</p>
+               <p className="mt-3 text-[10px] leading-4 text-muted-foreground">Choose a supported contract here to carry this market context into Manual Trader. Over and Under use the selected digit barrier there.</p>
             </CardContent>
           </Card>
         </div>

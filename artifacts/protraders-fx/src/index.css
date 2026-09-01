@@ -68,7 +68,7 @@
   --app-font-mono: 'Space Mono', monospace;
   --app-font-display: 'Syne', sans-serif;
 
-  /* Precision instrument palette: ink navy, blue paper, cyan signal, amber caution */
+  /* Precision instrument palette: ink navy, blue paper, teal signal, amber caution */
   --background: 210 32% 96%;
   --foreground: 218 45% 15%;
   --border: 211 24% 84%;
@@ -81,7 +81,7 @@
   --popover-foreground: 218 45% 15%;
   --popover-border: 211 24% 82%;
 
-  --primary: 181 73% 32%;
+  --primary: 177 68% 31%;
   --primary-foreground: 180 28% 98%;
   
   --secondary: 210 30% 91%;
@@ -100,16 +100,16 @@
   --success-foreground: 0 0% 98%;
 
   --input: 211 25% 77%;
-  --ring: 181 73% 32%;
+  --ring: 177 68% 31%;
 
   --sidebar: 218 43% 15%;
   --sidebar-foreground: 210 30% 92%;
   --sidebar-border: 216 31% 25%;
-  --sidebar-primary: 181 73% 44%;
+  --sidebar-primary: 177 68% 44%;
   --sidebar-primary-foreground: 218 45% 12%;
   --sidebar-accent: 216 34% 23%;
   --sidebar-accent-foreground: 210 30% 96%;
-  --sidebar-ring: 181 73% 44%;
+  --sidebar-ring: 177 68% 44%;
 
   --radius: 0.25rem;
 

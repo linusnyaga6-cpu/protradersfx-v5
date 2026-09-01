@@ -42,6 +42,7 @@ import { DigitRail } from "@/components/trading/digit-rail"
 import { TradingTabs } from "@/components/trading/trading-tabs"
 import { useDerivMarkets } from "@/hooks/use-deriv-markets"
 import { useTradingRunSession } from "@/hooks/use-trading-run-session"
+import { ContractExplainer, TradingJourney } from "@/components/trading/trading-journey"
 import { formatMoney, formatSignedMoney, formatVolatility } from "@/lib/format"
 import { CONTRACT_FAMILIES, CONTRACT_LABELS, DEFAULT_MARKET_SYMBOL, SUPPORTED_VOLATILITY_SYMBOLS, marketLabel } from "@/lib/markets"
 
@@ -185,6 +186,7 @@ export default function BulkTrade() {
   return (
     <div className="mx-auto min-h-[100dvh] w-full max-w-[1480px] space-y-4 p-3 md:p-5">
       <TradingTabs active="manual" />
+      <TradingJourney current="manual" symbol={selectedMarket} contractType={contractType} resultReady={runSession.state.results.length > 0} />
       <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} switchingDisabled={runSession.isBusy} />
 
       <section className="instrument-panel overflow-hidden rounded-xl" data-testid="manual-trader-workspace">
@@ -284,6 +286,9 @@ export default function BulkTrade() {
               </div>
               <WalletCards className="h-5 w-5 text-muted-foreground" />
             </div>
+             <div className="px-4 pt-4 md:px-5">
+               <ContractExplainer contractType={contractType} barrier={barrier} lastDigit={liveLastDigit} />
+             </div>
             <div className="space-y-4 p-4 md:p-5">
                <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -614,7 +619,7 @@ function SettlementStream({ state, currency, selectedMarket }: {
   const settledCount = state.results.filter(result => ["won", "lost", "settled", "rejected"].includes(result.status)).length
   const netProfit = state.netProfit
   return (
-    <Card data-testid="card-bulk-results" className="overflow-hidden">
+     <Card id="results" data-testid="card-bulk-results" className="scroll-mt-24 overflow-hidden">
       <CardHeader className="space-y-0 border-b bg-background p-0">
         <div className="flex items-center justify-between gap-3 border-b px-4 pt-3">
           <div className="flex items-center gap-5 text-[10px] font-semibold uppercase tracking-wider">
