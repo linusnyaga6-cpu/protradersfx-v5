@@ -54,6 +54,9 @@ const initialState: TradingRunSessionState = {
   netProfit: 0, message: "", results: [],
 }
 
+export const REAL_TRADING_SYMBOLS = ["R_10", "R_25", "R_50", "R_75", "R_100"] as const
+const realTradingSymbols = new Set<string>(REAL_TRADING_SYMBOLS)
+
 function normalizeSavedState(value: unknown): TradingRunSessionState | null {
   if (!value || typeof value !== "object") return null
   const saved = value as Partial<TradingRunSessionState>
@@ -147,6 +150,10 @@ export function useTradingRunSession(storageKey: string, onChange?: () => void) 
     martingale?: MartingaleSettings,
   ) => {
     if (stateRef.current.status === "running" || stateRef.current.status === "stopping") return
+    if (order.account_type === "real" && !realTradingSymbols.has(order.symbol)) {
+      commit({ ...initialState, status: "failed", message: `${order.symbol} is available in Demo only. Select one of ${REAL_TRADING_SYMBOLS.join(", ")} for Real trading.` })
+      return
+    }
     let executionOrder: RunSessionOrder = order
     if (order.account_type === "real") {
       try {

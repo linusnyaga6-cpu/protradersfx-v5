@@ -70,11 +70,12 @@ const supportedVolatilitySymbols = new Set([
   "R_10", "R_25", "R_50", "R_75", "R_100",
   "1HZ10V", "1HZ25V", "1HZ50V", "1HZ75V", "1HZ100V",
 ]);
+const realTradingSymbols = new Set(["R_10", "R_25", "R_50", "R_75", "R_100"]);
 const allowedSymbols = new Set(
   String(process.env.TRADING_ALLOWED_SYMBOLS || "")
     .split(",")
     .map((symbol) => symbol.trim())
-    .filter(Boolean),
+    .filter((symbol) => realTradingSymbols.has(symbol)),
 );
 const deploymentReady = Boolean(
   baseUrl.startsWith("https://") &&
@@ -82,7 +83,7 @@ const deploymentReady = Boolean(
   sessionSecret &&
   frontendConfigured,
 );
-const realTradingReady = Boolean(
+const realTradingConfigReady = Boolean(
   deploymentReady &&
   databaseConfigured &&
   tradingEnabled &&
@@ -90,6 +91,23 @@ const realTradingReady = Boolean(
   !demoOnly &&
   allowedSymbols.size > 0,
 );
+
+async function checkTradingSafetyTables() {
+  if (!databaseConfigured) return false;
+
+  try {
+    const result = await db.execute(sql`
+      SELECT
+        to_regclass('public.consumed_trade_proposals') AS consumed_trade_proposals,
+        to_regclass('public.risk_acknowledgements') AS risk_acknowledgements
+    `);
+    const row = result.rows[0] as Record<string, unknown> | undefined;
+    return Boolean(row?.consumed_trade_proposals && row?.risk_acknowledgements);
+  } catch (error) {
+    logger.warn({ error: tradeErrorDiagnostic(error) }, "Trading safety schema check failed");
+    return false;
+  }
+}
 
 function accountTradingPolicy(account: DerivOptionsAccount | undefined) {
   if (!account?.account_id) {
@@ -109,7 +127,7 @@ function accountTradingPolicy(account: DerivOptionsAccount | undefined) {
   if (accountType === "real" && !liveTradingEnabled) {
     return { allowed: false, error: "Live trading disabled", message: "Set TRADING_LIVE_ENABLED=true only after an independent risk review." };
   }
-  if (accountType === "real" && !realTradingReady) {
+  if (accountType === "real" && !realTradingConfigReady) {
     return { allowed: false, error: "Live trading not ready", message: "Complete HTTPS, Deriv, persistence, session, and symbol-allowlist configuration first." };
   }
   const rawType = account.raw_account_type?.trim()
@@ -572,8 +590,9 @@ router.get("/config", (_req, res) => {
   });
 });
 
-router.get("/preflight", (_req, res) => {
+router.get("/preflight", async (_req, res): Promise<void> => {
   const sessionSecretConfigured = Boolean(process.env.SESSION_SECRET);
+  const tradingSafetyTablesReady = await checkTradingSafetyTables();
   const oauthClientConfigured = Boolean(clientId);
   const partnerTrackingConfigured = Boolean(affiliateToken);
   const publicAppConfigured = Boolean(publicAppId);
@@ -590,6 +609,7 @@ router.get("/preflight", (_req, res) => {
     liveTradingEnabled,
     demoOnly,
     persistenceConfigured: databaseConfigured,
+    tradingSafetyTablesReady,
     maxDuration,
     allowedSymbols: Array.from(allowedSymbols),
     executionMode: !tradingEnabled
@@ -600,7 +620,7 @@ router.get("/preflight", (_req, res) => {
           ? "BOTH"
           : "LIVE LOCKED",
     readyForControlledLiveTest: deploymentReady && databaseConfigured,
-    readyForRealTrading: realTradingReady,
+    readyForRealTrading: realTradingConfigReady && tradingSafetyTablesReady,
   });
 });
 
@@ -1246,6 +1266,9 @@ router.post("/trades/preview", async (req, res) => {
     executionAccountType = account.account_type;
     const policy = accountTradingPolicy(account);
     if (!policy.allowed) return errorResponse(res, 403, policy.error || "Account trading unavailable", policy.message);
+     if (account.account_type === "real" && !allowedSymbols.has(symbol)) {
+       return errorResponse(res, 403, "Market not enabled for real trading", `${symbol} is available in Demo but is not on the reviewed real-money allowlist.`);
+     }
     if (req.body?.source === "bot_assisted") {
       const ownerKey = ownerKeyFor(account.account_id);
       const [bot] = await db.select().from(bots).where(and(
@@ -1453,7 +1476,7 @@ router.post("/trades", async (req, res) => {
     if (stake >= availableBalance) {
       return errorResponse(res, 400, "Stake exceeds available balance", "Enter a stake below the selected account balance.");
     }
-    if (!isDemoAccount && allowedSymbols.size > 0 && !allowedSymbols.has(symbol)) {
+    if (!isDemoAccount && !allowedSymbols.has(symbol)) {
       return errorResponse(res, 403, "Market not enabled for real trading", `${symbol} is available in Demo but is not on the reviewed real-money allowlist.`);
     }
     if (!isDemoAccount) {
