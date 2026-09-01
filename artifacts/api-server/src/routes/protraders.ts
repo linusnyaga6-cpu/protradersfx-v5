@@ -228,6 +228,16 @@ function tradeErrorDiagnostic(error: unknown) {
   };
 }
 
+function persistenceErrorMessage(prefix: string, error: unknown) {
+  const diagnostic = tradeErrorDiagnostic(error);
+  const details = [
+    diagnostic.postgresCode ? `db_code=${diagnostic.postgresCode}` : "",
+    diagnostic.postgresConstraint ? `constraint=${diagnostic.postgresConstraint}` : "",
+    diagnostic.sanitizedErrorMessage !== "Unknown error" ? diagnostic.sanitizedErrorMessage : "",
+  ].filter(Boolean);
+  return details.length ? `${prefix} ${details.join(" ")}`.slice(0, 600) : prefix;
+}
+
 function logTradeStageError(
   req: Request,
   stage: string,
@@ -575,8 +585,13 @@ router.get("/risk-acknowledgements/status", async (req, res) => {
       acceptedAt: acknowledgement?.acceptedAt?.toISOString() || null,
     });
   } catch (error) {
-    req.log?.warn({ err: error }, "Risk acknowledgement status unavailable");
-    return errorResponse(res, 503, "Risk acknowledgement unavailable", "Live trading readiness could not be verified.");
+    logTradeStageError(req, "risk_acknowledgement_status", error, "real", "");
+    return errorResponse(
+      res,
+      503,
+      "Risk acknowledgement unavailable",
+      persistenceErrorMessage("Live trading readiness could not be verified.", error),
+    );
   }
 });
 
@@ -602,8 +617,13 @@ router.post("/risk-acknowledgements/accept", async (req, res) => {
       acceptedAt: acknowledgement?.acceptedAt?.toISOString() || new Date().toISOString(),
     });
   } catch (error) {
-    req.log?.warn({ err: error }, "Risk acknowledgement could not be recorded");
-    return errorResponse(res, 503, "Risk acknowledgement unavailable", "Live trading readiness could not be recorded.");
+    logTradeStageError(req, "risk_acknowledgement_accept", error, "real", "");
+    return errorResponse(
+      res,
+      503,
+      "Risk acknowledgement unavailable",
+      persistenceErrorMessage("Live trading readiness could not be recorded.", error),
+    );
   }
 });
 
