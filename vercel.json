@@ -2,19 +2,19 @@
   "version": 2,
   "builds": [
     {
+      "src": "artifacts/protraders-fx/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist/public"
+      }
+    },
+    {
       "src": "artifacts/api-server/api/index.js",
       "use": "@vercel/node",
       "config": {
         "includeFiles": [
           "artifacts/api-server/dist/**"
         ]
-      }
-    },
-    {
-      "src": "artifacts/protraders-fx/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist/public"
       }
     }
   ],
