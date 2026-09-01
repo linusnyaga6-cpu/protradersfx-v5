@@ -1,4 +1,59 @@
-ueryKey(executingBotId) });
+import { useState, useEffect } from "react"
+import { Link } from "wouter"
+import { useQueryClient } from "@tanstack/react-query"
+import {
+  ArrowRight, Bot as BotIcon, CheckCircle2, Copy, Pause, Play, Plus, ShieldCheck,
+  Settings, Save, Archive, Clock, Activity, Loader2, AlertTriangle, AlertCircle, Search,
+  Sparkles, Download, FileText, Eye, ShieldAlert
+} from "lucide-react"
+import {
+  useListBots, getListBotsQueryKey,
+  useListBotTemplates, getListBotTemplatesQueryKey,
+  useCreateBot, useUpdateBot, useChangeBotLifecycle,
+  useListBotRuns, getListBotRunsQueryKey,
+  useCreateBotTemplate, useUpdateBotTemplate, useArchiveBotTemplate,
+  useGetAccount, getGetAccountQueryKey, useGetProtradersPreflight, getGetProtradersPreflightQueryKey,
+  useGetMarketContracts, getGetMarketContractsQueryKey
+} from "@workspace/api-client-react"
+import { Workspace } from "./markets"
+import { AccountStrip } from "@/components/trading/account-strip"
+import { BotRunSummary } from "@/components/trading/bot-run-summary"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { Textarea } from "@/components/ui/textarea"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { DEFAULT_MARKET_SYMBOL, CONTRACT_LABELS, SUPPORTED_VOLATILITY_SYMBOLS } from "@/lib/markets"
+import { useDerivMarkets } from "@/hooks/use-deriv-markets"
+import { useTradingRunSession } from "@/hooks/use-trading-run-session"
+import { RunSessionSummary } from "@/components/trading/run-session-summary"
+import { FreeVertexPreview } from "@/components/bots/freevertex-preview"
+import { MarketAnalysisBar } from "@/components/trading/market-analysis-bar"
+
+export default function Bots() {
+  const client = useQueryClient();
+  const bots = useListBots({ query: { queryKey: getListBotsQueryKey(), refetchInterval: 10000 } });
+  const templates = useListBotTemplates({ query: { queryKey: getListBotTemplatesQueryKey() } });
+  const account = useGetAccount(undefined, { query: { queryKey: getGetAccountQueryKey(), refetchInterval: 5000 } });
+
+  const create = useCreateBot();
+  const life = useChangeBotLifecycle();
+  const archiveTpl = useArchiveBotTemplate();
+  const preflight = useGetProtradersPreflight({ query: { queryKey: getGetProtradersPreflightQueryKey() } });
+
+  const [notice, setNotice] = useState("");
+  const [selectedBotId, setSelectedBotId] = useState<string | null>(null);
+  const [templateSearch, setTemplateSearch] = useState("");
+  const [executingBotId, setExecutingBotId] = useState<string | null>(null);
+  const requestedMarket = typeof window === "undefined" ? DEFAULT_MARKET_SYMBOL : new URLSearchParams(window.location.search).get("symbol") || DEFAULT_MARKET_SYMBOL;
+  const requestedSymbol = SUPPORTED_VOLATILITY_SYMBOLS.has(requestedMarket) ? requestedMarket : DEFAULT_MARKET_SYMBOL;
+  const runSession = useTradingRunSession("protraders-run-session:bot", () => {
+    client.invalidateQueries({ queryKey: getGetAccountQueryKey() });
+    if (executingBotId) client.invalidateQueries({ queryKey: getListBotRunsQueryKey(executingBotId) });
   });
 
   const list = Array.isArray((bots.data as any)?.bots) ? (bots.data as any).bots : Array.isArray(bots.data) ? bots.data : [];
