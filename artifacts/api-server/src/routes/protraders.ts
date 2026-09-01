@@ -18,9 +18,14 @@ type DerivOptionsAccount = {
   account_id?: string;
   balance?: number;
   currency?: string;
-  account_type?: string;
+  account_type?: "demo" | "real";
+  raw_account_type?: string;
   is_virtual?: boolean;
   status?: "active" | "inactive";
+};
+
+type DerivOptionsAccountPayload = Omit<DerivOptionsAccount, "account_type"> & {
+  account_type?: unknown;
 };
 
 type OAuthState = {
@@ -90,21 +95,25 @@ function accountTradingPolicy(account: DerivOptionsAccount | undefined) {
   if (!account?.account_id) {
     return { allowed: false, error: "Account identity unavailable", message: "Reconnect or select a Deriv account before trading." };
   }
-  if (account.account_type === "demo") {
+  const accountType = normalizeAccountType(account);
+  if (accountType === "demo") {
     return tradingEnabled
       ? { allowed: true }
       : { allowed: false, error: "Trading disabled", message: "Demo trading is not enabled in this deployment." };
   }
-  if (account.account_type === "real" && demoOnly) {
+  if (accountType === "real" && demoOnly) {
     return { allowed: false, error: "Demo account required", message: "Real trading is disabled by TRADING_DEMO_ONLY." };
   }
-  if (account.account_type === "real" && !liveTradingEnabled) {
+  if (accountType === "real" && !liveTradingEnabled) {
     return { allowed: false, error: "Live trading disabled", message: "Set TRADING_LIVE_ENABLED=true only after an independent risk review." };
   }
-  if (account.account_type === "real" && !realTradingReady) {
+  if (accountType === "real" && !realTradingReady) {
     return { allowed: false, error: "Live trading not ready", message: "Complete HTTPS, Deriv, persistence, session, and symbol-allowlist configuration first." };
   }
-  return { allowed: false, error: "Unsupported account type", message: "Choose a supported Demo or Real Deriv account." };
+  const rawType = account.raw_account_type?.trim()
+    ? account.raw_account_type.trim().slice(0, 80)
+    : "missing";
+  return { allowed: false, error: "Unsupported account type", message: `Deriv returned account type "${rawType}". Choose a supported Demo or Real Deriv account.` };
 }
 
 function positiveInteger(value: string | undefined, fallback: number) {
@@ -435,7 +444,7 @@ async function derivRestRequest<T>(
 }
 
 export async function listDerivAccounts(accessToken: string) {
-  const body = await derivRestRequest<{ data?: DerivOptionsAccount[] }>(
+  const body = await derivRestRequest<{ data?: DerivOptionsAccountPayload[] }>(
     accessToken,
     "/trading/v1/options/accounts",
   );
@@ -443,21 +452,26 @@ export async function listDerivAccounts(accessToken: string) {
     ? body.data
       .map((account) => ({
         ...account,
+        raw_account_type: typeof account.account_type === "string"
+          ? account.account_type
+          : account.account_type == null
+            ? undefined
+            : String(account.account_type),
         account_type: normalizeAccountType(account),
         balance: account.balance == null
           ? undefined
           : Number(account.balance),
       }))
-      .filter((account) => account.account_id && (account.account_type === "demo" || account.account_type === "real"))
+      .filter((account) => account.account_id)
     : [];
 }
 
-function normalizeAccountType(account: DerivOptionsAccount): "demo" | "real" | undefined {
-  const rawType = String(account.account_type || "").trim().toLowerCase();
-  if (account.is_virtual === true || ["demo", "virtual", "vrtc", "practice", "test"].includes(rawType)) {
+function normalizeAccountType(account: DerivOptionsAccount | DerivOptionsAccountPayload): "demo" | "real" | undefined {
+  const rawType = String(account.raw_account_type ?? account.account_type ?? "").trim().toLowerCase();
+  if (account.is_virtual === true || /(^|[_\s-])(demo|virtual|vrtc|practice|paper|test)($|[_\s-])/.test(rawType) || ["demo", "virtual", "vrtc", "practice", "paper", "test"].includes(rawType)) {
     return "demo";
   }
-  if (["real", "live", "financial"].includes(rawType)) {
+  if (/(^|[_\s-])(real|live|financial|funded|cash)($|[_\s-])/.test(rawType) || ["real", "live", "financial", "funded", "cash"].includes(rawType)) {
     return "real";
   }
   const accountId = String(account.account_id || "").toUpperCase();
