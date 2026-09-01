@@ -18,7 +18,8 @@ type DerivOptionsAccount = {
   account_id?: string;
   balance?: number;
   currency?: string;
-  account_type?: "demo" | "real";
+  account_type?: string;
+  is_virtual?: boolean;
   status?: "active" | "inactive";
 };
 
@@ -442,15 +443,27 @@ export async function listDerivAccounts(accessToken: string) {
     ? body.data
       .map((account) => ({
         ...account,
-        account_type: typeof account.account_type === "string"
-          ? account.account_type.toLowerCase() as DerivOptionsAccount["account_type"]
-          : account.account_type,
+        account_type: normalizeAccountType(account),
         balance: account.balance == null
           ? undefined
           : Number(account.balance),
       }))
       .filter((account) => account.account_id && (account.account_type === "demo" || account.account_type === "real"))
     : [];
+}
+
+function normalizeAccountType(account: DerivOptionsAccount): "demo" | "real" | undefined {
+  const rawType = String(account.account_type || "").trim().toLowerCase();
+  if (account.is_virtual === true || ["demo", "virtual", "vrtc", "practice", "test"].includes(rawType)) {
+    return "demo";
+  }
+  if (["real", "live", "financial"].includes(rawType)) {
+    return "real";
+  }
+  const accountId = String(account.account_id || "").toUpperCase();
+  if (accountId.startsWith("VRTC")) return "demo";
+  if (accountId.startsWith("CR")) return "real";
+  return undefined;
 }
 
 function chooseAccount(accounts: DerivOptionsAccount[], target?: "demo" | "real", accountId?: string) {
