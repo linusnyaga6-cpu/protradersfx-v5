@@ -113,7 +113,10 @@ function accountTradingPolicy(account: DerivOptionsAccount | undefined) {
   if (!account?.account_id) {
     return { allowed: false, error: "Account identity unavailable", message: "Reconnect or select a Deriv account before trading." };
   }
-  const accountType = normalizeAccountType(account);
+  const rawAccountType = [account.account_type, account.raw_account_type]
+    .map((value) => String(value ?? "").trim().toLowerCase())
+    .find((value) => value === "demo" || value === "real");
+  const accountType = normalizeAccountType(account) || rawAccountType;
   if (accountType === "demo") {
     return tradingEnabled
       ? { allowed: true }
