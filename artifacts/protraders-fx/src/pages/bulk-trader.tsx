@@ -31,8 +31,13 @@ import { MarketAnalysisBar } from "@/components/trading/market-analysis-bar"
 export default function BulkTrader() {
   const queryClient = useQueryClient()
   const account = useGetAccount(undefined, { query: { queryKey: getGetAccountQueryKey(), refetchInterval: 5000 } })
+  const [selectedAccount, setSelectedAccount] = useState<any>(null)
   const preflight = useGetProtradersPreflight({ query: { queryKey: getGetProtradersPreflightQueryKey() } })
+  const activeAccount = selectedAccount || account.data
   const marketQuery = useDerivMarkets()
+  useEffect(() => {
+    if (account.data) setSelectedAccount(account.data)
+  }, [account.data])
   const scan = useScanBestMarket()
   const [setupOpen, setSetupOpen] = useState(false)
   const [stake, setStake] = useState("1")
@@ -78,13 +83,13 @@ export default function BulkTrader() {
   const selectedContract = executionTypes.includes("CALL") ? "CALL" : executionTypes[0] || "CALL"
   const contractReady = executionTypes.length > 0
     && !(usingFallback ? fallbackContracts.isLoading || fallbackContracts.isError : contracts.isLoading || contracts.isError)
-  const availableBalance = Number(account.data?.balance)
+  const availableBalance = Number(activeAccount?.balance)
   const totalRuns = Number(runCount)
   const stakeValue = Number(stake)
   const validSetup = Number.isInteger(totalRuns) && totalRuns >= 1 && totalRuns <= 100
     && Number.isFinite(availableBalance) && availableBalance > 0
     && Number.isFinite(stakeValue) && stakeValue > 0 && stakeValue < availableBalance
-  const selectedAccountType = account.data?.accountType
+  const selectedAccountType = activeAccount?.accountType
   const accountSessionLabel = selectedAccountType === "real"
     ? "real-account"
     : selectedAccountType === "demo"
@@ -160,8 +165,8 @@ export default function BulkTrader() {
         : selectedContract
     setSetupOpen(false)
     await runSession.start({
-      account_id: String(account.data?.loginid || ""),
-      account_type: account.data?.accountType,
+      account_id: String(activeAccount?.loginid || ""),
+      account_type: activeAccount?.accountType,
       symbol,
       contract_type: contractType,
       stake: stakeValue,
@@ -183,7 +188,7 @@ export default function BulkTrader() {
 
   return (
         <Workspace title="Bulk Trader" eyebrow={selectedAccountType === "real" ? "Real-account execution" : "Fast, bounded execution"} description={`Run a bounded ${accountSessionLabel} session.`}>
-      <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} switchingDisabled={runSession.isBusy} />
+      <AccountStrip account={activeAccount} isLoading={account.isLoading} error={account.isError} switchingDisabled={runSession.isBusy} onAccountChange={setSelectedAccount} />
        <TradingTabs active="bulk" />
        <MarketAnalysisBar
          symbol={executionSymbol}
@@ -246,7 +251,7 @@ export default function BulkTrader() {
         </Card>
         <RunSessionSummary
           state={runSession.state}
-          currency={account.data?.currency || "USD"}
+          currency={activeAccount?.currency || "USD"}
           onStart={() => setSetupOpen(true)}
           onStop={runSession.stop}
           onReset={runSession.reset}
@@ -264,7 +269,7 @@ export default function BulkTrader() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="quick-bulk-stake">Stake ({account.data?.currency || "account currency"})</Label>
+              <Label htmlFor="quick-bulk-stake">Stake ({activeAccount?.currency || "account currency"})</Label>
               <Input id="quick-bulk-stake" type="number" min="0.01" step="0.01" value={stake} onChange={event => setStake(event.target.value)} autoFocus data-testid="input-bulk-stake" />
               <p className="text-xs text-muted-foreground">Enter any trader-selected amount below the available account balance.</p>
             </div>

@@ -11,9 +11,10 @@ type AccountStripProps = {
   isLoading?: boolean
   error?: boolean
   switchingDisabled?: boolean
+  onAccountChange?: (account: any) => void
 }
 
-export function AccountStrip({ account, isLoading, error, switchingDisabled = false }: AccountStripProps) {
+export function AccountStrip({ account, isLoading, error, switchingDisabled = false, onAccountChange }: AccountStripProps) {
   const queryClient = useQueryClient()
   const [switchingTo, setSwitchingTo] = useState<"demo" | "real" | null>(null)
   const [switchError, setSwitchError] = useState("")
@@ -66,6 +67,7 @@ export function AccountStrip({ account, isLoading, error, switchingDisabled = fa
         throw new Error(`Deriv returned the ${nextAccount.accountType} account instead of ${accountType}.`)
       }
       queryClient.setQueryData(getGetAccountQueryKey(), nextAccount)
+      onAccountChange?.(nextAccount)
       await queryClient.invalidateQueries({ queryKey: ["/api/market/contracts"] })
     } catch (accountError) {
       const failure = accountError as { data?: { error?: string; message?: string }; message?: string }
