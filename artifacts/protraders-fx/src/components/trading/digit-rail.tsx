@@ -19,12 +19,12 @@ export function DigitRail({
           </div>
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold">
-              Last-digit monitor
+              Live digits
               <span className="inline-flex items-center gap-1 text-[9px] font-medium uppercase tracking-wider text-success">
-                <Activity className="h-3 w-3" /> observed
+                <Activity className="h-3 w-3" /> live
               </span>
             </div>
-            <div className="mt-0.5 text-[10px] uppercase tracking-[.14em] text-muted-foreground">Frequency from the visible candle window</div>
+            <div className="mt-0.5 text-[10px] uppercase tracking-[.14em] text-muted-foreground">Tick frequency</div>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -41,8 +41,9 @@ export function DigitRail({
       <div className="relative px-3 pb-3 pt-5 sm:px-4">
         {activeDigit != null && (
           <div
-            className="absolute top-2 h-2 w-2 -translate-x-1/2 rotate-45 border-l border-t border-primary bg-primary transition-[left] duration-500 ease-out"
+            className="absolute top-2 h-2 w-2 -translate-x-1/2 rotate-45 border-l border-t border-primary bg-primary shadow-[0_0_0_3px_hsl(var(--primary)/.12)] transition-[left] duration-500 ease-out"
             style={{ left: `calc(${activeDigit * 10}% + 5%)` }}
+            data-testid="digit-cursor"
             aria-hidden="true"
           />
         )}
@@ -74,10 +75,68 @@ export function DigitRail({
           })}
         </div>
         <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/60 pt-2 text-[9px] uppercase tracking-[.13em] text-muted-foreground">
-          <span>0 — 9 last digit</span>
-          <span className="font-mono">{digitPercentages.length ? "Observed %" : "Awaiting ticks"}</span>
+          <span>Last digit · 0—9</span>
+          <span className="font-mono">{digitPercentages.length ? "Tick share" : "Waiting"}</span>
         </div>
       </div>
+    </div>
+  )
+}
+
+export function OverUnderTabs({
+  value,
+  availableTypes,
+  disabled = false,
+  onSelect,
+}: {
+  value: string
+  availableTypes: string[]
+  disabled?: boolean
+  onSelect: (contractType: "DIGITOVER" | "DIGITUNDER") => void
+}) {
+  const options = [
+    { type: "DIGITOVER" as const, label: "Over", hint: "last digit > barrier", tone: "success" },
+    { type: "DIGITUNDER" as const, label: "Under", hint: "last digit < barrier", tone: "destructive" },
+  ]
+
+  return (
+    <div className="rounded-lg border border-primary/20 bg-card/80 p-3" data-testid="over-under-tabs">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-[.18em] text-primary">Over / Under</div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground">One-tap run</div>
+        </div>
+        <span className="rounded-md border border-border/70 bg-background/70 px-2 py-1 font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
+          {value === "DIGITOVER" ? "OVER" : value === "DIGITUNDER" ? "UNDER" : "SELECT"}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {options.map(option => {
+          const selected = value === option.type
+          const available = availableTypes.includes(option.type)
+          const activeClasses = option.tone === "success"
+            ? "border-success bg-success text-success-foreground shadow-sm"
+            : "border-destructive bg-destructive text-destructive-foreground shadow-sm"
+          const idleClasses = option.tone === "success"
+            ? "border-success/35 text-success hover:bg-success/10"
+            : "border-destructive/35 text-destructive hover:bg-destructive/10"
+          return (
+            <button
+              key={option.type}
+              type="button"
+              className={`min-h-[3.75rem] rounded-md border px-2 py-2 text-left transition-all ${selected ? activeClasses : `bg-background ${idleClasses}`} ${!available || disabled ? "cursor-not-allowed opacity-45" : ""}`}
+              onClick={() => onSelect(option.type)}
+              disabled={!available || disabled}
+              aria-pressed={selected}
+              data-testid={`button-quick-${option.type.toLowerCase()}`}
+            >
+              <span className="block text-sm font-bold uppercase tracking-wide">{option.label}</span>
+              <span className={`mt-1 block text-[9px] font-normal leading-3 ${selected ? "opacity-80" : "opacity-70"}`}>{option.hint}</span>
+            </button>
+          )
+        })}
+      </div>
+      <p className="mt-2 text-[10px] leading-4 text-muted-foreground">Uses current ticket values.</p>
     </div>
   )
 }

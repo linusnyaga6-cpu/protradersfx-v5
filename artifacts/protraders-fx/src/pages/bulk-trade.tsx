@@ -38,7 +38,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { AccountStrip } from "@/components/trading/account-strip"
-import { DigitRail } from "@/components/trading/digit-rail"
+import { DigitRail, OverUnderTabs } from "@/components/trading/digit-rail"
 import { TradingTabs } from "@/components/trading/trading-tabs"
 import { useDerivMarkets } from "@/hooks/use-deriv-markets"
 import { useTradingRunSession } from "@/hooks/use-trading-run-session"
@@ -167,21 +167,33 @@ export default function BulkTrade() {
     && Number(duration) <= Number(preflight.data?.maxDuration || 3600)
     && Number.isInteger(Number(duration))
     && (!needsBarrier || /^[0-9]$/.test(barrier))
-  const validOrder = validInputs && availableTypes.includes(contractType)
-  const orderData = {
+  const validOrderFor = (type: string) => validInputs
+    && availableTypes.includes(type)
+    && (!CONTRACT_LABELS[type]?.needsBarrier || /^[0-9]$/.test(barrier))
+  const makeOrderData = (type: string) => ({
     account_id: String(account.data?.loginid || ""),
     account_type: account.data?.accountType,
     symbol: selectedMarket,
-    contract_type: contractType,
-    ...(needsBarrier ? { barrier } : {}),
+    contract_type: type,
+    ...(CONTRACT_LABELS[type]?.needsBarrier ? { barrier } : {}),
     stake: Number(stake),
     duration: Number(duration),
     stop_loss: Number(stopLoss),
     source: tradeSource,
     request_label: `${selectedMarket} ${tradeSource === "ai_assisted" ? "scanner-assisted" : "manual"} order`,
-  }
+  })
+  const validOrder = validOrderFor(contractType)
+  const orderData = makeOrderData(contractType)
   const directionIsCall = contractType === "CALL"
   const directionIsPut = contractType === "PUT"
+  const handleQuickContract = (type: "DIGITOVER" | "DIGITUNDER") => {
+    setContractType(type)
+    if (!canRun || !validOrderFor(type) || marketOffline || runSession.isBusy) return
+    void runSession.start(makeOrderData(type), totalRuns, targetProfit)
+  }
+  const latestSettledResult = [...runSession.state.results]
+    .reverse()
+    .find(result => ["won", "lost", "settled"].includes(result.status) && Number.isFinite(Number(result.netProfit)) && Number(result.netProfit) !== 0)
 
   return (
     <div className="mx-auto min-h-[100dvh] w-full max-w-[1480px] space-y-4 p-3 md:p-5">
@@ -201,7 +213,7 @@ export default function BulkTrade() {
                 Manual trading
               </div>
                 <h1 className="truncate text-lg font-semibold tracking-tight md:text-xl">Manual Trader</h1>
-                <p className="mt-0.5 text-xs text-muted-foreground">Read the quote, choose the contract, then submit once.</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Market-first execution.</p>
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground md:ml-2">
@@ -211,6 +223,9 @@ export default function BulkTrade() {
             <span className="hidden whitespace-nowrap lg:inline">{accountSessionLabel} · safeguarded</span>
           </div>
         </div>
+        {latestSettledResult && (
+          <OutcomeBanner amount={Number(latestSettledResult.netProfit)} currency={accountCurrency} />
+        )}
         {(marketQuery.isLoading || marketQuery.isError || availabilityNotice) && (
           <div className="border-b border-border/70 bg-secondary/15 px-4 py-2 text-xs md:px-5">
             {marketQuery.isLoading && <p className="text-muted-foreground">Loading active markets from Deriv.</p>}
@@ -219,8 +234,16 @@ export default function BulkTrade() {
           </div>
         )}
         <div className="border-b border-border/80 bg-background/40 p-3 md:p-4">
-            <MarketAnalysisBar symbol={selectedMarket} onSymbolChange={setSelectedMarket} disabled={runSession.isBusy} />
-           <DigitRail activeDigit={liveLastDigit} selectedDigit={needsBarrier ? Number(barrier) : null} digitPercentages={digitPercentages} />
+          <MarketAnalysisBar symbol={selectedMarket} onSymbolChange={setSelectedMarket} disabled={runSession.isBusy} />
+          <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1fr)_260px] xl:items-start">
+            <DigitRail activeDigit={liveLastDigit} selectedDigit={needsBarrier ? Number(barrier) : null} digitPercentages={digitPercentages} />
+            <OverUnderTabs
+              value={contractType}
+              availableTypes={availableTypes}
+              disabled={runSession.isBusy || marketOffline}
+              onSelect={handleQuickContract}
+            />
+          </div>
         </div>
 
         <div className="grid lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -480,6 +503,26 @@ function Field({ label, id, value, onChange, min, max, step }: { label: string; 
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
       <Input id={id} type="number" min={min} max={max} step={step} value={value} onChange={event => onChange(event.target.value)} data-testid={`input-${id.replace("bulk-", "")}`} />
+    </div>
+  )
+}
+
+function OutcomeBanner({ amount, currency }: { amount: number; currency: string }) {
+  const profit = amount > 0
+  return (
+    <div
+      className={`flex items-center justify-between gap-4 border-b px-4 py-2.5 md:px-5 ${profit ? "border-success/25 bg-success/10" : "border-destructive/25 bg-destructive/10"}`}
+      data-testid="manual-outcome-banner"
+      aria-live="polite"
+    >
+      <div className="flex items-center gap-2">
+        <span className={`h-2 w-2 rounded-full ${profit ? "bg-success" : "bg-destructive"}`} />
+        <span className="text-[10px] font-semibold uppercase tracking-[.2em] text-muted-foreground">Last result</span>
+        <span className={`text-xs font-bold uppercase ${profit ? "text-success" : "text-destructive"}`}>{profit ? "Profit" : "Loss"}</span>
+      </div>
+      <span className={`font-mono text-base font-bold tracking-tight ${profit ? "text-success" : "text-destructive"}`}>
+        {formatSignedMoney(amount, currency)}
+      </span>
     </div>
   )
 }
