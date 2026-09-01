@@ -238,6 +238,13 @@ function persistenceErrorMessage(prefix: string, error: unknown) {
   return details.length ? `${prefix} ${details.join(" ")}`.slice(0, 600) : prefix;
 }
 
+function isoTimestamp(value: unknown) {
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value !== "string" && typeof value !== "number") return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
 function logTradeStageError(
   req: Request,
   stage: string,
@@ -582,7 +589,7 @@ router.get("/risk-acknowledgements/status", async (req, res) => {
     return res.json({
       accepted: Boolean(acknowledgement),
       version: riskAcknowledgementVersion,
-      acceptedAt: acknowledgement?.acceptedAt?.toISOString() || null,
+      acceptedAt: isoTimestamp(acknowledgement?.acceptedAt),
     });
   } catch (error) {
     logTradeStageError(req, "risk_acknowledgement_status", error, "real", "");
@@ -614,7 +621,7 @@ router.post("/risk-acknowledgements/accept", async (req, res) => {
     return res.status(201).json({
       accepted: true,
       version: riskAcknowledgementVersion,
-      acceptedAt: acknowledgement?.acceptedAt?.toISOString() || new Date().toISOString(),
+      acceptedAt: isoTimestamp(acknowledgement?.acceptedAt) || new Date().toISOString(),
     });
   } catch (error) {
     logTradeStageError(req, "risk_acknowledgement_accept", error, "real", "");

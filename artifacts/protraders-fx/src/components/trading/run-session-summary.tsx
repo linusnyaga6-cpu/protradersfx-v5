@@ -83,7 +83,7 @@ export function RunSessionSummary({ state, currency, onStart, onStop, onReset, d
          <SessionMetric label="P/L" value={state.completedRuns ? signedProfit : "Not settled"} />
          <SessionMetric label="Run" value={active ? `${state.currentRun}/${state.totalRuns}` : state.status === "idle" ? "Ready" : "Closed"} />
       </div>
-       {state.message && <p className="truncate text-xs text-muted-foreground" title={state.message} aria-live="polite">{compactSessionMessage(state)}</p>}
+       {state.message && <p className={`text-xs ${state.status === "failed" ? "break-words leading-4 text-destructive" : "truncate text-muted-foreground"}`} title={state.message} aria-live="polite">{compactSessionMessage(state)}</p>}
       {state.results.length > 0 && (
         <div className="space-y-2 text-[11px] text-muted-foreground">
           <div className="flex items-center justify-between gap-2 text-[10px] uppercase tracking-widest">

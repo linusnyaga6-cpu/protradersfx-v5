@@ -149,10 +149,6 @@ export function useTradingRunSession(storageKey: string, onChange?: () => void) 
     if (stateRef.current.status === "running" || stateRef.current.status === "stopping") return
     let executionOrder: RunSessionOrder = order
     if (order.account_type === "real") {
-      const confirmed = window.confirm(
-        "Confirm real-money trading. Each run can lose its full stake. Start this bounded session on the selected Real account?",
-      )
-      if (!confirmed) return
       try {
         const acknowledgement = await getRiskAcknowledgementStatus() as any
         if (!acknowledgement?.accepted) {
