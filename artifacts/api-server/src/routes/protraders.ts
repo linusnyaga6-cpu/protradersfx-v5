@@ -1254,7 +1254,6 @@ router.post("/trades/preview", async (req, res) => {
     req.body?.source === "bot_assisted" && (!Number.isFinite(martingaleMultiplier) || Number(martingaleMultiplier) < 1 || Number(martingaleMultiplier) > 5) ? "Martingale multiplier must be between 1 and 5." : "",
     req.body?.source === "bot_assisted" && (!Number.isFinite(martingaleMaxStake) || Number(martingaleMaxStake) < stake) ? "Martingale max stake must be at least the starting stake." : "",
     req.body?.source === "bot_assisted" && (!Number.isInteger(consecutiveLossLimit) || Number(consecutiveLossLimit) < 1 || Number(consecutiveLossLimit) > 10) ? "Consecutive-loss guard must be from 1 to 10." : "",
-    req.body?.source === "bot_assisted" && (!Number.isInteger(consecutiveLossLimit) || Number(consecutiveLossLimit) < 1 || Number(consecutiveLossLimit) > 10) ? "Consecutive-loss guard must be from 1 to 10." : "",
     req.body?.source === "bot_assisted" && (!botId || !sessionId) ? "A saved bot and run session are required." : "",
     source !== "bot_assisted" && (req.body?.bot_id !== undefined || req.body?.run_count !== undefined || req.body?.risk_cap !== undefined || req.body?.martingale_enabled !== undefined || req.body?.martingale_multiplier !== undefined || req.body?.martingale_max_stake !== undefined || req.body?.consecutive_loss_limit !== undefined)
       ? "Bot plan fields require bot-assisted execution." : "",
