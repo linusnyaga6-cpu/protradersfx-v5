@@ -1,48 +1,50 @@
 {
-    "version": 2,
-    "builds": [
-      {
-        "src": "artifacts/api-server/api/index.js",
-        "use": "@vercel/node",
-        "config": {
-          "includeFiles": ["artifacts/api-server/dist/**"]
-        }
-      },
-      {
-        "src": "artifacts/protraders-fx/package.json",
-        "use": "@vercel/static-build",
-        "config": {
-          "distDir": "dist/public"
-        }
+  "version": 2,
+  "builds": [
+    {
+      "src": "artifacts/api-server/api/index.js",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": [
+          "artifacts/api-server/dist/**"
+        ]
       }
-    ],
-    "routes": [
-      {
-        "src": "/health",
-        "dest": "artifacts/api-server/api/index.js"
-      },
-      {
-        "src": "/api/(.*)",
-        "dest": "artifacts/api-server/api/index.js"
-      },
-      {
-        "src": "/oauth/(.*)",
-        "dest": "artifacts/api-server/api/index.js"
-      },
-      {
-        "src": "/assets/(.*)",
-        "dest": "/artifacts/protraders-fx/assets/$1"
-      },
-      {
-        "src": "/(favicon\.svg|robots\.txt|sitemap\.xml)",
-        "dest": "/artifacts/protraders-fx/$1"
-      },
-      {
-        "handle": "filesystem"
-      },
-      {
-        "src": "/(.*)",
-        "dest": "/artifacts/protraders-fx/index.html"
+    },
+    {
+      "src": "artifacts/protraders-fx/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist/public"
       }
-    ]
     }
+  ],
+  "routes": [
+    {
+      "src": "/health",
+      "dest": "artifacts/api-server/api/index.js"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "artifacts/api-server/api/index.js"
+    },
+    {
+      "src": "/oauth/(.*)",
+      "dest": "artifacts/api-server/api/index.js"
+    },
+    {
+      "src": "/assets/(.*)",
+      "dest": "/artifacts/protraders-fx/assets/$1"
+    },
+    {
+      "src": "/(favicon\\.svg|robots\\.txt|sitemap\\.xml)",
+      "dest": "/artifacts/protraders-fx/$1"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/artifacts/protraders-fx/index.html"
+    }
+  ]
+}
