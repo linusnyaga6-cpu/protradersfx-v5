@@ -167,7 +167,7 @@ function compactSessionMessage(state: TradingRunSessionState) {
   if (state.status === "stopping") return "Stopping after current contract"
   if (state.status === "completed") return "Run plan complete"
   if (state.status === "stopped") return "Stopped"
-  if (state.status === "failed") return "Run failed · see details"
+   if (state.status === "failed") return state.message || "Run failed"
   return state.message
 }
 
