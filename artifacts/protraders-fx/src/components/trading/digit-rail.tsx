@@ -46,7 +46,7 @@ export function DigitRail({
             aria-hidden="true"
           />
         )}
-        <div className="grid grid-cols-10 gap-1.5">
+        <div className="grid grid-cols-5 gap-2 sm:grid-cols-10 sm:gap-1.5">
           {Array.from({ length: 10 }, (_, digit) => {
             const isLive = activeDigit === digit
             const isBarrier = selectedDigit === digit
@@ -54,19 +54,19 @@ export function DigitRail({
             return (
               <div key={digit} className="text-center" data-testid={`digit-monitor-${digit}`}>
                 <div
-                  className={`mx-auto grid aspect-square w-full max-w-12 place-items-center rounded-full border font-mono text-xs font-semibold transition-all duration-300 ${
+                  className={`mx-auto flex aspect-square w-full max-w-[4.5rem] flex-col items-center justify-center rounded-full border font-mono transition-all duration-300 ${
                     isLive
-                      ? "scale-110 border-primary bg-primary text-primary-foreground shadow-[0_6px_18px_hsl(var(--primary)/.22)]"
+                      ? "scale-105 border-primary bg-primary text-primary-foreground shadow-[0_6px_18px_hsl(var(--primary)/.22)]"
                       : isBarrier
                         ? "border-amber-500 bg-amber-500/10 text-amber-700 ring-2 ring-amber-500/20 dark:text-amber-300"
                         : "border-success/30 bg-success/[.06] text-success/80"
                   }`}
                   aria-label={`Digit ${digit}, ${percentage != null && digitPercentages.length ? `${percentage}% observed` : "no observations"}${isBarrier ? ", selected barrier" : ""}`}
                 >
-                  {digit}
-                </div>
-                <div className={`mt-1 font-mono text-[9px] font-semibold ${isLive ? "text-primary" : isBarrier ? "text-amber-700 dark:text-amber-300" : "text-muted-foreground"}`}>
-                  {percentage != null && digitPercentages.length ? `${percentage}%` : "—"}
+                  <span className="text-base font-semibold leading-none">{digit}</span>
+                  <span className={`mt-1 text-[10px] font-semibold leading-none ${isLive ? "text-primary-foreground/80" : isBarrier ? "text-amber-700/80 dark:text-amber-200/80" : "text-success/75"}`}>
+                    {percentage != null && digitPercentages.length ? `${percentage}%` : "—"}
+                  </span>
                 </div>
                 {isBarrier && <div className="text-[8px] uppercase tracking-wider text-amber-700 dark:text-amber-300">chosen</div>}
               </div>

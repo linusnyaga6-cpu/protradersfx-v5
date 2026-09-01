@@ -66,6 +66,7 @@ export function AccountStrip({ account, isLoading, error, switchingDisabled = fa
         throw new Error(`Deriv returned the ${nextAccount.accountType} account instead of ${accountType}.`)
       }
       queryClient.setQueryData(getGetAccountQueryKey(), nextAccount)
+      await queryClient.invalidateQueries({ queryKey: ["/api/market/contracts"] })
     } catch (accountError) {
       const failure = accountError as { data?: { error?: string; message?: string }; message?: string }
       setSwitchError(failure.data?.message || failure.data?.error || failure.message || "Account switch unavailable.")

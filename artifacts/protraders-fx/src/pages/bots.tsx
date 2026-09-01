@@ -1,58 +1,4 @@
-import { useState, useEffect } from "react"
-import { Link } from "wouter"
-import { useQueryClient } from "@tanstack/react-query"
-import {
-  ArrowRight, Bot as BotIcon, CheckCircle2, Copy, Pause, Play, Plus, ShieldCheck,
-  Settings, Save, Archive, Clock, Activity, Loader2, AlertTriangle, AlertCircle, Search,
-  Sparkles, Download, FileText, Eye, ShieldAlert
-} from "lucide-react"
-import {
-  useListBots, getListBotsQueryKey,
-  useListBotTemplates, getListBotTemplatesQueryKey,
-  useCreateBot, useUpdateBot, useChangeBotLifecycle,
-  useListBotRuns, getListBotRunsQueryKey,
-  useCreateBotTemplate, useUpdateBotTemplate, useArchiveBotTemplate,
-  useGetAccount, getGetAccountQueryKey, useGetProtradersPreflight, getGetProtradersPreflightQueryKey,
-  useGetMarketContracts, getGetMarketContractsQueryKey
-} from "@workspace/api-client-react"
-import { Workspace } from "./markets"
-import { AccountStrip } from "@/components/trading/account-strip"
-import { BotRunSummary } from "@/components/trading/bot-run-summary"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
-import { Textarea } from "@/components/ui/textarea"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { DEFAULT_MARKET_SYMBOL, CONTRACT_LABELS, SUPPORTED_VOLATILITY_SYMBOLS } from "@/lib/markets"
-import { useDerivMarkets } from "@/hooks/use-deriv-markets"
-import { useTradingRunSession } from "@/hooks/use-trading-run-session"
-import { RunSessionSummary } from "@/components/trading/run-session-summary"
-import { FreeVertexPreview } from "@/components/bots/freevertex-preview"
-
-export default function Bots() {
-  const client = useQueryClient();
-  const bots = useListBots({ query: { queryKey: getListBotsQueryKey(), refetchInterval: 10000 } });
-  const templates = useListBotTemplates({ query: { queryKey: getListBotTemplatesQueryKey() } });
-  const account = useGetAccount(undefined, { query: { queryKey: getGetAccountQueryKey(), refetchInterval: 5000 } });
-
-  const create = useCreateBot();
-  const life = useChangeBotLifecycle();
-  const archiveTpl = useArchiveBotTemplate();
-  const preflight = useGetProtradersPreflight({ query: { queryKey: getGetProtradersPreflightQueryKey() } });
-
-  const [notice, setNotice] = useState("");
-  const [selectedBotId, setSelectedBotId] = useState<string | null>(null);
-  const [templateSearch, setTemplateSearch] = useState("");
-  const [executingBotId, setExecutingBotId] = useState<string | null>(null);
-  const requestedMarket = typeof window === "undefined" ? DEFAULT_MARKET_SYMBOL : new URLSearchParams(window.location.search).get("symbol") || DEFAULT_MARKET_SYMBOL;
-  const requestedSymbol = SUPPORTED_VOLATILITY_SYMBOLS.has(requestedMarket) ? requestedMarket : DEFAULT_MARKET_SYMBOL;
-  const runSession = useTradingRunSession("protraders-run-session:bot", () => {
-    client.invalidateQueries({ queryKey: getGetAccountQueryKey() });
-    if (executingBotId) client.invalidateQueries({ queryKey: getListBotRunsQueryKey(executingBotId) });
+ueryKey(executingBotId) });
   });
 
   const list = Array.isArray((bots.data as any)?.bots) ? (bots.data as any).bots : Array.isArray(bots.data) ? bots.data : [];
@@ -686,21 +632,12 @@ function BotBuilder({
                </div>
                <Badge variant="outline" className="border-[#16a34a]/40 bg-[#16a34a]/10 text-[10px] uppercase tracking-wider text-[#6ee7a0]">Fixed stake</Badge>
              </div>
-           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <MarketAnalysisBar symbol={symbol} onSymbolChange={setSymbol} disabled={saving} tone="dark" />
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div className="space-y-2">
              <Label className="text-xs font-medium text-[#a5f3ec]">Bot name</Label>
              <Input value={name} onChange={e => setName(e.target.value)} className="border-[#159e98] bg-[#06110f] text-white shadow-[0_0_0_1px_rgba(21,158,152,.12)]" />
               {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
-            </div>
-
-               <div className="space-y-2">
-                 <Label className="text-xs font-medium text-[#a5f3ec]">Market</Label>
-               <Select value={symbol} onValueChange={setSymbol}>
-                 <SelectTrigger className="border-[#159e98] bg-[#06110f] font-mono text-white shadow-[0_0_0_1px_rgba(21,158,152,.12)]"><SelectValue /></SelectTrigger>
-                 <SelectContent>{marketQuery.markets.map(item => <SelectItem key={item.symbol} value={item.symbol}><span>{item.displayName}</span><span className="ml-2 font-mono text-xs text-muted-foreground">{item.symbol}</span></SelectItem>)}</SelectContent>
-               </Select>
-                 <p className="text-xs text-white/40">Live Deriv volatility index.</p>
-              {errors.symbol && <p className="text-xs text-destructive">{errors.symbol}</p>}
             </div>
 
             <div className="space-y-2">

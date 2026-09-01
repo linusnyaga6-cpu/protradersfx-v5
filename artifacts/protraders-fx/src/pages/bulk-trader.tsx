@@ -26,6 +26,7 @@ import { formatVolatility } from "@/lib/format"
 import { useDerivMarkets } from "@/hooks/use-deriv-markets"
 import { Workspace } from "./markets"
 import { TradingTabs } from "@/components/trading/trading-tabs"
+import { MarketAnalysisBar } from "@/components/trading/market-analysis-bar"
 
 export default function BulkTrader() {
   const queryClient = useQueryClient()
@@ -37,6 +38,7 @@ export default function BulkTrader() {
   const [stake, setStake] = useState("1")
   const [runCount, setRunCount] = useState("3")
   const [scanData, setScanData] = useState<any>(null)
+  const [selectedSymbol, setSelectedSymbol] = useState("")
   const [scanError, setScanError] = useState("")
   const [notice, setNotice] = useState("")
 
@@ -46,10 +48,11 @@ export default function BulkTrader() {
 
   const bestMarket = scanData?.best || scanData?.markets?.[0]
   const scannedSymbol = String(bestMarket?.symbol || marketQuery.defaultSymbol || DEFAULT_MARKET_SYMBOL)
-  const contracts = useGetMarketContracts(scannedSymbol, {
+  const requestedSymbol = selectedSymbol || scannedSymbol
+  const contracts = useGetMarketContracts(requestedSymbol, {
     query: {
-      queryKey: getGetMarketContractsQueryKey(scannedSymbol),
-      enabled: Boolean(scannedSymbol),
+      queryKey: getGetMarketContractsQueryKey(requestedSymbol),
+      enabled: Boolean(requestedSymbol),
       staleTime: 60_000,
     },
   })
@@ -69,8 +72,8 @@ export default function BulkTrader() {
   const fallbackTypes = Array.isArray((fallbackContracts.data as any)?.availableContractTypes)
     ? (fallbackContracts.data as any).availableContractTypes.filter((item: string) => CONTRACT_LABELS[item])
     : []
-  const usingFallback = scannedSymbol !== fallbackSymbol && scannedContractUnavailable && fallbackTypes.length > 0
-  const executionSymbol = usingFallback ? fallbackSymbol : scannedSymbol
+  const usingFallback = requestedSymbol !== fallbackSymbol && scannedContractUnavailable && fallbackTypes.length > 0
+  const executionSymbol = usingFallback ? fallbackSymbol : requestedSymbol
   const executionTypes = usingFallback ? fallbackTypes : availableTypes
   const selectedContract = executionTypes.includes("CALL") ? "CALL" : executionTypes[0] || "CALL"
   const contractReady = executionTypes.length > 0
@@ -182,6 +185,11 @@ export default function BulkTrader() {
         <Workspace title="Bulk Trader" eyebrow={selectedAccountType === "real" ? "Real-account execution" : "Fast, bounded execution"} description={`Run a bounded ${accountSessionLabel} session.`}>
       <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} switchingDisabled={runSession.isBusy} />
        <TradingTabs active="bulk" />
+       <MarketAnalysisBar
+         symbol={executionSymbol}
+         onSymbolChange={value => setSelectedSymbol(value)}
+         disabled={runSession.isBusy}
+       />
 
       <div className="overflow-hidden rounded-2xl border border-primary/20 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/.18),transparent_38%),linear-gradient(135deg,hsl(var(--card)),hsl(var(--secondary)/.45))] shadow-[0_18px_60px_rgba(0,0,0,.16)]">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-3 text-xs">

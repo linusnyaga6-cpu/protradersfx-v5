@@ -46,6 +46,7 @@ import { useDerivMarkets } from "@/hooks/use-deriv-markets"
 import { DEFAULT_MARKET_SYMBOL, CONTRACT_LABELS, marketLabel } from "@/lib/markets"
 import { formatVolatility } from "@/lib/format"
 import { Workspace } from "./markets"
+import { MarketAnalysisBar } from "@/components/trading/market-analysis-bar"
 
 type ScanRecord = {
   symbol?: string
@@ -86,6 +87,7 @@ export default function AiScanner() {
   const analyze = useAnalyzeMarket()
   const [form, setForm] = useState(initialForm)
   const [scanData, setScanData] = useState<any>(null)
+  const [selectedSymbol, setSelectedSymbol] = useState("")
   const [analysisData, setAnalysisData] = useState<any>(null)
   const [scanError, setScanError] = useState("")
   const [analysisError, setAnalysisError] = useState("")
@@ -101,11 +103,12 @@ export default function AiScanner() {
   }, [scanData])
   const bestMarket = (scanData?.best || scanRows[0]) as ScanRecord | undefined
   const scannedSymbol = String(bestMarket?.symbol || marketQuery.defaultSymbol || DEFAULT_MARKET_SYMBOL)
+  const activeSymbol = selectedSymbol || scannedSymbol
   const marketAvailable = !marketQuery.isError && marketQuery.markets.length > 0
-  const contracts = useGetMarketContracts(scannedSymbol, {
+  const contracts = useGetMarketContracts(activeSymbol, {
     query: {
-      queryKey: getGetMarketContractsQueryKey(scannedSymbol),
-      enabled: Boolean(scanData && scannedSymbol),
+      queryKey: getGetMarketContractsQueryKey(activeSymbol),
+      enabled: Boolean(scanData && activeSymbol),
       staleTime: 60_000,
     },
   })
@@ -163,10 +166,10 @@ export default function AiScanner() {
   }
 
   const performAnalysis = async () => {
-    if (!scannedSymbol) return
+    if (!activeSymbol) return
     setAnalysisError("")
     try {
-      const result = await analyze.mutateAsync({ data: { symbol: scannedSymbol } })
+      const result = await analyze.mutateAsync({ data: { symbol: activeSymbol } })
       setAnalysisData(result)
     } catch (error) {
       setAnalysisError(error instanceof Error ? error.message : "Advisory analysis is temporarily unavailable.")
@@ -178,7 +181,7 @@ export default function AiScanner() {
     await runSession.start({
       account_id: String(account.data?.loginid || ""),
       account_type: selectedAccountType,
-      symbol: scannedSymbol,
+      symbol: activeSymbol,
       contract_type: form.direction,
       stake,
       stop_loss: stopLoss,
@@ -223,6 +226,15 @@ export default function AiScanner() {
   return (
     <Workspace title="AI Scanner" eyebrow="Review-first execution" description="Scan live Deriv markets, inspect the advisory context, then explicitly approve a bounded run.">
       <AccountStrip account={account.data} isLoading={account.isLoading} error={account.isError} switchingDisabled={runSession.isBusy} />
+      <MarketAnalysisBar
+        symbol={activeSymbol}
+        onSymbolChange={value => {
+          setSelectedSymbol(value)
+          setAnalysisData(null)
+          setAnalysisError("")
+        }}
+        disabled={runSession.isBusy}
+      />
 
       <section className="relative overflow-hidden rounded-sm border border-[#233d52] bg-[#0d2134] text-[#eff8f5] shadow-[0_22px_60px_rgba(13,33,52,.18)]" data-testid="panel-ai-scanner-hero">
         <div className="pointer-events-none absolute inset-0 opacity-50" aria-hidden="true">
@@ -280,7 +292,7 @@ export default function AiScanner() {
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-5">
-          <AdvisoryCard analysis={analysisData} bestMarket={bestMarket} symbol={scannedSymbol} />
+           <AdvisoryCard analysis={analysisData} bestMarket={bestMarket?.symbol === activeSymbol ? bestMarket : undefined} symbol={activeSymbol} />
           <ConfigurationCard
             form={form}
             updateForm={updateForm}

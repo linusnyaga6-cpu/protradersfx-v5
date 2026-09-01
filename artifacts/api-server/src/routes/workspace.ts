@@ -338,10 +338,11 @@ router.get("/market/symbols", async (_req, res) => {
 router.get("/market/contracts/:symbol", async (req, res) => {
   const symbol = string(req.params.symbol, 30);
   if (!symbol || !isVolatilitySymbol(symbol)) return fail(res, 400, "Choose a supported Volatility 10–100 market");
+  const session = await getSession(req, res);
+  if (!session) return fail(res, 401, "Not authenticated", "Connect a Deriv account to check trading types.");
   try {
-    const body = await cachedMarket(`contracts:${symbol}`, async () => {
-      const session = await getSession(req, res);
-      if (!session) throw new Error("Connect a Deriv account to check trading types.");
+    const body = await cachedMarket(`contracts:${symbol}:${session.accountId || "unselected"}`, async () => {
+      if (!session.accountId) throw new Error("Select a Deriv account to check trading types.");
       const data = await derivRequest(session.accessToken, { contracts_for: symbol }, session.accountId);
       const available = Array.isArray(data.contracts_for?.available) ? data.contracts_for.available : [];
       const supported = new Set(["CALL", "PUT", "DIGITOVER", "DIGITUNDER", "DIGITEVEN", "DIGITODD"]);

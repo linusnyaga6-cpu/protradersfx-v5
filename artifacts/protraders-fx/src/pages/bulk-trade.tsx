@@ -43,8 +43,9 @@ import { TradingTabs } from "@/components/trading/trading-tabs"
 import { useDerivMarkets } from "@/hooks/use-deriv-markets"
 import { useTradingRunSession } from "@/hooks/use-trading-run-session"
 import { ContractExplainer, TradingJourney } from "@/components/trading/trading-journey"
+import { MarketAnalysisBar } from "@/components/trading/market-analysis-bar"
 import { formatMoney, formatSignedMoney, formatVolatility } from "@/lib/format"
-import { CONTRACT_FAMILIES, CONTRACT_LABELS, DEFAULT_MARKET_SYMBOL, SUPPORTED_VOLATILITY_SYMBOLS, marketLabel } from "@/lib/markets"
+import { CONTRACT_FAMILIES, CONTRACT_LABELS, DEFAULT_MARKET_SYMBOL, SUPPORTED_VOLATILITY_SYMBOLS } from "@/lib/markets"
 
 export default function BulkTrade() {
   const requested = typeof window === "undefined" ? null : new URLSearchParams(window.location.search)
@@ -118,7 +119,6 @@ export default function BulkTrade() {
   const marketOffline = ticker.isError || (ticker.data as any)?.available === false
   const candleCloses = useMemo(() => readCandleCloses(marketData), [marketData])
   const digitPercentages = useMemo(() => readDigitPercentages(candleCloses), [candleCloses])
-  const selectedMarketIndex = Math.max(0, marketQuery.markets.findIndex(item => item.symbol === selectedMarket))
   const quoteTrend = candleCloses.length > 1
     ? candleCloses.at(-1)! >= candleCloses.at(-2)! ? "up" : "down"
     : "flat"
@@ -219,14 +219,8 @@ export default function BulkTrade() {
           </div>
         )}
         <div className="border-b border-border/80 bg-background/40 p-3 md:p-4">
+            <MarketAnalysisBar symbol={selectedMarket} onSymbolChange={setSelectedMarket} disabled={runSession.isBusy} />
            <DigitRail activeDigit={liveLastDigit} selectedDigit={needsBarrier ? Number(barrier) : null} digitPercentages={digitPercentages} />
-           <MarketCursor
-             markets={marketQuery.markets}
-             selectedMarket={selectedMarket}
-             selectedIndex={selectedMarketIndex}
-             onChange={setSelectedMarket}
-             isLoading={marketQuery.isLoading}
-           />
         </div>
 
         <div className="grid lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -492,73 +486,6 @@ function Field({ label, id, value, onChange, min, max, step }: { label: string; 
 
 function GateNotice({ icon, text }: { icon: ReactNode; text: string }) {
   return <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs leading-5 text-amber-700 dark:text-amber-300" data-testid="status-trading-gate">{icon}<span>{text}</span></div>
-}
-
-function MarketCursor({
-  markets,
-  selectedMarket,
-  selectedIndex,
-  onChange,
-  isLoading,
-}: {
-  markets: Array<{ symbol: string; displayName?: string; marketDisplayName?: string; submarketDisplayName?: string }>
-  selectedMarket: string
-  selectedIndex: number
-  onChange: (symbol: string) => void
-  isLoading: boolean
-}) {
-  const selected = markets[selectedIndex]
-  const maxIndex = Math.max(0, markets.length - 1)
-  const cursorPosition = maxIndex === 0 ? 0 : (selectedIndex / maxIndex) * 100
-
-  return (
-    <div className="mt-3 rounded-lg border border-primary/20 bg-primary/[.04] px-4 py-3" data-testid="market-cursor-selector">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[.18em] text-primary">Chosen market</div>
-          <div className="mt-1 font-mono text-sm font-semibold">{selected ? marketLabel(selected, selectedMarket) : isLoading ? "Loading markets…" : "No market selected"}</div>
-        </div>
-        <div className="flex items-center gap-2 text-[10px] uppercase tracking-[.14em] text-muted-foreground">
-          <Crosshair className="h-3.5 w-3.5 text-primary" />
-          Drag cursor to choose
-        </div>
-      </div>
-      <div className="relative mt-4 px-1">
-        <div className="pointer-events-none absolute left-1 right-1 top-1/2 h-1 -translate-y-1/2 rounded-full bg-border" aria-hidden="true" />
-        <div
-          className="pointer-events-none absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-primary transition-[width] duration-300"
-          style={{ left: "4px", width: `calc(${cursorPosition}% - ${cursorPosition * 8 / 100}px)` }}
-          aria-hidden="true"
-        />
-        <div
-          className="pointer-events-none absolute -top-2 z-10 -translate-x-1/2 text-primary transition-[left] duration-300"
-          style={{ left: `calc(${cursorPosition}% + ${4 - cursorPosition * 8 / 100}px)` }}
-          aria-hidden="true"
-        >
-          <span className="block animate-pulse text-sm leading-none">▼</span>
-        </div>
-        <input
-          aria-label="Choose market"
-          type="range"
-          min={0}
-          max={maxIndex}
-          step={1}
-          value={selectedIndex}
-          onChange={event => {
-            const nextMarket = markets[Number(event.target.value)]
-            if (nextMarket) onChange(nextMarket.symbol)
-          }}
-          disabled={markets.length < 2 || isLoading}
-          className="relative z-20 h-5 w-full cursor-pointer appearance-none bg-transparent accent-primary disabled:cursor-not-allowed disabled:opacity-50"
-          data-testid="cursor-market-selector"
-        />
-      </div>
-           <div className="mt-1 flex items-center justify-between gap-3 font-mono text-[9px] uppercase tracking-[.12em] text-muted-foreground">
-        <span>{markets.length ? `${selectedIndex + 1} of ${markets.length}` : "—"}</span>
-        <span>Live quote refreshes every 15s</span>
-      </div>
-    </div>
-  )
 }
 
 function SessionActions({ state, currency, contractType, disabled, onStart, onStop, onReset }: {
