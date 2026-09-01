@@ -11,6 +11,7 @@ import {
   useListBotTemplates, getListBotTemplatesQueryKey,
   useCreateBot, useUpdateBot, useChangeBotLifecycle,
   useListBotRuns, getListBotRunsQueryKey,
+  useRunBotOnce,
   useCreateBotTemplate, useUpdateBotTemplate, useArchiveBotTemplate,
   useGetAccount, getGetAccountQueryKey, useGetProtradersPreflight, getGetProtradersPreflightQueryKey,
   useGetMarketContracts, getGetMarketContractsQueryKey
@@ -44,11 +45,13 @@ export default function Bots() {
   const life = useChangeBotLifecycle();
   const archiveTpl = useArchiveBotTemplate();
   const preflight = useGetProtradersPreflight({ query: { queryKey: getGetProtradersPreflightQueryKey() } });
+  const dryRun = useRunBotOnce();
 
   const [notice, setNotice] = useState("");
   const [selectedBotId, setSelectedBotId] = useState<string | null>(null);
   const [templateSearch, setTemplateSearch] = useState("");
   const [executingBotId, setExecutingBotId] = useState<string | null>(null);
+  const [testingBotId, setTestingBotId] = useState<string | null>(null);
   const requestedMarket = typeof window === "undefined" ? DEFAULT_MARKET_SYMBOL : new URLSearchParams(window.location.search).get("symbol") || DEFAULT_MARKET_SYMBOL;
   const requestedSymbol = SUPPORTED_VOLATILITY_SYMBOLS.has(requestedMarket) ? requestedMarket : DEFAULT_MARKET_SYMBOL;
   const runSession = useTradingRunSession("protraders-run-session:bot", () => {
@@ -187,6 +190,22 @@ export default function Bots() {
       setExecutingBotId(null);
       client.invalidateQueries({ queryKey: getListBotRunsQueryKey(String(bot.id)) });
     }
+  };
+
+  const testBot = (bot: any) => {
+    if (testingBotId) return;
+    const id = String(bot.id);
+    setTestingBotId(id);
+    dryRun.mutate({ id }, {
+      onSuccess: (result: any) => {
+        client.invalidateQueries({ queryKey: getListBotRunsQueryKey(id) });
+        const outcome = result?.result?.action || result?.result?.recoveryMode;
+        setNotice(`${bot.name || "Bot"} dry run completed${outcome ? `: ${outcome}` : "."}`);
+        setTimeout(() => setNotice(""), 5000);
+      },
+      onError: (error: any) => setNotice(`${bot.name || "Bot"} dry run failed: ${error?.message || "evaluation unavailable"}`),
+      onSettled: () => setTestingBotId(null),
+    });
   };
 
   return (
@@ -334,6 +353,9 @@ export default function Bots() {
                       <Button size="sm" variant="outline" className="flex-1" onClick={(event) => { event.stopPropagation(); setSelectedBotId(String(bot.id)); }}>
                         <Settings className="mr-2 h-3 w-3" />Edit details
                       </Button>
+                       <Button size="sm" variant="outline" className="flex-1" onClick={(event) => { event.stopPropagation(); testBot(bot); }} disabled={Boolean(testingBotId) || bot.status === "archived"} data-testid={`button-test-bot-${bot.id}`}>
+                         <Activity className="mr-2 h-3 w-3" />{testingBotId === String(bot.id) ? "Testing…" : "Test dry run"}
+                       </Button>
                      {bot.config?.mode !== "recovery_guard" && selectedBotId !== String(bot.id) && executingBotId !== String(bot.id) && (
                        <Button size="sm" className="flex-1" onClick={(e) => { e.stopPropagation(); executeBot(bot); }} disabled={Boolean(executingBotId)} data-testid={`button-run-bot-${bot.id}`}>
                          <Play className="mr-2 h-3 w-3"/>Run Bot
