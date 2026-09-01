@@ -63,6 +63,8 @@ function normalizeSavedState(value: unknown): TradingRunSessionState | null {
   if (typeof saved.id !== "string" || !saved.status || saved.status === "idle") return null
   const message = typeof saved.message === "string" ? saved.message : ""
   const isLegacyProposalError = /consumed[_\s-]?trade[_\s-]?proposals|duplicate key value violates unique constraint|insert into/i.test(message)
+  const isStaleRealAccountTypeError = /Unsupported account type:\s*Deriv returned account type ["\']real["\']/i.test(message)
+  if (isStaleRealAccountTypeError) return null
   return {
     ...initialState,
     ...saved,
